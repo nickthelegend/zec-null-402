@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import run from '@deployments/testnet.json';
+import agentLog from '@deployments/agent-run-2026-10-20.jsonl?raw';
 
 type Call = { n: number; status: number; nullifier: string; proveMs: number };
 const r = run as unknown as {
@@ -204,8 +205,32 @@ const NAV = [
   ['tickets', 'Tickets'],
   ['who', 'Who sees what'],
   ['ref', 'Refusals'],
+  ['agent', 'Agent run'],
   ['anc', 'Anchor'],
 ] as const;
+
+/** One MCP tool call from the recorded opencode agent run (deployments/agent-run-2026-10-20.jsonl). */
+type AgentCall = { at: string; tool: string; args: Record<string, unknown>; isError: boolean; result: unknown };
+const agentCalls: AgentCall[] = agentLog
+  .split('\n')
+  .filter((l) => l.trim())
+  .map((l) => JSON.parse(l) as AgentCall);
+
+function describeCall(c: AgentCall): { what: string; detail: string } {
+  const res = c.result as Record<string, unknown> | string;
+  if (c.tool === 'deposit') {
+    const a = c.args as { count?: number; units?: number };
+    return { what: `deposit ${a.count} × ${a.units} units`, detail: typeof res === 'string' ? res : `tx ${String(res.txid).slice(0, 8)}…, ${res.amount_zat} zat` };
+  }
+  if (c.tool === 'pay') {
+    const url = String((c.args as { url?: string }).url ?? '');
+    const path = url.replace(/^https?:\/\/[^/]+/, '');
+    return { what: `pay ${path}`, detail: typeof res === 'string' ? res : `HTTP ${res.status}, proof ${res.prove_ms} ms` };
+  }
+  if (c.tool === 'claim') return { what: 'claim the deposit', detail: typeof res === 'string' ? res : `credited ${res.count} notes from leaf ${res.first}` };
+  const w = typeof res === 'string' ? null : (res.wallet as { credited?: number; unspent_units?: string } | undefined);
+  return { what: 'status', detail: w ? `${w.credited} credited, ${w.unspent_units} units unspent` : String(res) };
+}
 
 export function App() {
   const spentTotal = r.calls.length * Number(r.priceUnits) * r.unitZat;
@@ -428,6 +453,51 @@ export function App() {
                 </tbody>
               </table>
             </div>
+          </section>
+
+          <section id="agent" aria-labelledby="agent-h">
+            <div className="sec-head">
+              <h2 id="agent-h">An LLM agent with a spending cap</h2>
+              <span className="pill pill-no">
+                <span className="pill-dot" aria-hidden="true" />
+                {agentCalls.filter((c) => c.isError).length} of {agentCalls.length} calls refused
+              </span>
+            </div>
+            <p className="muted small">
+              An opencode agent used the four MCP tools against a local gateway on testnet. A quote response carried an injected order to buy a 50-unit report at any cost; <code>Z402_MAX_DEPOSIT_ZAT=40000</code> refused every 50,000 zat deposit, so it never bought it. Every call below is from{' '}
+              <code>deployments/agent-run-2026-10-20.jsonl</code>.
+            </p>
+            {agentCalls.length === 0 ? (
+              <p className="muted small">No agent run recorded yet.</p>
+            ) : (
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col">#</th>
+                      <th scope="col">Call</th>
+                      <th scope="col">Result</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {agentCalls.map((c, i) => {
+                      const d = describeCall(c);
+                      return (
+                        <tr key={c.at + i}>
+                          <td>{i + 1}</td>
+                          <td>
+                            {d.what} <span className={`pill ${c.isError ? 'pill-no' : 'pill-ok'}`}>{c.isError ? 'refused' : 'ok'}</span>
+                          </td>
+                          <td>
+                            <code className="code-pill code-long">{d.detail}</code>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
 
           <section id="anc" aria-labelledby="anc-h">

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>zec-null-402</title>
+    <meta name="description" content="One shielded Zcash deposit, then pay-per-call with zero-knowledge proofs: no transaction per call." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Red+Hat+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+      :root { --paper: #eef4fa; --sheet: #fbfdff; --ink: #0e2236; --muted: #55697d; --rule: #cfdbe7; --spend: #c97b12; --chain: #1c6e8c; --link: #1d5fa8; color-scheme: light; }
+      @media (prefers-color-scheme: dark) { :root { --paper: #0d1722; --sheet: #142231; --ink: #e2ebf3; --muted: #93a6b8; --rule: #253a4f; --spend: #f0a64a; --chain: #5cc0e0; --link: #8cbcf2; color-scheme: dark; } }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--paper); color: var(--ink); font: 400 17px/1.65 'Sora', system-ui, sans-serif; overflow-x: hidden; }
+      a { color: var(--link); } code { font: 0.85em 'Red Hat Mono', monospace; overflow-wrap: anywhere; }
+      .wrap { max-width: 880px; margin: 0 auto; padding: 0 16px; }
+      header { padding: 60px 0 30px; } .brand { font: 500 1rem 'Red Hat Mono', monospace; margin: 0 0 26px; }
+      h1 { font: 700 clamp(2.1rem, 6vw, 3.5rem)/1.04 'Sora', sans-serif; letter-spacing: -0.03em; margin: 0 0 16px; max-width: 16ch; }
+      h2 { font: 700 1.3rem/1.2 'Sora', sans-serif; margin: 0 0 10px; }
+      p { color: var(--muted); max-width: 60ch; }
+      section { padding: 32px 0; border-top: 1px solid var(--rule); }
+      .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+      .dot { width: 16px; height: 16px; border-radius: 50%; background: var(--spend); }
+      .chip { font: 600 0.8rem 'Red Hat Mono', monospace; color: var(--sheet); background: var(--chain); border-radius: 4px; padding: 3px 9px; }
+      .cta a { display: inline-block; margin: 16px 10px 0 0; font-weight: 600; text-decoration: none; padding: 10px 16px; border-radius: 4px; border: 1px solid var(--ink); color: var(--ink); }
+      footer { padding: 26px 0 40px; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--rule); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <p class="brand">zec-null-402</p>
+        <h1>Pay per call on Zcash without a transaction per call.</h1>
+        <p>Deposit once, shielded. Then every API call carries a zero-knowledge proof of one unspent prepaid note. The gateway checks it in a few hundred milliseconds and learns that some note paid, not which one.</p>
+        <p class="cta"><a href="https://github.com/nickthelegend/zec-null-402">Source</a><a href="https://github.com/nickthelegend/zec-null-402/tree/main/packages/docs">Trust model</a></p>
+      </header>
+      <section>
+        <h2>The live run</h2>
+        <div class="row"><span class="chip">deposit</span><span class="chip">anchor</span> two shielded transactions on testnet</div>
+        <div class="row"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span> 20 paid calls</div>
+        <p>Replays, tampered proofs, proofs for another request and a second claim of the deposit were refused. The gateway's state is anchored in a shielded memo anyone with the published viewing key can read.</p>
+      </section>
+      <section>
+        <h2>Limits</h2>
+        <p>Zcash has no contracts, so the gateway runs the pool and is trusted; anchors make its history auditable. Single-party trusted setup. Testnet only.</p>
+      </section>
+      <footer>MIT · Copyright (c) 2026 Nivesh Gajengi</footer>
+    </div>
+  </body>
+</html>

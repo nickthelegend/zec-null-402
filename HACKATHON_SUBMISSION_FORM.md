@@ -1,4 +1,4 @@
-# zec-null-402 — submission draft (portfolio; DO NOT SUBMIT)
+# Kippu (zec-null-402) — submission draft (portfolio; DO NOT SUBMIT)
 
 Zecathon allows one entry per team: Shielded x402.
 

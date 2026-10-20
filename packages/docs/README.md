@@ -1,4 +1,4 @@
-# zec-null-402: design, trust model and why there is no on-chain verifier
+# Kippu (zec-null-402): design, trust model and why there is no on-chain verifier
 
 ## The idea
 

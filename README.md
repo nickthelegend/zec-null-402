@@ -1,4 +1,4 @@
-# zec-null-402
+# Kippu — pay per API call on Zcash with ZK tickets
 
 **Pay once with a shielded Zcash deposit, then pay per API call with a zero-knowledge proof.** No
 transaction and no block wait per call; the gateway learns that *some* prepaid note paid, not which.

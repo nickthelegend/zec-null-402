@@ -47,11 +47,15 @@ export function createServer(): McpServer {
     },
     (a) =>
       run('deposit', a, async () => {
+        // Everything that can refuse is checked before notes are created.
+        const wallet = need('Z402_WALLET');
         const c = client();
-        const p = await c.plan(a.count, BigInt(a.units));
+        const info = await c.info();
         const max = BigInt(process.env.Z402_MAX_DEPOSIT_ZAT ?? 300_000);
-        if (p.amountZat > max) throw new Error(`refused: deposit of ${p.amountZat} zat is above Z402_MAX_DEPOSIT_ZAT (${max})`);
-        const [txid] = await quicksend(zingoConfig(), need('Z402_WALLET'), [{ address: p.address, amount: p.amountZat, memo: p.memo }]);
+        const total = BigInt(a.count) * BigInt(a.units) * BigInt(info.unitZat);
+        if (total > max) throw new Error(`refused: deposit of ${total} zat is above Z402_MAX_DEPOSIT_ZAT (${max})`);
+        const p = await c.plan(a.count, BigInt(a.units));
+        const [txid] = await quicksend(zingoConfig(), wallet, [{ address: p.address, amount: p.amountZat, memo: p.memo }]);
         return { plan: p.plan, txid, amount_zat: p.amountZat.toString(), notes: a.count };
       }),
   );

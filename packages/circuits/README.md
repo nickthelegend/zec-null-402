@@ -1,5 +1,13 @@
-# circuits
+# circuits — `Payment(20)`
 
-Port of null-402 `Payment(20)` circuit (Poseidon depth-20, nullifier, payTo, requiredAmount, contextHash)
+The near-null-402 circuit (null-402's Payment with the leaf bound to the note value), copied (same
+author, MIT) with **this repo's own** single-party Groth16 setup (`scripts/build.sh`, vk sha256
+`8e7fa586…7cd0e3`). Leaf = `Poseidon(Poseidon(noteSecret, nullifierSecret), value)`; public signals
+`[nullifier, merkleRoot, payTo, requiredAmount, contextHash]`; 11,920 constraints.
 
-_Placeholder — not built yet._
+The library builds notes, the 20-level Poseidon tree and proofs, and verifies proofs off-chain
+(snarkjs) — the gateway does that, because Zcash has no contracts. `depositCommitment(notes)` is the
+memo commitment that lets one shielded deposit fund many notes.
+
+Tests (`pnpm test`, 5): real proofs; tampered public inputs fail; no witness above the note value or
+outside the tree; deposit commitments bind every note and value; context per nonce.

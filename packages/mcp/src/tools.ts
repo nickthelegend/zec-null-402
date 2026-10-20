@@ -62,8 +62,24 @@ export function createServer(): McpServer {
 
   server.registerTool(
     'claim',
-    { title: 'Claim a mined deposit', description: 'Asks the gateway to credit the notes of a mined deposit (it checks the deposit with its viewing key).', inputSchema: { plan: z.string().regex(/^[0-9a-f]{64}$/), txid: z.string().regex(/^[0-9a-f]{64}$/) } },
-    (a) => run('claim', a, () => client().claim(a.plan, a.txid)),
+    {
+      title: 'Claim a deposit',
+      description: 'Asks the gateway to credit the notes of a deposit (it checks the deposit with its viewing key). If the deposit is not mined yet, waits for it (up to Z402_CLAIM_WAIT_SEC, default 900 s) instead of failing.',
+      inputSchema: { plan: z.string().regex(/^[0-9a-f]{64}$/), txid: z.string().regex(/^[0-9a-f]{64}$/) },
+    },
+    (a) =>
+      run('claim', a, async () => {
+        const deadline = Date.now() + Number(process.env.Z402_CLAIM_WAIT_SEC ?? 900) * 1000;
+        for (;;) {
+          try {
+            return await client().claim(a.plan, a.txid);
+          } catch (e) {
+            // 425: the gateway saw no mined deposit yet. Anything else is a real refusal.
+            if ((e as { status?: number }).status !== 425 || Date.now() > deadline) throw e;
+            await new Promise((r) => setTimeout(r, 20_000));
+          }
+        }
+      }),
   );
 
   server.registerTool(

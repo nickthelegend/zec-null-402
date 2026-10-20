@@ -1,0 +1,8 @@
+{
+  "name": "@z402/agent",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": { "run": "./run.sh" }
+}

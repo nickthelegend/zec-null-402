@@ -1,0 +1,13 @@
+{
+  "name": "@z402/gateway",
+  "version": "0.1.0",
+  "description": "zec-null-402 gateway: credits notes for viewing-key-checked shielded deposits, verifies per-call Groth16 proofs off-chain, burns nullifiers, anchors state in shielded memos",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "scripts": { "build": "tsc -p tsconfig.json", "serve": "tsx src/serve.ts", "test": "vitest run" },
+  "dependencies": { "@z402/circuits": "workspace:*" },
+  "devDependencies": { "@types/node": "^22.20.5", "tsx": "^4.23.15", "typescript": "~5.9.3", "vitest": "^3.2.7" }
+}

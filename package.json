@@ -1,0 +1,11 @@
+{
+  "name": "zec-null-402",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@10.29.2",
+  "scripts": {
+    "build:scan": "cd packages/scan && cargo build --release",
+    "build": "pnpm build:scan && pnpm -r --if-present build",
+    "test": "pnpm build && pnpm -r --workspace-concurrency=1 --if-present test"
+  }
+}

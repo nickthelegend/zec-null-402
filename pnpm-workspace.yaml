@@ -1,0 +1,7 @@
+packages:
+  - "packages/circuits"
+  - "packages/gateway"
+  - "packages/sdk"
+  - "packages/mcp"
+  - "packages/examples"
+  - "packages/dashboard"

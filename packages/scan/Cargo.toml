@@ -1,0 +1,32 @@
+[package]
+name = "zpay-verify"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Viewing-key payment checks for zec-null-402: copy of zpay-verify (zec-payment-verify-sdk, same author, MIT)"
+repository = "https://github.com/nickthelegend/zec-null-402"
+
+[lib]
+name = "zpay_verify"
+path = "src/lib.rs"
+
+[[bin]]
+name = "zpay-verify"
+path = "src/main.rs"
+
+[dependencies]
+# Same pre-release line as zec-shielded-x402: NU7 (testnet height 4465026) needs zcash_protocol 0.11.0-pre.
+zcash_client_backend = { version = "=0.25.0-pre.2", features = ["lightwalletd-tonic", "orchard"] }
+zcash_keys = { version = "=0.17.0-pre.2", features = ["orchard", "sapling"] }
+zcash_primitives = "=0.31.0-pre.2"
+zcash_protocol = "=0.11.0-pre.1"
+zcash_note_encryption = "0.5"
+orchard = "0.16"
+sapling = { package = "sapling-crypto", version = "0.9" }
+tonic = { version = "0.14", features = ["transport", "tls-ring", "tls-webpki-roots"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.dev.package."*"]
+opt-level = 3

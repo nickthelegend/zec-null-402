@@ -1,0 +1,11 @@
+{
+  "name": "@z402/mcp",
+  "version": "0.1.0",
+  "description": "MCP server: status, deposit, claim, pay (per-call zero-knowledge payments from prepaid shielded notes)",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "z402-mcp": "dist/main.js" },
+  "scripts": { "build": "tsc -p tsconfig.json", "test": "vitest run" },
+  "dependencies": { "@modelcontextprotocol/sdk": "1.32.1", "@z402/gateway": "workspace:*", "@z402/sdk": "workspace:*", "zod": "^3.25.76" },
+  "devDependencies": { "@types/node": "^22.20.5", "@z402/circuits": "workspace:*", "tsx": "^4.23.15", "typescript": "~5.9.3", "vitest": "^3.2.7" }
+}

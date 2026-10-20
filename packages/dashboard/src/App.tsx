@@ -34,20 +34,27 @@ const ATTACK: Record<string, string> = {
 };
 
 function AnchorCheck() {
-  const [state, setState] = useState<'checking' | 'ok' | 'bad'>('checking');
+  const [state, setState] = useState<'checking' | 'ok' | 'bad' | 'unavailable'>('checking');
   const [hash, setHash] = useState('');
   useEffect(() => {
     const all = [...r.calls.map((c) => c.nullifier), ...r.fixtureNullifiers].sort();
-    crypto.subtle.digest('SHA-256', new TextEncoder().encode(`zec-null-402:v1:nullifiers:${all.join(',')}`)).then((buf) => {
-      const h = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
-      setHash(h);
-      setState(h === r.anchor.nullifierHash ? 'ok' : 'bad');
-    });
+    if (!globalThis.crypto?.subtle) {
+      setState('unavailable');
+      return;
+    }
+    crypto.subtle
+      .digest('SHA-256', new TextEncoder().encode(`zec-null-402:v1:nullifiers:${all.join(',')}`))
+      .then((buf) => {
+        const h = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+        setHash(h);
+        setState(h === r.anchor.nullifierHash ? 'ok' : 'bad');
+      })
+      .catch(() => setState('unavailable'));
   }, []);
   return (
     <div className="check">
       <p className={state === 'ok' ? 'ok' : state === 'bad' ? 'no' : 'muted'}>
-        {state === 'checking' ? 'Hashing the published nullifiers in this tab…' : state === 'ok' ? `The ${r.calls.length + r.fixtureNullifiers.length} published nullifiers hash to the anchored value.` : 'The published nullifiers do not match the anchor.'}
+        {state === 'unavailable' ? 'This browser cannot hash here (Web Crypto needs https or localhost).' : state === 'checking' ? 'Hashing the published nullifiers in this tab…' : state === 'ok' ? `The ${r.calls.length + r.fixtureNullifiers.length} published nullifiers hash to the anchored value.` : 'The published nullifiers do not match the anchor.'}
       </p>
       <p className="muted small">
         sha256 over the sorted set: <code>{short(hash || '…', 12, 8)}</code> · anchored: <code>{short(r.anchor.nullifierHash, 12, 8)}</code>
@@ -95,7 +102,7 @@ export function App() {
           </div>
           <p className="muted small">
             Deposit {zec(Number(r.deposit.amountZat))} in <Tx id={r.deposit.txid} /> (block {r.deposit.height.toLocaleString()}); {r.calls.length} calls × {r.priceUnits} units ={' '}
-            {zec(spentTotal)}; proofs took {Math.min(...r.calls.map((c) => c.proveMs))}–{Math.max(...r.calls.map((c) => c.proveMs))} ms.
+            {zec(spentTotal)}; proofs took {Math.min(...r.calls.map((c) => c.proveMs))}–{Math.max(...r.calls.map((c) => c.proveMs))} ms. Two more notes paid one call each and were then used for the attack tests: {r.gateway.spent} notes spent in all.
           </p>
         </section>
 

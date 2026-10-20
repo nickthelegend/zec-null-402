@@ -11,3 +11,4 @@ dist/
 *.key
 wallets/
 .demo/
+CLAUDE.md

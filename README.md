@@ -15,15 +15,17 @@ Run of 2026-10-20 (`deployments/testnet.json`). 1 unit = 1,000 zat; a call costs
 
 | Step | Result | Tx |
 |---|---|---|
+| demo payer funded from a demo wallet | 300,000 zat | [`0f8186c6…`](https://testnet.zcashexplorer.app/transactions/0f8186c62a7f89d79988a43ad511c8b466a530e7f741f130c10532df605651db) |
 | one shielded deposit for 22 notes (`z402:<commitment>`) | 220,000 zat at block 4,522,696, seen by the gateway's viewing key | [`05c57a3b…`](https://testnet.zcashexplorer.app/transactions/05c57a3b074c7141a1052ca5197743a5140d5f4fa6178cd3d4894391ffd42a6f) |
 | claim | 22 notes credited, root `449878737549…` | — |
 | second claim of the same deposit | refused (409) | — |
 | claim with an altered note value (fresh gateway) | refused: `MEMO_MISMATCH, AMOUNT_TOO_LOW` | — |
-| **20 paid calls** | **20 × HTTP 200, no transaction**, proofs 346–569 ms | — |
+| **20 paid calls** | **20 × HTTP 200, no transaction**, client proofs 346–569 ms | — |
+| 2 more paid calls with the fixture notes (then used for the attacks below) | 2 × HTTP 200 → 22 notes spent | — |
 | replay of a paid proof | `NULLIFIER_SPENT` | — |
-| changed amount / proof for another request | `NOT_BOUND_TO_CHALLENGE` / `NOT_BOUND_TO_CHALLENGE` | — |
+| changed amount; a proof made for another request | both `NOT_BOUND_TO_CHALLENGE` | — |
 | changed nullifier | `BAD_PROOF` | — |
-| anchor (`z402:anchor:22:<root>:22:<nullifier-set hash>`) | memo found with the anchor viewing key; equals the gateway's root and nullifier set | [`a0992237…`](https://testnet.zcashexplorer.app/transactions/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395) |
+| anchor (`z402:anchor:22:<root>:22:<nullifier-set hash>`: 22 leaves, 22 spent) | memo found with the anchor viewing key; equals the gateway's root and nullifier set | [`a0992237…`](https://testnet.zcashexplorer.app/transactions/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395) |
 
 Fixture notes: two of the 22 notes were spent in the run and their secrets published, so tests in a
 fresh clone can claim the real deposit on a fresh gateway and pay with real proofs.
@@ -48,12 +50,12 @@ Needs Node 22+, pnpm 10, Rust 1.89 (pinned in `packages/scan`), circom 2.2 only 
 
 ```sh
 pnpm install
-pnpm test                          # 18 tests: circuits 5 (local), gateway 6 + sdk 3 + mcp 4 (live testnet)
+pnpm test                          # 21 tests + doc: scan 3 + doc, circuits 5 (local); gateway 6 + sdk 3 + mcp 4 (live testnet)
 pnpm --filter @z402/dashboard dev  # http://localhost:5183
 Z402_FUNDER_WALLET=<demo wallet> pnpm --filter @z402/examples run-live
 ```
 
-Demo video: `grokbot/videos/zec-null-402-demo.mp4`.
+Demo video: `zec-null-402-demo.mp4` (shared separately until hosted).
 
 ## Honest limits
 

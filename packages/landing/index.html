@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>zec-null-402</title>
     <meta name="description" content="One shielded Zcash deposit, then pay-per-call with zero-knowledge proofs: no transaction per call." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='10' cy='16' r='5' fill='%23C97B12'/%3E%3Ccircle cx='22' cy='16' r='5' fill='%23C97B12' opacity='.5'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Red+Hat+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -22,7 +23,7 @@
       section { padding: 32px 0; border-top: 1px solid var(--rule); }
       .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
       .dot { width: 16px; height: 16px; border-radius: 50%; background: var(--spend); }
-      .chip { font: 600 0.8rem 'Red Hat Mono', monospace; color: var(--sheet); background: var(--chain); border-radius: 4px; padding: 3px 9px; }
+      .chip { text-decoration: none; font: 600 0.8rem 'Red Hat Mono', monospace; color: var(--sheet); background: var(--chain); border-radius: 4px; padding: 3px 9px; }
       .cta a { display: inline-block; margin: 16px 10px 0 0; font-weight: 600; text-decoration: none; padding: 10px 16px; border-radius: 4px; border: 1px solid var(--ink); color: var(--ink); }
       footer { padding: 26px 0 40px; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--rule); }
     </style>
@@ -32,18 +33,18 @@
       <header>
         <p class="brand">zec-null-402</p>
         <h1>Pay per call on Zcash without a transaction per call.</h1>
-        <p>Deposit once, shielded. Then every API call carries a zero-knowledge proof of one unspent prepaid note. The gateway checks it in a few hundred milliseconds and learns that some note paid, not which one.</p>
+        <p>Deposit once, shielded. Then every API call carries a zero-knowledge proof of one unspent prepaid note. The client proves it in about 350&nbsp;ms, with no block wait, and the gateway learns that some note paid, not which one.</p>
         <p class="cta"><a href="https://github.com/nickthelegend/zec-null-402">Source</a><a href="https://github.com/nickthelegend/zec-null-402/tree/main/packages/docs">Trust model</a></p>
       </header>
       <section>
         <h2>The live run</h2>
-        <div class="row"><span class="chip">deposit</span><span class="chip">anchor</span> two shielded transactions on testnet</div>
+        <div class="row"><a class="chip" href="https://testnet.zcashexplorer.app/transactions/05c57a3b074c7141a1052ca5197743a5140d5f4fa6178cd3d4894391ffd42a6f">deposit</a><a class="chip" href="https://testnet.zcashexplorer.app/transactions/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395">anchor</a> two shielded transactions on testnet</div>
         <div class="row"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span> 20 paid calls</div>
         <p>Replays, tampered proofs, proofs for another request and a second claim of the deposit were refused. The gateway's state is anchored in a shielded memo anyone with the published viewing key can read.</p>
       </section>
       <section>
         <h2>Limits</h2>
-        <p>Zcash has no contracts, so the gateway runs the pool and is trusted; anchors make its history auditable. Single-party trusted setup. Testnet only.</p>
+        <p>Zcash has no contracts, so the gateway runs the pool and is trusted; anchors make its history auditable. Single-party trusted setup. Testnet only. Not audited.</p>
       </section>
       <footer>MIT · Copyright (c) 2026 Nivesh Gajengi</footer>
     </div>

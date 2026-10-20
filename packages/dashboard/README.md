@@ -6,4 +6,4 @@ The published run: on-chain transactions (deposit, anchor) next to the 20 paid c
 pnpm --filter @z402/dashboard dev   # http://localhost:5183
 ```
 
-Light and dark; 375 px without horizontal scroll.
+One dark app frame on the brand colour; 375 px without horizontal scroll.

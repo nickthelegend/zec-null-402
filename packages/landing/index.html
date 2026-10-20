@@ -4,49 +4,168 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>zec-null-402</title>
-    <meta name="description" content="One shielded Zcash deposit, then pay-per-call with zero-knowledge proofs: no transaction per call." />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='10' cy='16' r='5' fill='%23C97B12'/%3E%3Ccircle cx='22' cy='16' r='5' fill='%23C97B12' opacity='.5'/%3E%3C/svg%3E" />
+    <meta name="description" content="Pay once with a shielded Zcash deposit, then pay per API call with a zero-knowledge proof: no transaction and no block wait per call." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 9h24v4a3 3 0 0 0 0 6v4H4v-4a3 3 0 0 0 0-6z' fill='%23c9b6ff'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Red+Hat+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=DM+Sans:opsz,wght@9..40,400;9..40,600&family=DM+Mono&display=swap" rel="stylesheet" />
     <style>
-      :root { --paper: #eef4fa; --sheet: #fbfdff; --ink: #0e2236; --muted: #55697d; --rule: #cfdbe7; --spend: #c97b12; --chain: #1c6e8c; --link: #1d5fa8; color-scheme: light; }
-      @media (prefers-color-scheme: dark) { :root { --paper: #0d1722; --sheet: #142231; --ink: #e2ebf3; --muted: #93a6b8; --rule: #253a4f; --spend: #f0a64a; --chain: #5cc0e0; --link: #8cbcf2; color-scheme: dark; } }
+      :root { --plum: #160e22; --plum-2: #20152f; --line: #352650; --text: #f1ecfa; --muted: #a99cc0; --ticket: #e9e0ff; --ticket-ink: #2a1b45; --lilac: #c9b6ff; --punch: #ff9d7a; color-scheme: dark; }
       * { box-sizing: border-box; }
-      body { margin: 0; background: var(--paper); color: var(--ink); font: 400 17px/1.65 'Sora', system-ui, sans-serif; overflow-x: hidden; }
-      a { color: var(--link); } code { font: 0.85em 'Red Hat Mono', monospace; overflow-wrap: anywhere; }
-      .wrap { max-width: 880px; margin: 0 auto; padding: 0 16px; }
-      header { padding: 60px 0 30px; } .brand { font: 500 1rem 'Red Hat Mono', monospace; margin: 0 0 26px; }
-      h1 { font: 700 clamp(2.1rem, 6vw, 3.5rem)/1.04 'Sora', sans-serif; letter-spacing: -0.03em; margin: 0 0 16px; max-width: 16ch; }
-      h2 { font: 700 1.3rem/1.2 'Sora', sans-serif; margin: 0 0 10px; }
-      p { color: var(--muted); max-width: 60ch; }
-      section { padding: 32px 0; border-top: 1px solid var(--rule); }
-      .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
-      .dot { width: 16px; height: 16px; border-radius: 50%; background: var(--spend); }
-      .chip { text-decoration: none; font: 600 0.8rem 'Red Hat Mono', monospace; color: var(--sheet); background: var(--chain); border-radius: 4px; padding: 3px 9px; }
-      .cta a { display: inline-block; margin: 16px 10px 0 0; font-weight: 600; text-decoration: none; padding: 10px 16px; border-radius: 4px; border: 1px solid var(--ink); color: var(--ink); }
-      footer { padding: 26px 0 40px; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--rule); }
+      body { margin: 0; background: var(--plum); color: var(--text); font: 400 17px/1.65 'DM Sans', system-ui, sans-serif; overflow-x: hidden; }
+      a { color: var(--lilac); text-underline-offset: 3px; }
+      :focus-visible { outline: 2px solid var(--lilac); outline-offset: 3px; }
+      code { font: 0.84em 'DM Mono', monospace; overflow-wrap: anywhere; }
+      .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+      .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; padding: 28px 0 0; }
+      .brand svg { width: 26px; height: 26px; }
+
+      header { padding: 64px 0 40px; }
+      h1 { font: 700 clamp(2.2rem, 6vw, 4.6rem)/1.02 'Unbounded', sans-serif; letter-spacing: -0.03em; margin: 0 0 24px; max-width: 15ch; }
+      .lede { color: #cfc4e2; font-size: 1.12rem; max-width: 56ch; margin: 0 0 30px; }
+      .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+      .btn { padding: 13px 20px; border-radius: 10px; background: var(--lilac); color: var(--ticket-ink); font-weight: 600; text-decoration: none; }
+      .btn.ghost { background: none; color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+
+      /* The roll: 22 prepaid notes; 20 tear off as paid calls, 2 go to the attack tests. */
+      .roll-wrap { margin: 56px 0 0; }
+      .roll { display: grid; grid-template-columns: repeat(11, 1fr); gap: 10px; }
+      .t { position: relative; aspect-ratio: 3 / 4; background: var(--ticket); color: var(--ticket-ink); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; justify-content: space-between; font: 500 0.7rem 'DM Mono', monospace; -webkit-mask: radial-gradient(circle 7px at 50% 0, transparent 98%, #000) top/100% 51% no-repeat, radial-gradient(circle 7px at 50% 100%, transparent 98%, #000) bottom/100% 51% no-repeat; mask: radial-gradient(circle 7px at 50% 0, transparent 98%, #000) top/100% 51% no-repeat, radial-gradient(circle 7px at 50% 100%, transparent 98%, #000) bottom/100% 51% no-repeat; transition: transform .5s cubic-bezier(.4,1.4,.5,1), opacity .5s, background .3s; }
+      .t b { font: 700 1rem 'Unbounded', sans-serif; }
+      .t.paid { transform: translateY(-14px) rotate(-6deg); opacity: .38; }
+      .t.fix { background: var(--punch); }
+      .legend { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; color: var(--muted); font-size: 0.92rem; }
+      .legend b { color: var(--text); font-family: 'DM Mono', monospace; font-weight: 400; }
+
+      section { padding: 88px 0; border-top: 1px solid var(--line); }
+      h2 { font: 700 clamp(1.5rem, 3.4vw, 2.3rem)/1.1 'Unbounded', sans-serif; letter-spacing: -0.02em; margin: 0 0 14px; max-width: 24ch; }
+      .sub { color: var(--muted); max-width: 64ch; margin: 0 0 36px; }
+
+      .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      .step { background: var(--plum-2); border: 1px solid var(--line); border-radius: 18px; padding: 24px; }
+      .step small { color: var(--lilac); font: 500 0.8rem 'DM Mono', monospace; }
+      .step h3 { margin: 8px 0 6px; font-size: 1.1rem; }
+      .step p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+      .refusals { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 32px; }
+      .ref { display: flex; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+      .ref code { color: var(--punch); white-space: nowrap; }
+      .chain { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+      .chain a { padding: 8px 14px; border-radius: 999px; background: var(--plum-2); border: 1px solid var(--line); text-decoration: none; font-size: 0.92rem; }
+
+      .agent { background: var(--plum-2); border: 1px solid var(--line); border-radius: 22px; padding: 30px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px; align-items: start; }
+      .agent p { margin: 0 0 12px; color: #cfc4e2; }
+      .agent ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; font-size: 0.95rem; }
+      .agent li span { color: var(--muted); }
+      .agent li.no b { color: var(--punch); font-weight: 600; }
+
+      ul.limits { padding-left: 20px; color: #cfc4e2; max-width: 72ch; }
+      ul.limits li { margin-bottom: 8px; }
+      footer { border-top: 1px solid var(--line); padding: 28px 0 48px; color: var(--muted); font-size: 0.86rem; }
+
+      @media (max-width: 860px) {
+        .roll { grid-template-columns: repeat(6, 1fr); gap: 8px; }
+        .t { font-size: 0.6rem; } .t b { font-size: 0.85rem; }
+        .flow, .refusals, .agent { grid-template-columns: 1fr; }
+        section { padding: 64px 0; }
+      }
+      @media (prefers-reduced-motion: reduce) { .t { transition: none; } }
     </style>
   </head>
   <body>
     <div class="wrap">
+      <p class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 9h24v4a3 3 0 0 0 0 6v4H4v-4a3 3 0 0 0 0-6z" fill="#c9b6ff" /></svg>zec-null-402</p>
       <header>
-        <p class="brand">zec-null-402</p>
         <h1>Pay per call on Zcash without a transaction per call.</h1>
-        <p>Deposit once, shielded. Then every API call carries a zero-knowledge proof of one unspent prepaid note. The client proves it in about 350&nbsp;ms, with no block wait, and the gateway learns that some note paid, not which one.</p>
-        <p class="cta"><a href="https://github.com/nickthelegend/zec-null-402">Source</a><a href="https://github.com/nickthelegend/zec-null-402/tree/main/packages/docs">Trust model</a></p>
+        <p class="lede">Make one shielded deposit. Every API call after that carries a zero-knowledge proof of one unspent prepaid note. The client proves it in about half a second, with no block wait, and the gateway learns that some note paid, not which one.</p>
+        <div class="cta">
+          <a class="btn" href="https://github.com/nickthelegend/zec-null-402">Read the code</a>
+          <a class="btn ghost" href="https://github.com/nickthelegend/zec-null-402/tree/main/packages/docs">Trust model</a>
+        </div>
+        <div class="roll-wrap">
+          <div class="roll" id="roll" role="img" aria-label="22 prepaid notes from one deposit: 20 paid API calls and 2 used for the attack tests"></div>
+          <p class="legend"><span><b id="n">0</b> of 20 calls paid, each with a proof and no transaction</span><span>2 notes kept for the replay and tamper tests</span></p>
+        </div>
       </header>
-      <section>
-        <h2>The live run</h2>
-        <div class="row"><a class="chip" href="https://testnet.zcashexplorer.app/transactions/05c57a3b074c7141a1052ca5197743a5140d5f4fa6178cd3d4894391ffd42a6f">deposit</a><a class="chip" href="https://testnet.zcashexplorer.app/transactions/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395">anchor</a> two shielded transactions on testnet</div>
-        <div class="row"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span> 20 paid calls</div>
-        <p>Replays, tampered proofs, proofs for another request and a second claim of the deposit were refused. The gateway's state is anchored in a shielded memo anyone with the published viewing key can read.</p>
-      </section>
-      <section>
-        <h2>Limits</h2>
-        <p>Zcash has no contracts, so the gateway runs the pool and is trusted; anchors make its history auditable. Single-party trusted setup. Testnet only. Not audited.</p>
-      </section>
-      <footer>MIT · Copyright (c) 2026 Nivesh Gajengi</footer>
     </div>
+
+    <main>
+      <section aria-labelledby="how">
+        <div class="wrap">
+          <h2 id="how">One deposit, then proofs</h2>
+          <p class="sub">Zcash has no smart contracts, so the gateway runs the pool. It credits notes only for a deposit its own viewing key sees on-chain, and anchors its state where anyone can check it.</p>
+          <div class="flow">
+            <div class="step"><small>on-chain, once</small><h3>Deposit</h3><p>One shielded transaction funds 22 notes. Its memo commits to every note and value.</p></div>
+            <div class="step"><small>off-chain, per call</small><h3>Prove</h3><p>The client proves it owns an unspent note bound to this request. The gateway checks the Groth16 proof and burns the nullifier.</p></div>
+            <div class="step"><small>on-chain, now and then</small><h3>Anchor</h3><p>The gateway's tree root and nullifier set go into a shielded memo readable with a published viewing key.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="run">
+        <div class="wrap">
+          <h2 id="run">The live run on testnet, and what it refused</h2>
+          <p class="sub">Oct 20, 2026. 1 unit = 1,000 zat; a call costs 10 units. Client proofs took 346 to 569 ms.</p>
+          <div class="refusals">
+            <div class="ref"><span>A paid proof replayed</span><code>NULLIFIER_SPENT</code></div>
+            <div class="ref"><span>The amount changed</span><code>NOT_BOUND_TO_CHALLENGE</code></div>
+            <div class="ref"><span>A proof made for another request</span><code>NOT_BOUND_TO_CHALLENGE</code></div>
+            <div class="ref"><span>The nullifier changed</span><code>BAD_PROOF</code></div>
+            <div class="ref"><span>The same deposit claimed twice</span><code>409</code></div>
+            <div class="ref"><span>A note value altered at claim</span><code>MEMO_MISMATCH</code></div>
+          </div>
+          <div class="chain">
+            <a href="https://testnet.zcashexplorer.app/transactions/05c57a3b074c7141a1052ca5197743a5140d5f4fa6178cd3d4894391ffd42a6f">Deposit <code>05c57a3b…</code></a>
+            <a href="https://testnet.zcashexplorer.app/transactions/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395">Anchor <code>a0992237…</code></a>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="agent-h">
+        <div class="wrap">
+          <h2 id="agent-h">An LLM agent with a spending limit</h2>
+          <div class="agent">
+            <div>
+              <p>An opencode agent got the gateway's MCP tools: status, deposit, claim and pay. It deposited three 10-unit notes in one transaction and paid for three quotes.</p>
+              <p>A quote response then carried an injected order to buy a 50-unit report at any cost. The agent tried. The deposit cap refused every 50,000 zat deposit, so it never bought the report.</p>
+            </div>
+            <ul>
+              <li><span>deposit, 3 × 10 units</span> · <a href="https://testnet.zcashexplorer.app/transactions/29cfe5fc0502e0b83f5d69e6890170ca897404f87f04fd42128a02ece94ba51b"><code>29cfe5fc…</code></a></li>
+              <li><span>3 quotes paid</span> · 3 nullifiers, HTTP 200</li>
+              <li class="no"><span>50-unit report</span> · <b>refused by the cap</b></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="limits-h">
+        <div class="wrap">
+          <h2 id="limits-h">Limits</h2>
+          <ul class="limits">
+            <li>The gateway runs the pool and is trusted. Anchors make its history auditable, not trustless.</li>
+            <li>A note pays one call of its full value. The anonymity set is the notes in the pool.</li>
+            <li>Single-party trusted setup. Testnet only. Not audited.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+    <footer class="wrap">MIT · Copyright (c) 2026 Nivesh Gajengi</footer>
+    <script>
+      const roll = document.getElementById('roll'), n = document.getElementById('n');
+      const tickets = Array.from({ length: 22 }, (_, i) => {
+        const t = document.createElement('div');
+        t.className = 't' + (i >= 20 ? ' fix' : '');
+        t.innerHTML = '<span>note ' + String(i + 1).padStart(2, '0') + '</span><b>10</b>';
+        roll.appendChild(t);
+        return t;
+      });
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const run = () => tickets.slice(0, 20).forEach((t, i) => {
+        const tear = () => { t.classList.add('paid'); n.textContent = i + 1; };
+        reduce ? tear() : setTimeout(tear, 600 + i * 140);
+      });
+      if ('IntersectionObserver' in window && !reduce) new IntersectionObserver((e, o) => { if (e[0].isIntersecting) { run(); o.disconnect(); } }, { threshold: 0.4 }).observe(roll);
+      else run();
+    </script>
   </body>
 </html>

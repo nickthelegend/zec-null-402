@@ -52,3 +52,28 @@ describe('one note pays one call, however its nullifier is written', () => {
     expect((await g.pay(p)).status).toBe(200);
   }, 180_000);
 });
+
+describe('concurrent requests', () => {
+  it('one payment sent twice at once is paid once', async () => {
+    const g = await fresh();
+    const p = await g.prove(notes[0]);
+    const rs = await Promise.all([g.pay(p), g.pay(p), g.pay(p)]);
+    expect(rs.filter((r) => r.status === 200)).toHaveLength(1);
+    expect(Object.keys(g.gw.state.nullifiers)).toHaveLength(1);
+  }, 180_000);
+
+  it('two proofs of the same note for two requests, sent at once, pay one call', async () => {
+    const g = await fresh();
+    const [a, b] = [await g.prove(notes[1]), await g.prove(notes[1])];
+    const rs = await Promise.all([g.pay(a), g.pay(b)]);
+    expect(rs.map((r) => r.status).sort()).toEqual([200, 402]);
+  }, 180_000);
+
+  it('two claims of one deposit at once credit it once', async () => {
+    const g = await fresh({}, false);
+    const post = () => fetch(`${g.base}/api/deposits`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ txid: d.deposit.txid, items }) }).then((r) => r.status);
+    const statuses = await Promise.all([post(), post()]);
+    expect(statuses.sort()).toEqual([200, 409]);
+    expect(g.gw.state.leaves).toHaveLength(22);
+  }, 180_000);
+});

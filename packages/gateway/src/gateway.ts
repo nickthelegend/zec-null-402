@@ -61,6 +61,9 @@ export class Gateway {
   readonly payTo: bigint;
   private tree: Tree | null = null;
   private issued = new Map<string, Challenge>();
+  /** nullifiers and deposits being checked right now: verification and scanning are async */
+  private inflight = new Set<string>();
+  private claiming = new Set<string>();
 
   constructor(readonly o: GatewayOptions) {
     this.state = existsSync(o.statePath) ? JSON.parse(readFileSync(o.statePath, 'utf8')) : { leaves: [], roots: [], deposits: {}, nullifiers: {}, anchors: [] };
@@ -83,6 +86,16 @@ export class Gateway {
     if (!Array.isArray(items) || items.length === 0 || items.length > 64) throw new GatewayError(400, 'items: 1 to 64 notes');
     for (const i of items) if (!/^\d{1,78}$/.test(i?.secretHash ?? '') || !/^[1-9]\d{0,9}$/.test(i?.value ?? '')) throw new GatewayError(400, 'each item needs a decimal secretHash and a positive whole value');
     if (this.state.deposits[txid]) throw new GatewayError(409, `deposit ${txid} was already claimed`);
+    if (this.claiming.has(txid)) throw new GatewayError(409, `deposit ${txid} is being claimed`);
+    this.claiming.add(txid);
+    try {
+      return await this.credit(txid, items);
+    } finally {
+      this.claiming.delete(txid);
+    }
+  }
+
+  private async credit(txid: string, items: { secretHash: string; value: string }[]) {
     const commitment = commitmentOf(items);
     const units = items.reduce((t, i) => t + BigInt(i.value), 0n);
     const r = await scan(this.o.depositUivk, txid, units * BigInt(this.o.unitZat), `z402:${commitment}`, this.o.minConf ?? 1);
@@ -123,13 +136,22 @@ export class Gateway {
     if (!s || typeof s !== 'object' || !SIGNALS.every((k) => isCanonicalField(s[k]))) return 'MALFORMED_SIGNALS';
     if (s.pay_to !== c.payTo || s.required_amount !== c.requiredAmount || s.context_hash !== c.contextHash) return 'NOT_BOUND_TO_CHALLENGE';
     if (!this.state.roots.includes(s.merkle_root)) return 'UNKNOWN_ROOT';
-    if (this.state.nullifiers[s.nullifier]) return 'NULLIFIER_SPENT';
-    const ok = await verifyOffChain([s.nullifier, s.merkle_root, s.pay_to, s.required_amount, s.context_hash], payment.proof).catch(() => false);
-    if (!ok) return 'BAD_PROOF';
+    if (this.state.nullifiers[s.nullifier] || this.inflight.has(s.nullifier)) return 'NULLIFIER_SPENT';
+    // Reserve before the async proof check: a challenge is answered once, a nullifier checked once at a time.
     this.issued.delete(c.nonce);
-    this.state.nullifiers[s.nullifier] = { at: new Date().toISOString(), resource: path };
-    this.save();
-    return null;
+    this.inflight.add(s.nullifier);
+    try {
+      const ok = await verifyOffChain([s.nullifier, s.merkle_root, s.pay_to, s.required_amount, s.context_hash], payment.proof).catch(() => false);
+      if (!ok) {
+        this.issued.set(c.nonce, c); // a bad proof does not use up the challenge
+        return 'BAD_PROOF';
+      }
+      this.state.nullifiers[s.nullifier] = { at: new Date().toISOString(), resource: path };
+      this.save();
+      return null;
+    } finally {
+      this.inflight.delete(s.nullifier);
+    }
   }
 
   async anchor(): Promise<GatewayState['anchors'][number]> {

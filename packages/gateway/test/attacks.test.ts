@@ -96,4 +96,11 @@ describe('the gateway wallet and its keys', () => {
     }
     expect(sends).toBe(0);
   });
+
+  it('GET /api/info does not hand out the deposit viewing key', async () => {
+    const g = await fresh({}, false);
+    const info = await (await fetch(`${g.base}/api/info`)).text();
+    expect(info).not.toContain(d.wallets.gateway.uivk);
+    expect(JSON.parse(info)).not.toHaveProperty('depositUivk');
+  });
 });

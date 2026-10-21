@@ -193,8 +193,8 @@ export function serveGateway(g: Gateway): Server {
     const url = new URL(req.url ?? '/', 'http://local');
     if (url.pathname === '/api/info')
       return json(res, 200, {
+        // not the deposit viewing key: with it anyone could read every deposit's amount and memo
         depositUa: g.o.depositUa,
-        depositUivk: g.o.depositUivk,
         unitZat: g.o.unitZat,
         payTo: g.payTo.toString(),
         prices: Object.fromEntries(Object.entries(g.o.prices).map(([k, v]) => [k, v.toString()])),

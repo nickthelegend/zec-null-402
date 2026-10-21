@@ -3,7 +3,7 @@
 // keeps the Poseidon tree of credited notes, verifies each per-call Groth16 proof off-chain, and
 // burns nullifiers. It periodically anchors (leaf count, root, nullifier-set hash) in a shielded memo
 // to a public-viewing-key address so its history can be audited.
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { commitmentOf, contextHash, fieldOfSha256, leafFromItem, R, Tree, verifyOffChain, type PaymentPublic } from '@z402/circuits';
@@ -30,6 +30,8 @@ export interface GatewayOptions {
   /** sends the anchor memo; returns the txid (the gateway wallet pays) */
   sendAnchor?: (memo: string) => Promise<string>;
   anchorUa?: string;
+  /** bearer token for POST /api/anchor, which spends from the gateway wallet */
+  adminToken?: string;
 }
 
 export interface Challenge {
@@ -173,6 +175,12 @@ export class GatewayError extends Error {
   }
 }
 
+function bearerMatches(header: string | undefined, token: string): boolean {
+  const got = Buffer.from(header ?? '');
+  const want = Buffer.from(`Bearer ${token}`);
+  return got.length === want.length && timingSafeEqual(got, want);
+}
+
 export function serveGateway(g: Gateway): Server {
   const json = (res: ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}) =>
     res.writeHead(status, { 'content-type': 'application/json', 'access-control-allow-origin': '*', ...headers }).end(JSON.stringify(body));
@@ -202,7 +210,12 @@ export function serveGateway(g: Gateway): Server {
       const b = await body(req);
       return json(res, 200, await g.claim(b.txid, b.items));
     }
-    if (url.pathname === '/api/anchor' && req.method === 'POST') return json(res, 200, await g.anchor());
+    if (url.pathname === '/api/anchor' && req.method === 'POST') {
+      // Anchoring spends from the gateway wallet; any web page could POST here, so it needs the token.
+      if (!g.o.adminToken) return json(res, 503, { error: 'Setup required: Z402_ADMIN_TOKEN (anchoring over HTTP is off without it)' });
+      if (!bearerMatches(req.headers.authorization, g.o.adminToken)) return json(res, 401, { error: 'anchoring needs Authorization: Bearer <Z402_ADMIN_TOKEN>' });
+      return json(res, 200, await g.anchor());
+    }
     const price = g.o.prices[url.pathname];
     if (price === undefined) return json(res, 404, { error: 'not found' });
     const header = req.headers['x-payment'];

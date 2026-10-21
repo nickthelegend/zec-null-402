@@ -77,3 +77,23 @@ describe('concurrent requests', () => {
     expect(g.gw.state.leaves).toHaveLength(22);
   }, 180_000);
 });
+
+describe('the gateway wallet and its keys', () => {
+  it('POST /api/anchor spends from the gateway wallet only with the admin token', async () => {
+    let sends = 0;
+    const sendAnchor = async () => {
+      sends++;
+      throw new Error('this test never sends');
+    };
+    const open = await fresh({ sendAnchor }, false);
+    const noToken = await fetch(`${open.base}/api/anchor`, { method: 'POST' });
+    expect(noToken.status).toBe(503);
+    expect(((await noToken.json()) as { error: string }).error).toMatch(/Setup required: Z402_ADMIN_TOKEN/);
+    const locked = await fresh({ sendAnchor, adminToken: 'correct-horse' }, false);
+    for (const auth of [undefined, 'Bearer wrong', 'correct-horse']) {
+      const r = await fetch(`${locked.base}/api/anchor`, { method: 'POST', headers: auth ? { authorization: auth } : {} });
+      expect(r.status, `authorization: ${auth}`).toBe(401);
+    }
+    expect(sends).toBe(0);
+  });
+});

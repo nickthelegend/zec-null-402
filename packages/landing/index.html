@@ -90,6 +90,7 @@
       .rail-ctl button:hover { background: #fff; }
       .rail-ctl svg { width: 18px; height: 18px; }
       .rail { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 14px 24px 22px; margin: 0 -24px; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; overscroll-behavior-x: contain; }
+      .rail { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 64px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 64px), transparent); }
       .rail:focus-visible { outline-offset: -3px; }
       .tix { --hole: var(--mint); flex: none; width: 166px; scroll-snap-align: start; background: var(--paper); border-radius: 14px; box-shadow: 0 1px 0 var(--line); list-style: none; }
       .tix-top { padding: 14px 14px 12px; display: flex; justify-content: space-between; align-items: start; }

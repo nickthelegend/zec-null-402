@@ -16,7 +16,7 @@ const closers: (() => void)[] = [];
 afterAll(() => closers.forEach((c) => c()));
 
 async function fresh(extra: Partial<GatewayOptions> = {}, claim = true) {
-  const gw = new Gateway({ statePath: join(mkdtempSync(join(tmpdir(), 'z402-atk-')), 'state.json'), depositUa: d.wallets.gateway.address, depositUivk: d.wallets.gateway.uivk, unitZat: d.unitZat, prices: { '/api/quote': BigInt(d.priceUnits) }, content: (p) => ({ served: p }), ...extra });
+  const gw = new Gateway({ statePath: join(mkdtempSync(join(tmpdir(), 'z402-atk-')), 'state.db'), depositUa: d.wallets.gateway.address, depositUivk: d.wallets.gateway.uivk, unitZat: d.unitZat, prices: { '/api/quote': BigInt(d.priceUnits) }, content: (p) => ({ served: p }), ...extra });
   if (claim) await gw.claim(d.deposit.txid, items);
   const s = serveGateway(gw);
   await new Promise<void>((r) => s.listen(0, '127.0.0.1', r));

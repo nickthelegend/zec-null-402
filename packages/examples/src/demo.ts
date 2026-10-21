@@ -18,7 +18,7 @@ const say = async (s: string, ms = 800) => {
 };
 
 async function main() {
-  const gw = new Gateway({ statePath: join(mkdtempSync(join(tmpdir(), 'z402-demo-')), 'state.json'), depositUa: d.wallets.gateway.address, depositUivk: d.wallets.gateway.uivk, unitZat: d.unitZat, prices: { '/api/quote': BigInt(d.priceUnits) }, content: () => ({ quote: 'ZEC/USD' }) });
+  const gw = new Gateway({ statePath: join(mkdtempSync(join(tmpdir(), 'z402-demo-')), 'state.db'), depositUa: d.wallets.gateway.address, depositUivk: d.wallets.gateway.uivk, unitZat: d.unitZat, prices: { '/api/quote': BigInt(d.priceUnits) }, content: () => ({ quote: 'ZEC/USD' }) });
   const s = serveGateway(gw);
   await new Promise<void>((r) => s.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${(s.address() as AddressInfo).port}`;

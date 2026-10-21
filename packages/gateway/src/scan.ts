@@ -42,12 +42,15 @@ export function scanBinary(env: Record<string, string | undefined> = process.env
   return found;
 }
 
-/** Did `txid` pay the holder of `uivk` at least `amountZat` with exactly `memo`? */
-export async function scan(uivk: string, txid: string, amountZat: bigint | number, memo: string | undefined, minConf = 1): Promise<ScanResult> {
-  const args = ['verify', txid, '--amount', String(amountZat), '--min-conf', String(minConf)];
-  if (memo !== undefined) args.push('--memo', memo);
+function lwdEnv(uivk: string, lwdUrl?: string): Record<string, string> {
   const env: Record<string, string> = { PATH: process.env.PATH ?? '', ZPV_UIVK: uivk };
-  if (process.env.Z402_LWD_URL) env.ZPV_LWD_URL = process.env.Z402_LWD_URL;
+  const url = lwdUrl ?? process.env.Z402_LWD_URL;
+  if (url) env.ZPV_LWD_URL = url;
+  return env;
+}
+
+/** Runs the scan binary; exit 0 and 1 are verdicts, anything else is a failure to check. */
+async function runScan(args: string[], env: Record<string, string>): Promise<string> {
   const { code, out, err } = await new Promise<{ code: number | null; out: string; err: string }>((res, rej) => {
     const p = spawn(scanBinary(), args, { env });
     let out = '';
@@ -58,8 +61,48 @@ export async function scan(uivk: string, txid: string, amountZat: bigint | numbe
     p.on('close', (c) => res({ code: c, out, err }));
   });
   if (code !== 0 && code !== 1) throw new Error(`scan failed: ${err.replace(/^error: /, '').trim()}`);
+  return out;
+}
+
+/** Did `txid` pay the holder of `uivk` at least `amountZat` with exactly `memo`? */
+export async function scan(uivk: string, txid: string, amountZat: bigint | number, memo: string | undefined, minConf = 1): Promise<ScanResult> {
+  const args = ['verify', txid, '--amount', String(amountZat), '--min-conf', String(minConf)];
+  if (memo !== undefined) args.push('--memo', memo);
+  const out = await runScan(args, lwdEnv(uivk));
   const j = JSON.parse(out) as { report: { txid: string; found: boolean; height: number | null; confirmations: number; tip: number; outputs: ScanOutput[]; pools: { transparent: boolean } }; verdict: { ok: boolean; reasons: string[]; paid_zat: number } };
   return { ok: j.verdict.ok, reasons: j.verdict.reasons, paidZat: j.verdict.paid_zat, txid: j.report.txid, found: j.report.found, height: j.report.height, confirmations: j.report.confirmations, tip: j.report.tip, outputs: j.report.outputs, transparent: j.report.pools.transparent };
+}
+
+/** One anchor memo: `z402:anchor:<leaves>:<root>:<spent>:<sha256 of the sorted nullifier set>`. */
+export interface AnchorMemo {
+  leaves: number;
+  root: string;
+  nullifiers: number;
+  nullifierHash: string;
+}
+export function parseAnchorMemo(memo: string | null | undefined): AnchorMemo | null {
+  const m = /^z402:anchor:(0|[1-9]\d{0,9}):(0|[1-9]\d{0,76}):(0|[1-9]\d{0,9}):([0-9a-f]{64})$/.exec(memo ?? '');
+  return m ? { leaves: Number(m[1]), root: m[2], nullifiers: Number(m[3]), nullifierHash: m[4] } : null;
+}
+
+export interface OnChainAnchor {
+  txid: string;
+  found: boolean;
+  height: number | null;
+  confirmations: number;
+  tip: number;
+  /** anchor memos in outputs to the holder of the viewing key (normally one) */
+  anchors: AnchorMemo[];
+}
+
+/**
+ * Reads the anchor memos of `txid` that the anchor address's viewing key can decrypt, straight from
+ * lightwalletd. Used by the gateway to adopt an anchor and by clients to check one themselves.
+ */
+export async function readAnchor(anchorUivk: string, txid: string, lwdUrl?: string): Promise<OnChainAnchor> {
+  if (!/^[0-9a-f]{64}$/.test(txid)) throw new Error(`anchor txid must be 64 hex, got ${JSON.stringify(String(txid).slice(0, 80))}`);
+  const r = JSON.parse(await runScan(['inspect', txid], lwdEnv(anchorUivk, lwdUrl))) as { txid: string; found: boolean; height: number | null; confirmations: number; tip: number; outputs: ScanOutput[] };
+  return { txid: r.txid, found: r.found, height: r.height, confirmations: r.confirmations, tip: r.tip, anchors: r.outputs.map((o) => parseAnchorMemo(o.memo)).filter((a): a is AnchorMemo => a !== null) };
 }
 
 /** UFVK → UIVK with the scan binary (env only). */

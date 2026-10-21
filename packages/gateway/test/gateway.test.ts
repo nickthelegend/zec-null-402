@@ -17,7 +17,7 @@ let gw: Gateway;
 let close = () => {};
 
 beforeAll(async () => {
-  gw = new Gateway({ statePath: join(mkdtempSync(join(tmpdir(), 'z402-')), 'state.json'), depositUa: d.wallets.gateway.address, depositUivk: d.wallets.gateway.uivk, unitZat: d.unitZat, prices: { '/api/quote': BigInt(d.priceUnits) }, content: (p) => ({ served: p }) });
+  gw = new Gateway({ statePath: join(mkdtempSync(join(tmpdir(), 'z402-')), 'state.db'), depositUa: d.wallets.gateway.address, depositUivk: d.wallets.gateway.uivk, unitZat: d.unitZat, prices: { '/api/quote': BigInt(d.priceUnits) }, content: (p) => ({ served: p }) });
   const s = serveGateway(gw);
   await new Promise<void>((r) => s.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${(s.address() as AddressInfo).port}`;

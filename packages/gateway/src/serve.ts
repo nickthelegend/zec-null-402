@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-// Env: Z402_STATE (gateway state file), Z402_DEPOSIT_UA, Z402_DEPOSIT_UIVK, Z402_UNIT_ZAT (default 1000),
-// Z402_PRICE_UNITS (default 10), Z402_PORT (default 8405). Anchoring: Z402_WALLET (the gateway's zingo
-// data dir) and Z402_ANCHOR_UA; POST /api/anchor also needs Z402_ADMIN_TOKEN as a bearer token.
+// Env: Z402_STATE (gateway SQLite database), Z402_LEGACY_STATE (a pre-SQLite JSON state, imported once),
+// Z402_DEPOSIT_UA, Z402_DEPOSIT_UIVK, Z402_UNIT_ZAT (default 1000), Z402_PRICE_UNITS (default 10),
+// Z402_PORT (default 8405). Anchoring: Z402_WALLET (the gateway's zingo data dir), Z402_ANCHOR_UA and
+// Z402_ANCHOR_UIVK (to see its anchors mined; clients only pay against mined anchors); Z402_AUTO_ANCHOR=1
+// anchors after every credited deposit; POST /api/anchor also needs Z402_ADMIN_TOKEN as a bearer token.
 import { Gateway, serveGateway } from './gateway.js';
 import { SetupRequiredError } from './scan.js';
 import { quicksend, zingoConfig } from './zingo.js';
@@ -13,12 +15,15 @@ try {
   const anchorUa = process.env.Z402_ANCHOR_UA;
   const g = new Gateway({
     statePath: need('Z402_STATE'),
+    legacyJsonState: process.env.Z402_LEGACY_STATE || undefined,
     depositUa: need('Z402_DEPOSIT_UA'),
     depositUivk: need('Z402_DEPOSIT_UIVK'),
     unitZat: Number(process.env.Z402_UNIT_ZAT ?? 1000),
     prices: { '/api/quote': price, '/api/report': price * 5n },
     content: (path) => ({ path, servedAt: new Date().toISOString(), note: 'paid with a zero-knowledge proof of a prepaid shielded note' }),
     anchorUa,
+    anchorUivk: process.env.Z402_ANCHOR_UIVK || undefined,
+    autoAnchor: process.env.Z402_AUTO_ANCHOR === '1',
     adminToken: process.env.Z402_ADMIN_TOKEN || undefined,
     sendAnchor: wallet && anchorUa ? async (memo) => (await quicksend(zingoConfig(), wallet, [{ address: anchorUa, amount: 10_000n, memo }]))[0] : undefined,
   });

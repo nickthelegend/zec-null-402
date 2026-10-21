@@ -1,7 +1,7 @@
 // The gateway's side of "prove only against anchored roots": it reads anchors on-chain with the anchor
 // address's published viewing key (lightwalletd, testnet), adopts only one that matches its own leaves,
 // and tells clients in every challenge which mined anchor to check and prove against.
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -60,6 +60,20 @@ describe('challenges name the anchor to prove against', () => {
     const g = await fresh();
     await expect(g.gw.adoptAnchor(d.deposit.txid)).rejects.toThrow(/no z402 anchor memo/);
     expect(g.gw.state.anchors).toEqual([]);
+  }, 120_000);
+
+  it('an anchor recorded before it was seen mined is offered to clients only after confirmAnchors reads it on-chain', async () => {
+    // the Oct 20 run's state as its JSON file had it: the anchor recorded at send time, no height
+    const g = await fresh();
+    const dir = mkdtempSync(join(tmpdir(), 'z402-anc-legacy-'));
+    const { anchor: a } = d;
+    writeFileSync(join(dir, 'state.json'), JSON.stringify({ ...g.gw.state, anchors: [{ txid: a.txid, leaves: a.leaves, root: a.root, nullifiers: a.nullifiers, nullifierHash: a.nullifierHash, at: a.at }] }));
+    const gw = new Gateway({ ...g.gw.o, statePath: join(dir, 'state.db'), legacyJsonState: join(dir, 'state.json') });
+    closers.push(() => gw.close());
+    expect(gw.state.anchors).toMatchObject([{ txid: a.txid, height: null }]);
+    expect(gw.latestAnchor()).toBeNull();
+    expect(await gw.confirmAnchors()).toBe(1);
+    expect(gw.latestAnchor()).toMatchObject({ txid: a.txid, root: d.gateway.root, height: expect.any(Number) });
   }, 120_000);
 
   it('reading anchors needs the anchor viewing key: Setup required', async () => {

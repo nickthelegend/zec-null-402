@@ -3,396 +3,448 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kippu — pay per API call on Zcash with ZK tickets</title>
-    <meta name="description" content="Kippu: pay once with a shielded Zcash deposit, then pay each API call with a zero-knowledge proof. No transaction and no block wait per call; the gateway learns that some prepaid note paid, not which. Live on Zcash testnet." />
+    <title>Kippu — one Zcash deposit, a ZK ticket per API call</title>
+    <meta name="description" content="Kippu: pay once with a shielded Zcash deposit, then pay each API call with a zero-knowledge proof of one prepaid note. 20 paid calls on testnet, no transaction per call; the gateway's state is anchored in a shielded memo." />
     <meta name="theme-color" content="#063b33" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23063b33'/%3E%3Cpath d='M6 10h20v3.5a2.5 2.5 0 0 0 0 5V22H6v-3.5a2.5 2.5 0 0 0 0-5z' fill='%23ff8a3d'/%3E%3C/svg%3E" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23063b33'/%3E%3Cpath d='M6 9h20v5a2 2 0 0 0 0 4v5H6v-5a2 2 0 0 0 0-4z' fill='%23ff8a3d'/%3E%3Cpath d='M20 10.5v11' stroke='%23063b33' stroke-width='1.4' stroke-dasharray='1.6 1.6'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&family=Azeret+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <style>
-      :root { --font: 'Plus Jakarta Sans', system-ui, sans-serif; --mono: 'DM Mono', ui-monospace, monospace;
-        --deep: #063b33; --deep-text: #063b33; --accent: #ff8a3d; --accent-ink: #2b1103; --tint: #e2f5ee; --tint-2: #fff0e4;
-        --paper: #ffffff; --ink: #04261f; --muted: #4f6b64; --line: rgba(6, 59, 51, .09); --line-strong: rgba(6, 59, 51, .24); color-scheme: light; }
-      /* landing-kit base: Polaris-grade structure. Each page sets the theme variables and its own font. */
-*{box-sizing:border-box}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--paper);color:var(--ink);font:400 17px/1.55 var(--font);letter-spacing:-.01em;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-img{max-width:100%;display:block}
-a{color:inherit}
-:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
-code,.mono{font-family:var(--mono);font-size:.86em;letter-spacing:0;overflow-wrap:anywhere}
-.wrap{max-width:1360px;margin:0 auto;padding:0 40px}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+      :root {
+        --teal: #063b33; --teal-2: #0d5146; --tangerine: #ff8a3d; --tangerine-ink: #3d1800; --tangerine-tint: #fff0e3;
+        --mint: #e2f5ee; --mint-2: #cdebdf; --paper: #fcfefd; --ink: #062a24; --muted: #476860; --soft: #6b8780;
+        --line: rgba(6, 59, 51, .14); --line-2: rgba(6, 59, 51, .3); --hole: var(--mint);
+        --sans: 'Plus Jakarta Sans', system-ui, sans-serif; --mono: 'Azeret Mono', ui-monospace, monospace;
+        color-scheme: light;
+      }
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+      body { margin: 0; background: var(--mint); color: var(--ink); font: 400 17px/1.55 var(--sans); letter-spacing: -.008em; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+      a { color: inherit; }
+      :focus-visible { outline: 3px solid var(--tangerine); outline-offset: 3px; border-radius: 6px; }
+      code, .mono { font-family: var(--mono); font-size: .82em; letter-spacing: -.01em; }
+      .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+      .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      .skip { position: absolute; left: 16px; top: -60px; background: var(--teal); color: #fff; padding: 10px 14px; border-radius: 8px; z-index: 50; }
+      .skip:focus { top: 12px; }
 
-/* type */
-.h-hero{font-weight:500;font-size:clamp(46px,6.3vw,96px);line-height:.95;letter-spacing:-.05em;margin:0}
-.h-sec{font-weight:500;font-size:clamp(36px,4.6vw,68px);line-height:1;letter-spacing:-.045em;margin:0}
-.h-card{font-weight:500;font-size:clamp(26px,2.4vw,36px);line-height:1.05;letter-spacing:-.035em;margin:0}
-.lead{font-size:clamp(18px,1.5vw,21px);line-height:1.4;letter-spacing:-.02em}
-.muted{color:var(--muted)}
-.strong{color:var(--ink)}
+      /* admission strip + nav */
+      .strip { background: var(--teal); color: var(--mint); font: 500 12px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+      .strip .wrap { display: flex; gap: 22px; justify-content: center; padding-top: 11px; padding-bottom: 11px; white-space: nowrap; overflow: hidden; }
+      .strip b { color: var(--tangerine); font-weight: 500; }
+      .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; }
+      .logo { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 600; font-size: 21px; letter-spacing: -.035em; }
+      .logo small { font-weight: 500; font-size: 14px; color: var(--soft); letter-spacing: 0; }
+      .nav ul { display: flex; align-items: center; gap: 26px; list-style: none; margin: 0; padding: 0; font-size: 15px; }
+      .nav ul a { text-decoration: none; color: var(--muted); }
+      .nav ul a:hover { color: var(--ink); }
+      .btn { display: inline-flex; align-items: center; gap: 9px; height: 48px; padding: 0 22px; border-radius: 12px; font: 600 16px/1 var(--sans); letter-spacing: -.015em; text-decoration: none; border: 0; cursor: pointer; transition: transform .2s cubic-bezier(.2, .7, .2, 1), background .2s; }
+      .btn:hover { transform: translateY(-1px); }
+      .btn svg { width: 17px; height: 17px; }
+      .btn-teal { background: var(--teal); color: #fff; }
+      .btn-teal:hover { background: var(--teal-2); }
+      .btn-line { background: transparent; color: var(--teal); box-shadow: inset 0 0 0 1.5px var(--line-2); }
+      .btn-tangerine { background: var(--tangerine); color: var(--tangerine-ink); }
+      .btn-sm { height: 40px; padding: 0 16px; font-size: 15px; border-radius: 10px; }
 
-/* buttons */
-.btn{display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 24px;border-radius:999px;font:500 17px/1 var(--font);letter-spacing:-.02em;text-decoration:none;border:0;cursor:pointer;white-space:nowrap;transition:transform .25s cubic-bezier(.2,.7,.2,1),background .2s,box-shadow .2s}
-.btn:hover{transform:translateY(-2px)}
-.btn svg{width:18px;height:18px}
-.btn-accent{background:var(--accent);color:var(--accent-ink)}
-.btn-white{background:#fff;color:var(--deep)}
-.btn-dark{background:var(--deep);color:#fff}
-.btn-outline{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line-strong)}
-.btn-ghost-light{background:transparent;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}
-.btn-sm{height:44px;padding:0 18px;font-size:16px}
+      /* hero: product launch, centred */
+      .hero { text-align: center; padding: 56px 0 0; }
+      .chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 8px; border-radius: 999px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: 14px; color: var(--muted); }
+      .chip span { background: var(--tangerine); color: var(--tangerine-ink); font: 500 11px/1 var(--mono); padding: 5px 8px; border-radius: 999px; letter-spacing: .04em; }
+      h1 { font-weight: 600; font-size: clamp(46px, 8.6vw, 116px); line-height: .94; letter-spacing: -.055em; margin: 26px auto 0; color: var(--teal); max-width: 12ch; }
+      h1 em { font-style: normal; color: var(--tangerine); display: block; }
+      .lead { max-width: 40rem; margin: 24px auto 0; font-size: clamp(17px, 1.6vw, 20px); line-height: 1.5; color: var(--muted); }
+      .cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 32px; }
 
-/* nav: links left, logo centre, actions right */
-.nav{position:absolute;inset:0 0 auto 0;z-index:30}
-.nav .wrap{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;height:100px}
-.nav ul{display:flex;gap:28px;list-style:none;margin:0;padding:0}
-.nav ul a{text-decoration:none;font-size:17px;letter-spacing:-.02em;opacity:.92}
-.nav ul a:hover{opacity:1}
-.nav .act{display:flex;justify-content:flex-end;align-items:center;gap:18px}
-.nav .act>a:not(.btn){text-decoration:none;font-size:17px}
-.logo{display:inline-flex;align-items:center;gap:10px;text-decoration:none;font-weight:600;font-size:24px;letter-spacing:-.04em}
-.logo svg{width:30px;height:30px}
-.nav.on-dark{color:#fff}
-.nav.on-light{color:var(--ink)}
+      /* perforation: a dashed tear line with two punched half-circles in the page colour */
+      .tear { position: relative; border-left: 2px dashed var(--line-2); }
+      .tear::before, .tear::after { content: ''; position: absolute; width: 24px; height: 24px; border-radius: 50%; background: var(--hole); left: -13px; }
+      .tear::before { top: -12px; }
+      .tear::after { bottom: -12px; }
 
-/* hero shells */
-.hero{position:relative;isolation:isolate;overflow:hidden}
-.hero-bleed{min-height:max(720px,100svh);padding-top:140px;background:var(--deep);color:#fff;display:flex;align-items:flex-end}
-.hero-bleed .wrap{width:100%;padding-bottom:56px;display:grid;grid-template-columns:1.25fr 1fr;align-items:end;gap:40px}
-.hero-bleed .h-hero{max-width:11ch}
-.hero-bleed .lead{max-width:34ch;margin:26px 0 34px;color:rgba(255,255,255,.86)}
-.hero-centre{background:var(--deep);color:#fff;padding:168px 0 0;text-align:center}
-.hero-centre .h-hero{max-width:14ch;margin:0 auto}
-.hero-centre .lead{max-width:44ch;margin:26px auto 36px;color:rgba(255,255,255,.82)}
-.hero-centre .cta{justify-content:center}
-.hero-split{background:var(--deep);color:#fff;padding:150px 0 90px}
-.hero-split .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:60px;align-items:center}
-.hero-split .lead{max-width:38ch;margin:26px 0 34px;color:rgba(255,255,255,.84)}
-.hero-light{background:var(--paper);color:var(--ink);padding:160px 0 40px}
-.hero-light .h-hero{max-width:13ch;color:var(--deep-text)}
-.hero-light .lead{max-width:44ch;margin:26px 0 34px;color:var(--muted)}
-.cta{display:flex;flex-wrap:wrap;gap:12px}
-.glow{position:absolute;z-index:-1;border-radius:50%;filter:blur(10px);pointer-events:none}
+      /* the deposit pass */
+      .pass { margin: 56px auto 0; max-width: 1000px; display: grid; grid-template-columns: 150px 0 1fr 0 210px; background: var(--paper); border-radius: 22px; text-align: left; box-shadow: 0 1px 0 var(--line), 0 30px 60px -40px rgba(6, 59, 51, .45); }
+      .pass > div:not(.tear) { padding: 26px 28px; }
+      .pass-admit { display: flex; flex-direction: column; justify-content: space-between; background: var(--teal); color: var(--mint); border-radius: 22px 0 0 22px; }
+      .pass-admit .k { font: 500 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+      .pass-admit .n { font-weight: 600; font-size: 64px; line-height: .9; letter-spacing: -.05em; color: var(--tangerine); }
+      .pass-body .k, .pass-end .k, .label { font: 500 11px/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--soft); }
+      .pass-body h2 { margin: 10px 0 0; font-weight: 600; font-size: clamp(24px, 3vw, 34px); letter-spacing: -.035em; line-height: 1.05; color: var(--teal); }
+      .pass-meta { display: grid; grid-template-columns: repeat(3, auto); gap: 8px 28px; margin: 20px 0 0; justify-content: start; }
+      .pass-meta dt { font: 500 11px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--soft); }
+      .pass-meta dd { margin: 4px 0 0; font: 500 15px/1.3 var(--mono); color: var(--ink); }
+      .memo { display: block; margin-top: 18px; padding: 10px 12px; background: var(--mint); border-radius: 10px; font: 400 12.5px/1.5 var(--mono); color: var(--teal); overflow-wrap: anywhere; }
+      .pass-end { display: flex; flex-direction: column; justify-content: space-between; gap: 18px; }
+      .bars { display: flex; align-items: stretch; gap: 2px; height: 58px; }
+      .bars i { display: block; background: var(--teal); border-radius: 1px; }
+      .txlink { font: 500 13px/1.3 var(--mono); color: var(--teal); text-decoration-color: var(--tangerine); text-underline-offset: 3px; display: inline-flex; gap: 5px; align-items: center; }
+      .txlink svg { width: 13px; height: 13px; flex: none; }
 
-/* floating white widget (hero) */
-.widget{justify-self:end;width:min(100%,360px);background:#fff;color:var(--deep-text);border-radius:28px;padding:24px;box-shadow:0 40px 80px -30px rgba(0,0,0,.55)}
-.widget .w-top{display:flex;align-items:center;gap:10px;justify-content:space-between}
-.widget .w-title{font-weight:500;font-size:26px;letter-spacing:-.04em}
-.tag{display:inline-flex;align-items:center;height:28px;padding:0 11px;border-radius:999px;font-size:13px;font-weight:500;letter-spacing:-.01em;white-space:nowrap}
-.tag-deep{background:var(--deep);color:var(--accent)}
-.tag-tint{background:var(--tint);color:var(--deep-text)}
-.tag-accent{background:var(--accent);color:var(--accent-ink)}
-.tag-no{background:#fde2e1;color:#b42318}
-.tag-ok{background:#dcf5e7;color:#14714b}
-.widget .w-note{font-size:14px;color:#6b7280;margin-top:14px}
+      /* the rail: one moment */
+      .rail-sec { padding: 26px 0 0; }
+      .rail-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+      .rail-head p { margin: 0; font-size: 15px; color: var(--muted); max-width: 46ch; }
+      .rail-ctl { display: flex; gap: 8px; }
+      .rail-ctl button { width: 40px; height: 40px; border-radius: 10px; border: 0; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); color: var(--teal); cursor: pointer; display: grid; place-items: center; }
+      .rail-ctl button:hover { background: #fff; }
+      .rail-ctl svg { width: 18px; height: 18px; }
+      .rail { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 14px 24px 22px; margin: 0 -24px; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; overscroll-behavior-x: contain; }
+      .rail:focus-visible { outline-offset: -3px; }
+      .tix { --hole: var(--mint); flex: none; width: 166px; scroll-snap-align: start; background: var(--paper); border-radius: 14px; box-shadow: 0 1px 0 var(--line); list-style: none; }
+      .tix-top { padding: 14px 14px 12px; display: flex; justify-content: space-between; align-items: start; }
+      .tix-no { font: 500 26px/1 var(--mono); letter-spacing: -.04em; color: var(--teal); }
+      .tix-no small { display: block; font-size: 10px; letter-spacing: .1em; color: var(--soft); margin-bottom: 6px; }
+      .ok { font: 500 11px/1 var(--mono); background: var(--mint); color: var(--teal); padding: 5px 7px; border-radius: 6px; }
+      .tix .tear, .tear-h { border-left: 0; border-top: 2px dashed var(--line-2); margin: 0 12px; }
+      .tix .tear::before, .tix .tear::after, .tear-h::before, .tear-h::after { width: 18px; height: 18px; top: -10px; bottom: auto; }
+      .tix .tear::before, .tear-h::before { left: -22px; }
+      .tix .tear::after, .tear-h::after { left: auto; right: -22px; }
+      .tix-bot { padding: 12px 14px 14px; font-size: 12px; color: var(--muted); }
+      .tix-bot code { display: block; color: var(--ink); font-size: 12px; margin: 3px 0 8px; }
+      .tix.fixture { background: var(--tangerine-tint); }
+      .tix.fixture .ok { background: var(--tangerine); color: var(--tangerine-ink); }
+      .rail-foot { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; color: var(--muted); }
+      .key { display: inline-flex; align-items: center; gap: 7px; }
+      .key i { width: 12px; height: 12px; border-radius: 3px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line-2); }
+      .key i.f { background: var(--tangerine-tint); }
+      @media (prefers-reduced-motion: no-preference) {
+        .js .rail.armed .tix { opacity: 0; transform: translate(-28px, -10px) rotate(-5deg); }
+        .js .rail.torn .tix { opacity: 1; transform: none; transition: opacity .45s ease, transform .6s cubic-bezier(.2, .8, .2, 1); transition-delay: calc(var(--i) * 45ms); }
+      }
 
-/* built-on strip */
-.built{padding:100px 0 40px;text-align:center}
-.built .pill{display:inline-block;padding:10px 26px;border-radius:999px;background:var(--tint);color:var(--deep-text);font-size:20px;letter-spacing:-.02em}
-.marquee{overflow:hidden;margin-top:44px;-webkit-mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
-.marquee .track{display:flex;gap:64px;width:max-content;animation:mq 34s linear infinite}
-.marquee span{display:inline-flex;align-items:center;gap:12px;font-weight:500;font-size:32px;letter-spacing:-.04em;color:var(--deep-text);white-space:nowrap}
-.marquee span i{width:26px;height:26px;border-radius:8px;background:var(--deep-text);opacity:.85;display:inline-block}
-@keyframes mq{to{transform:translateX(-50%)}}
+      /* sections */
+      section { scroll-margin-top: 16px; }
+      .sec { padding: 104px 0 0; }
+      .sec-head { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 48px; align-items: end; margin-bottom: 36px; }
+      h2.big { margin: 10px 0 0; font-weight: 600; font-size: clamp(34px, 4.6vw, 58px); line-height: 1; letter-spacing: -.045em; color: var(--teal); }
+      .sec-head p { margin: 0; color: var(--muted); }
 
-/* sections */
-section{padding:110px 0}
-.sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:30px;margin-bottom:56px}
-.sec-head .h-sec{color:var(--deep-text);max-width:16ch}
-.sec-head p{max-width:46ch;margin:18px 0 0}
-.intro{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:end}
-.intro .h-sec{color:var(--deep-text)}
-.intro .copy p{margin:0 0 18px;color:var(--muted)}
-.intro .copy p b{color:var(--deep-text);font-weight:500}
+      /* numbers */
+      .nums { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 2px solid var(--teal); }
+      .num { padding: 22px 22px 0 0; }
+      .num + .num { padding-left: 22px; border-left: 1px solid var(--line); }
+      .num b { display: block; font-weight: 600; font-size: clamp(44px, 5.4vw, 72px); line-height: 1; letter-spacing: -.05em; color: var(--teal); }
+      .num b small { font-size: .38em; letter-spacing: -.02em; color: var(--soft); margin-left: 4px; }
+      .num p { margin: 10px 0 0; font-size: 15px; color: var(--muted); max-width: 22ch; }
 
-/* bento cards */
-.bento{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-.card{position:relative;border-radius:28px;padding:32px;min-height:420px;gap:28px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
-.c-tint{background:var(--tint);color:var(--deep-text)}
-.c-tint-2{background:var(--tint-2);color:var(--deep-text)}
-.c-deep{background:var(--deep);color:#fff}
-.c-deep .h-card{color:var(--accent)}
-.c-accent{background:var(--accent);color:var(--accent-ink)}
-.card p{margin:12px 0 0;font-size:16px;line-height:1.45}
-.c-deep p{color:rgba(255,255,255,.72)}
-.ui{background:#fff;color:var(--deep-text);border-radius:22px;padding:22px;box-shadow:0 24px 50px -28px rgba(0,0,0,.35)}
-.ui .big{font-weight:500;font-size:44px;letter-spacing:-.05em;line-height:1}
-.ui .big small{font-size:16px;letter-spacing:-.01em;color:#6b7280;margin-left:8px}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chips span{height:40px;display:inline-flex;align-items:center;padding:0 16px;border-radius:999px;background:var(--tint);color:var(--deep-text);font-size:16px;letter-spacing:-.02em}
-.chips span.on{background:var(--deep);color:#fff}
-.bar{display:flex;height:12px;border-radius:4px;overflow:hidden;gap:3px;margin-top:22px}
-.bar i{display:block}
+      /* steps as stubs */
+      .steps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; list-style: none; padding: 0; margin: 0; }
+      .step { --hole: var(--mint); display: grid; grid-template-columns: 76px 0 1fr; background: var(--paper); border-radius: 18px; }
+      .step-n { display: grid; place-items: center; font: 500 22px/1 var(--mono); color: var(--tangerine); background: var(--teal); border-radius: 18px 0 0 18px; }
+      .step-b { padding: 22px 24px; }
+      .step-b h3 { margin: 0; font-weight: 600; font-size: 21px; letter-spacing: -.03em; color: var(--teal); }
+      .step-b p { margin: 8px 0 0; font-size: 15.5px; color: var(--muted); }
+      .step-b code { color: var(--teal); }
 
-/* dark proof / FAQ section */
-.dark{background:var(--deep);color:#fff}
-.dark .h-sec{color:var(--accent)}
-.dark .muted{color:rgba(255,255,255,.62)}
-.faq{display:grid;grid-template-columns:1fr 1fr;gap:60px}
-.faq details{border-top:1px solid rgba(255,255,255,.14);padding:26px 0}
-.faq details:last-child{border-bottom:1px solid rgba(255,255,255,.14)}
-.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:20px;font-weight:500;font-size:clamp(22px,2vw,30px);letter-spacing:-.035em;color:var(--accent)}
-.faq summary::-webkit-details-marker{display:none}
-.faq summary::after{content:'+';font-weight:300;font-size:32px;line-height:1}
-.faq details[open] summary::after{content:'–'}
-.faq details p{margin:16px 0 0;color:rgba(255,255,255,.72);font-size:18px;max-width:52ch}
+      /* voided tickets */
+      .voids { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; list-style: none; padding: 0; margin: 0; }
+      .void { position: relative; background: var(--paper); border-radius: 16px; padding: 20px 20px 18px; overflow: hidden; }
+      .void::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(135deg, transparent 0 10px, rgba(6, 59, 51, .035) 10px 11px); pointer-events: none; }
+      .void code { position: relative; display: inline-block; font-size: 13px; font-weight: 500; color: var(--teal); background: var(--mint); padding: 5px 8px; border-radius: 6px; overflow-wrap: anywhere; }
+      .void p { position: relative; margin: 12px 0 0; padding-right: 64px; font-size: 15px; color: var(--ink); }
+      .stamp { position: absolute; right: 16px; bottom: 16px; font: 500 13px/1 var(--mono); letter-spacing: .16em; color: var(--tangerine); border: 2px solid var(--tangerine); padding: 6px 8px 5px; border-radius: 6px; transform: rotate(-9deg); }
+      .fixed { margin-top: 16px; display: grid; grid-template-columns: 210px 0 1fr; background: var(--teal); color: var(--mint); border-radius: 18px; --hole: var(--mint); }
+      .fixed > div:not(.tear) { padding: 24px 26px; }
+      .fixed .tear { border-color: rgba(226, 245, 238, .35); }
+      .fixed h3 { margin: 8px 0 0; font-weight: 600; font-size: 22px; letter-spacing: -.03em; color: #fff; line-height: 1.15; }
+      .fixed .label { color: var(--tangerine); }
+      .fixed ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 28px; font-size: 15px; }
+      .fixed li { padding-left: 18px; position: relative; color: rgba(226, 245, 238, .9); }
+      .fixed li::before { content: ''; position: absolute; left: 0; top: .62em; width: 8px; height: 8px; border-radius: 2px; background: var(--tangerine); }
+      .fixed code { color: #fff; }
+      .fixed a { color: #fff; text-underline-offset: 3px; text-decoration-color: var(--tangerine); }
 
-/* evidence list */
-.ev{border-radius:28px;overflow:hidden;background:#fff;box-shadow:inset 0 0 0 1px var(--line)}
-.ev .row{display:grid;grid-template-columns:1fr auto 130px;gap:18px;align-items:center;padding:18px 26px;border-top:1px solid var(--line);font-size:16px}
-.ev .row:first-child{border-top:0}
-.ev .row a{font-family:var(--mono);font-size:14px;text-align:right;color:var(--deep-text)}
-.dark .ev{background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
-.dark .ev .row{border-color:rgba(255,255,255,.08)}
-.dark .ev .row a{color:var(--accent)}
+      /* agent ticket */
+      .agent { display: grid; grid-template-columns: 1fr 0 300px; background: var(--paper); border-radius: 20px; --hole: var(--mint); }
+      .agent > div:not(.tear) { padding: 26px 28px; }
+      .agent ol { list-style: none; margin: 0; padding: 0; }
+      .agent li { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; align-items: center; padding: 13px 0; border-bottom: 1px dashed var(--line); font-size: 15.5px; }
+      .agent li:last-child { border-bottom: 0; }
+      .tag { font: 500 11.5px/1 var(--mono); padding: 6px 8px; border-radius: 6px; background: var(--mint); color: var(--teal); white-space: nowrap; }
+      .tag.no { background: var(--tangerine-tint); color: #a3470b; }
+      .agent-side p { margin: 10px 0 0; font-size: 15px; color: var(--muted); }
+      .agent-side b { font-weight: 600; font-size: 54px; line-height: 1; letter-spacing: -.05em; color: var(--teal); display: block; margin-top: 8px; }
 
-/* stat row */
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
-.stat{border-radius:24px;padding:28px;background:var(--tint)}
-.stat b{display:block;font-weight:500;font-size:clamp(40px,4vw,60px);letter-spacing:-.05em;line-height:1;color:var(--deep-text)}
-.stat span{display:block;margin-top:12px;color:var(--muted);font-size:16px}
+      /* conditions of carriage */
+      .terms { columns: 2; column-gap: 48px; margin: 0; padding: 0; list-style: none; counter-reset: t; }
+      .terms li { break-inside: avoid; counter-increment: t; padding: 18px 0 18px 46px; border-top: 1px solid var(--line); position: relative; font-size: 15.5px; color: var(--muted); }
+      .terms li::before { content: counter(t, decimal-leading-zero); position: absolute; left: 0; top: 19px; font: 500 13px/1.4 var(--mono); color: var(--tangerine); }
+      .terms b { color: var(--ink); font-weight: 600; }
 
-/* centred CTA */
-.talk{padding:130px 0 120px;text-align:center;background:linear-gradient(180deg,var(--paper) 0%,var(--tint) 100%)}
-.talk .h-sec{color:var(--deep-text);margin:0 auto}
-.talk p{max-width:46ch;margin:22px auto 34px;color:var(--muted)}
-.talk pre{display:inline-block;text-align:left;margin:0 0 30px;padding:18px 24px;border-radius:18px;background:var(--deep);color:var(--accent);font:400 15px/1.7 var(--mono);max-width:100%;overflow-x:auto}
+      /* print your own */
+      .print { margin-top: 112px; background: var(--paper); border-radius: 26px; display: grid; grid-template-columns: 1fr 0 1fr; --hole: var(--mint); }
+      .print > div:not(.tear) { padding: 40px; }
+      .print h2 { margin: 0; font-weight: 600; font-size: clamp(32px, 4vw, 48px); letter-spacing: -.045em; line-height: 1; color: var(--teal); }
+      .print p { color: var(--muted); margin: 14px 0 24px; }
+      pre { margin: 0; background: var(--teal); color: var(--mint); border-radius: 14px; padding: 18px 20px; font: 400 13.5px/1.75 var(--mono); overflow-x: auto; white-space: pre; }
+      pre span { color: var(--tangerine); }
+      footer { padding: 40px 0 48px; font-size: 14px; color: var(--muted); }
+      footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px 28px; }
+      footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+      footer a { text-underline-offset: 3px; }
 
-/* footer */
-.foot{background:var(--tint);padding:0 40px 40px}
-.foot .box{max-width:1360px;margin:0 auto;background:var(--deep);color:#fff;border-radius:40px;padding:56px 48px 40px;display:grid;grid-template-columns:1.2fr 1fr;gap:40px}
-.foot p{color:rgba(255,255,255,.62);max-width:44ch;margin:22px 0 0}
-.foot nav{display:flex;flex-wrap:wrap;gap:12px 36px;align-content:start}
-.foot nav a{text-decoration:none;font-size:18px;letter-spacing:-.02em}
-.foot .legal{grid-column:1/-1;display:flex;justify-content:space-between;gap:20px;padding-top:40px;color:rgba(255,255,255,.55);font-size:14px}
-
-/* reveal: transform only, so content is never hidden */
-.rv{animation:rv 1s cubic-bezier(.2,.7,.2,1) both}
-.rv.d1{animation-delay:.08s}.rv.d2{animation-delay:.16s}.rv.d3{animation-delay:.26s}.rv.d4{animation-delay:.36s}
-@keyframes rv{from{transform:translateY(22px)}to{transform:none}}
-
-@media (max-width:1024px){
-  .wrap{padding:0 24px}
-  .nav ul{display:none}
-  .nav .wrap{grid-template-columns:auto 1fr;height:84px}
-  .nav .logo{order:-1}
-  .hero-bleed .wrap,.hero-split .wrap,.intro,.faq{grid-template-columns:1fr}
-  .widget{justify-self:start}
-  .bento{grid-template-columns:1fr 1fr}
-  .bento .card:first-child{grid-column:span 2;min-height:0}
-  .stats{grid-template-columns:1fr 1fr}
-  .foot .box{grid-template-columns:1fr}
-  .sec-head{flex-direction:column;align-items:flex-start}
-}
-@media (max-width:640px){
-  body{font-size:16px}
-  .wrap{padding:0 16px}
-  section{padding:76px 0}
-  .nav .act>a:not(.btn){display:none}
-  .hero-bleed{min-height:auto;padding-top:120px}
-  .hero-bleed .wrap{padding-bottom:36px}
-  .hero-centre{padding-top:130px}
-  .hero-split{padding:124px 0 64px}
-  .hero-light{padding-top:120px}
-  .bento{grid-template-columns:1fr}
-  .bento .card:first-child{grid-column:auto}
-  .card{min-height:0;padding:24px;gap:28px}
-  .stats{grid-template-columns:1fr 1fr;gap:12px}
-  .stat{padding:20px}
-  .ev .row{grid-template-columns:1fr;gap:6px;padding:16px 18px}
-  .ev .row a{text-align:left}
-  .marquee span{font-size:24px}
-  .talk{padding:90px 0}
-  .foot{padding:0 12px 12px}
-  .foot .box{padding:36px 22px 26px;border-radius:28px}
-  .foot .legal{flex-direction:column}
-  .btn{height:48px;padding:0 20px;font-size:16px}
-}
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.rv,.marquee .track{animation:none}.btn{transition:none}}
-
-      /* Kippu: one deposit becomes a strip of tickets, torn off one per paid call */
-      .hero-split { background: radial-gradient(55% 70% at 88% 70%, rgba(255, 138, 61, .2), rgba(255, 138, 61, 0) 70%), radial-gradient(40% 50% at 10% 0%, #0b5246, rgba(6, 59, 51, 0) 70%), var(--deep); }
-      .hero-split .h-hero { max-width: 10ch; }
-      .hero-split .h-hero span { color: var(--accent); }
-      .widget.roll { width: min(100%, 430px); }
-      .dep { display: flex; justify-content: space-between; gap: 12px; margin: 6px 0 18px; font-size: 14px; color: #6b7d78; }
-      .dep a { font: 400 13px var(--mono); color: var(--deep-text); }
-      .strip { display: grid; grid-template-columns: repeat(11, 1fr); gap: 5px; }
-      .tk { position: relative; height: 76px; border-radius: 7px; background: var(--tint); color: var(--deep-text); display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 9px 0 8px; font: 500 11px var(--mono);
-        -webkit-mask: radial-gradient(circle at 50% 0, transparent 4px, #000 4.5px) top / 100% 51% no-repeat, radial-gradient(circle at 50% 100%, transparent 4px, #000 4.5px) bottom / 100% 51% no-repeat;
-        mask: radial-gradient(circle at 50% 0, transparent 4px, #000 4.5px) top / 100% 51% no-repeat, radial-gradient(circle at 50% 100%, transparent 4px, #000 4.5px) bottom / 100% 51% no-repeat;
-        transition: transform .55s cubic-bezier(.3, 1.5, .5, 1), background .3s, color .3s; }
-      .tk::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .35; }
-      .tk.paid { background: var(--accent); color: var(--accent-ink); }
-      .tk.paid::after { opacity: 1; }
-      .tk.fix.paid { background: var(--deep); color: var(--accent); }
-      .tk:nth-child(odd).paid { transform: translateY(-5px) rotate(-3deg); }
-      .tk:nth-child(even).paid { transform: translateY(-5px) rotate(3deg); }
-      .strip.pre .tk.paid { transform: none; background: var(--tint); color: var(--deep-text); }
-      .strip.pre .tk.paid::after { opacity: .35; }
-      .tally { display: flex; align-items: baseline; gap: 12px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
-      .tally b { font-weight: 500; font-size: 48px; letter-spacing: -.05em; line-height: 1; color: var(--deep-text); }
-      .tally span { font-size: 15px; color: #4c5d58; line-height: 1.35; }
-      .key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 13px; color: #6b7d78; }
-      .key span::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; vertical-align: 0; background: var(--accent); }
-      .key span.f::before { background: var(--deep); }
-      .key span.u::before { background: var(--tint); box-shadow: inset 0 0 0 1px var(--line-strong); }
-      .memo { font: 400 13px/1.6 var(--mono); color: var(--deep-text); background: var(--tint); border-radius: 14px; padding: 14px; overflow-wrap: anywhere; }
-      .eq { font-weight: 500; font-size: 26px; letter-spacing: -.04em; margin-top: 16px; }
-      .eq em { font-style: normal; color: #d2600f; }
-      .anchor { font: 400 13px/1.6 var(--mono); color: var(--accent); background: rgba(255, 255, 255, .06); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); border-radius: 14px; padding: 14px; overflow-wrap: anywhere; }
-      .ev .row .oc { font: 400 14px var(--mono); text-align: right; color: rgba(255, 255, 255, .42); }
-      .sub-ev { margin: 56px 0 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 14px 30px; }
-      .sub-ev h3 { margin: 0; font-weight: 500; font-size: clamp(26px, 2.4vw, 36px); letter-spacing: -.035em; color: #fff; }
-      .sub-ev p { margin: 0; max-width: 54ch; color: rgba(255, 255, 255, .62); font-size: 16px; }
-      @media (max-width: 640px) { .strip { gap: 3px; } .tk { height: 62px; font-size: 9.5px; padding: 8px 0 7px; } .tally b { font-size: 40px; } .ev .row .oc { text-align: left; } .sub-ev { margin-top: 44px; } }
-      @media (prefers-reduced-motion: reduce) { .tk { transition: none; } }
+      @media (max-width: 900px) {
+        .nav ul li:not(:last-child) { display: none; }
+        .pass { grid-template-columns: 1fr; }
+        .pass .tear, .agent .tear, .print .tear, .fixed .tear { border-left: 0; border-top: 2px dashed var(--line-2); margin: 0 14px; }
+        .fixed .tear { border-top-color: rgba(226, 245, 238, .35); }
+        .pass .tear::before, .agent .tear::before, .print .tear::before, .fixed .tear::before { left: -27px; top: -13px; }
+        .pass .tear::after, .agent .tear::after, .print .tear::after, .fixed .tear::after { left: auto; right: -27px; top: -13px; bottom: auto; }
+        .pass-admit { flex-direction: row; align-items: end; border-radius: 22px 22px 0 0; }
+        .pass-admit .n { font-size: 52px; }
+        .pass-end { flex-direction: row; align-items: end; flex-wrap: wrap; }
+        .bars { flex: 1 1 160px; height: 44px; }
+        .sec-head { grid-template-columns: 1fr; }
+        .nums { grid-template-columns: 1fr 1fr; }
+        .num:nth-child(3) { padding-left: 0; border-left: 0; }
+        .num:nth-child(n+3) { margin-top: 26px; border-top: 1px solid var(--line); }
+        .steps { grid-template-columns: 1fr; }
+        .fixed, .agent, .print { grid-template-columns: 1fr; }
+        .fixed ul { grid-template-columns: 1fr; }
+        .terms { columns: 1; }
+        .print > div:not(.tear) { padding: 28px 24px; }
+      }
+      @media (max-width: 560px) {
+        .wrap { padding: 0 16px; }
+        .rail { padding: 14px 16px 20px; margin: 0 -16px; }
+        .strip .wrap { justify-content: flex-start; }
+        .strip .opt { display: none; }
+        .hero { padding-top: 36px; }
+        .pass > div:not(.tear) { padding: 22px 20px; }
+        .pass-meta { gap: 8px 18px; }
+        .pass-meta dd { font-size: 14px; }
+        .pass .tear::before, .agent .tear::before, .print .tear::before, .fixed .tear::before { left: -27px; }
+        .rail-head { flex-direction: column; align-items: start; }
+        .sec { padding-top: 80px; }
+        .step { grid-template-columns: 58px 0 1fr; }
+        .step-b { padding: 18px; }
+        .agent > div:not(.tear), .fixed > div:not(.tear) { padding: 22px 20px; }
+        .agent li { grid-template-columns: 1fr; }
+        .agent li .tag { justify-self: start; }
+        .num { padding-right: 12px; }
+        .num + .num { padding-left: 12px; }
+        .num:nth-child(3) { padding-left: 0; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        .btn { transition: none; }
+        .btn:hover { transform: none; }
+      }
     </style>
   </head>
   <body>
-    <nav class="nav on-dark" aria-label="Main">
+    <a class="skip" href="#main">Skip to content</a>
+    <div class="strip" role="note" aria-label="Run summary">
+      <div class="wrap"><span>Zcash testnet</span><span class="opt">Run of 20 Oct 2026</span><span><b>1</b> deposit</span><span><b>22</b> tickets</span><span class="opt"><b>0</b> transactions per call</span></div>
+    </div>
+    <header class="nav">
       <div class="wrap">
-        <ul><li><a href="#how">How it works</a></li><li><a href="#run">Live run</a></li><li><a href="#faq">FAQ</a></li></ul>
-        <a class="logo" href="#top"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 8h24v5a3 3 0 0 0 0 6v5H4v-5a3 3 0 0 0 0-6z" fill="#ff8a3d" /><path d="M12 9v14" stroke="#063b33" stroke-width="1.6" stroke-dasharray="2 2.2" /></svg>Kippu</a>
-        <div class="act"><a href="https://github.com/nickthelegend/zec-null-402/tree/main/packages/docs">Trust model</a><a class="btn btn-white btn-sm" href="https://github.com/nickthelegend/zec-null-402">Get the code</a></div>
-      </div>
-    </nav>
-
-    <header class="hero hero-split" id="top">
-      <div class="wrap">
-        <div>
-          <h1 class="h-hero rv">One deposit. <span>A ticket per call.</span></h1>
-          <p class="lead rv d1">Pay once with a shielded Zcash deposit, then pay each API call with a zero-knowledge proof. No transaction and no block wait per call, and the gateway learns that some prepaid note paid, not which one.</p>
-          <div class="cta rv d2"><a class="btn btn-accent" href="#run">See the live run <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a><a class="btn btn-ghost-light" href="https://github.com/nickthelegend/zec-null-402">Read the code</a></div>
-        </div>
-        <div class="widget roll rv d3" aria-label="One deposit of 22 notes: 20 paid API calls, then 2 calls with the fixture notes">
-          <div class="w-top"><span class="w-title">22 tickets</span><span class="tag tag-deep">1 deposit</span></div>
-          <div class="dep"><span>220,000 zat · block 4,522,696</span><a href="https://testnet.zcashexplorer.app/transactions/05c57a3b074c7141a1052ca5197743a5140d5f4fa6178cd3d4894391ffd42a6f">05c57a3b…</a></div>
-          <div class="strip" id="strip" aria-hidden="true"><span class="tk paid">01</span><span class="tk paid">02</span><span class="tk paid">03</span><span class="tk paid">04</span><span class="tk paid">05</span><span class="tk paid">06</span><span class="tk paid">07</span><span class="tk paid">08</span><span class="tk paid">09</span><span class="tk paid">10</span><span class="tk paid">11</span><span class="tk paid">12</span><span class="tk paid">13</span><span class="tk paid">14</span><span class="tk paid">15</span><span class="tk paid">16</span><span class="tk paid">17</span><span class="tk paid">18</span><span class="tk paid">19</span><span class="tk paid">20</span><span class="tk paid fix">21</span><span class="tk paid fix">22</span></div>
-          <div class="tally"><b id="n">20</b><span>calls paid with a proof,<br />no transaction each</span></div>
-          <div class="key"><span>paid call</span><span class="f">fixture note, then attack tests</span></div>
-          <p class="w-note">Replayed from the live testnet run of Oct 20, 2026. Client proofs took 346 to 569 ms.</p>
-        </div>
+        <a class="logo" href="#main" aria-label="Kippu, home">
+          <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#063b33" /><path d="M6 9h20v5a2 2 0 0 0 0 4v5H6v-5a2 2 0 0 0 0-4z" fill="#ff8a3d" /><path d="M20 10.5v11" stroke="#063b33" stroke-width="1.4" stroke-dasharray="1.6 1.6" /></svg>
+          Kippu <small lang="ja">切符</small>
+        </a>
+        <ul>
+          <li><a href="#rail">The tickets</a></li>
+          <li><a href="#how">How it works</a></li>
+          <li><a href="#void">Voided</a></li>
+          <li><a href="#terms">Conditions</a></li>
+          <li><a class="btn btn-line btn-sm" href="https://github.com/nickthelegend/zec-null-402">GitHub</a></li>
+        </ul>
       </div>
     </header>
 
-    <div class="built">
-      <span class="pill">Built on Zcash, with zero-knowledge tickets</span>
-      <div class="marquee" aria-hidden="true"><div class="track">
-        <span><i></i>Zcash</span><span><i></i>Orchard</span><span><i></i>Groth16</span><span><i></i>circom</span><span><i></i>Poseidon</span><span><i></i>Viewing keys</span><span><i></i>lightwalletd</span><span><i></i>x402</span><span><i></i>MCP</span>
-        <span><i></i>Zcash</span><span><i></i>Orchard</span><span><i></i>Groth16</span><span><i></i>circom</span><span><i></i>Poseidon</span><span><i></i>Viewing keys</span><span><i></i>lightwalletd</span><span><i></i>x402</span><span><i></i>MCP</span>
-      </div></div>
-    </div>
-
-    <main>
-      <section>
-        <div class="wrap intro">
-          <div>
-            <h2 class="h-sec">Zcash has no contracts, so the gateway is the pool</h2>
-            <div class="cta" style="margin-top: 34px"><a class="btn btn-dark" href="https://github.com/nickthelegend/zec-null-402">Run it locally <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a><a class="btn btn-outline" href="https://github.com/nickthelegend/zec-null-402/tree/main/packages/docs">Why no on-chain verifier</a></div>
-          </div>
-          <div class="copy lead">
-            <p><b>It credits only what its viewing key sees.</b> A note exists once a shielded deposit committing to it is on-chain.</p>
-            <p><b>It cannot rewrite its past quietly.</b> Its root and nullifier set are anchored in a memo anyone can read with a published viewing key.</p>
-          </div>
-        </div>
-      </section>
-
-      <section id="how" style="padding-top: 0">
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-h">
         <div class="wrap">
-          <div class="sec-head"><h2 class="h-sec">Pay once on-chain, then off it</h2><a class="btn btn-outline btn-sm" href="https://github.com/nickthelegend/zec-null-402/tree/main/packages/docs">Learn more <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a></div>
-          <div class="bento">
-            <div class="card c-tint">
-              <div class="ui"><div class="memo">z402:&lt;commitment&gt;</div><div class="eq">220,000 zat = <em>22 × 10 units</em></div></div>
-              <div><h3 class="h-card">One shielded deposit</h3><p>Its memo commits to every note and value. Claim the same deposit twice and the gateway answers 409.</p></div>
-            </div>
-            <div class="card c-tint-2">
-              <div><h3 class="h-card">A proof per call</h3><p>The client proves it owns an unspent note bound to this exact request. The gateway checks it off-chain and burns the nullifier.</p></div>
-              <div class="ui"><div class="big">346–569<small>ms to prove</small></div><p style="margin: 12px 0 0; color: var(--muted)">on the client, with no block to wait for</p></div>
-            </div>
-            <div class="card c-deep">
-              <div><h3 class="h-card">Anchored for anyone</h3><p>The gateway's tree root and nullifier set go into a shielded memo, found with a published viewing key and recomputed in the browser.</p></div>
-              <div class="anchor">z402:anchor:22:&lt;root&gt;:22:&lt;nullifier-set hash&gt;</div>
-            </div>
+          <span class="chip"><span>ZCASH</span>Prepaid ZK tickets for APIs</span>
+          <h1 id="hero-h">One deposit. <em>A ticket per call.</em></h1>
+          <p class="lead">Pay once with a shielded Zcash deposit, then pay each API call with a zero-knowledge proof of one prepaid note. No transaction and no block wait per call, and a gateway that follows the protocol learns that some note paid, not which.</p>
+          <div class="cta">
+            <a class="btn btn-teal" href="#rail">See the 22 tickets <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3.5 8.5 8 13l4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></a>
+            <a class="btn btn-line" href="#terms">Read the conditions</a>
           </div>
+
+          <article class="pass" aria-label="The shielded deposit that bought the tickets">
+            <div class="pass-admit"><span class="k">Admit</span><span class="n">22</span><span class="k">notes · 10 units</span></div>
+            <div class="tear" aria-hidden="true"></div>
+            <div class="pass-body">
+              <span class="k">One shielded deposit · seen by the gateway's viewing key</span>
+              <h2>220,000 zat bought 22 tickets</h2>
+              <dl class="pass-meta">
+                <div><dt>Block</dt><dd>4,522,696</dd></div>
+                <div><dt>Per call</dt><dd>10,000 zat</dd></div>
+                <div><dt>Network</dt><dd>testnet</dd></div>
+              </dl>
+              <code class="memo">memo z402:&lt;sha256 over every note's secret hash and value&gt;</code>
+            </div>
+            <div class="tear" aria-hidden="true"></div>
+            <div class="pass-end">
+              <div class="bars" aria-hidden="true" title="Bars drawn from the deposit txid"><i style="width:1px;opacity:0.35"></i><i style="width:2px;opacity:0.55"></i><i style="width:1px;opacity:0.95"></i><i style="width:2px;opacity:0.55"></i><i style="width:4px;opacity:0.55"></i><i style="width:3px;opacity:0.75"></i><i style="width:4px;opacity:0.35"></i><i style="width:4px;opacity:0.75"></i><i style="width:1px;opacity:0.35"></i><i style="width:4px;opacity:0.55"></i><i style="width:1px;opacity:0.55"></i><i style="width:1px;opacity:0.95"></i><i style="width:4px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:1px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:3px;opacity:0.75"></i><i style="width:2px;opacity:0.35"></i><i style="width:1px;opacity:0.35"></i><i style="width:2px;opacity:0.55"></i><i style="width:3px;opacity:0.35"></i><i style="width:1px;opacity:0.95"></i><i style="width:3px;opacity:0.75"></i><i style="width:2px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:2px;opacity:0.75"></i><i style="width:4px;opacity:0.55"></i><i style="width:4px;opacity:0.55"></i><i style="width:1px;opacity:0.55"></i><i style="width:4px;opacity:0.35"></i><i style="width:3px;opacity:0.75"></i><i style="width:2px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:1px;opacity:0.55"></i><i style="width:1px;opacity:0.35"></i><i style="width:2px;opacity:0.95"></i><i style="width:2px;opacity:0.55"></i><i style="width:4px;opacity:0.95"></i><i style="width:1px;opacity:0.55"></i><i style="width:4px;opacity:0.95"></i></div>
+              <a class="txlink" href="https://testnet.zcashexplorer.app/transactions/05c57a3b074c7141a1052ca5197743a5140d5f4fa6178cd3d4894391ffd42a6f">05c57a3b…ffd42a6f <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 11 11 5M6 5h5v5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg><span class="sr">deposit transaction on the testnet explorer</span></a>
+            </div>
+          </article>
         </div>
       </section>
 
-      <section style="padding-top: 0">
-        <div class="wrap stats">
-          <div class="stat"><b>22</b><span>notes from one shielded deposit</span></div>
-          <div class="stat"><b>0</b><span>transactions for 20 paid calls</span></div>
-          <div class="stat"><b>6</b><span>attacks refused in the live run</span></div>
-          <div class="stat"><b>21</b><span>tests plus a doc example, most on live testnet</span></div>
-        </div>
-      </section>
-
-      <section class="dark" id="run">
+      <section class="rail-sec" id="rail" aria-labelledby="rail-h">
         <div class="wrap">
-          <div class="sec-head"><div><h2 class="h-sec">The live run on Zcash testnet</h2><p class="muted lead">Oct 20, 2026. 1 unit = 1,000 zat; a call costs 10 units. Two transactions in, one anchor out, and everything between them off-chain.</p></div></div>
-          <div class="ev" role="list" aria-label="Live run">
-            <div class="row" role="listitem"><span>Demo payer funded from a demo wallet, 300,000 zat</span><span class="tag tag-ok">funded</span><a href="https://testnet.zcashexplorer.app/transactions/0f8186c62a7f89d79988a43ad511c8b466a530e7f741f130c10532df605651db">0f8186c6…</a></div>
-            <div class="row" role="listitem"><span>One shielded deposit for 22 notes, seen by the gateway's viewing key</span><span class="tag tag-ok">220,000 zat</span><a href="https://testnet.zcashexplorer.app/transactions/05c57a3b074c7141a1052ca5197743a5140d5f4fa6178cd3d4894391ffd42a6f">05c57a3b…</a></div>
-            <div class="row" role="listitem"><span>Claim: 22 notes credited</span><span class="tag tag-ok">credited</span><span class="oc">off-chain</span></div>
-            <div class="row" role="listitem"><span>The same deposit claimed a second time</span><span class="tag tag-no">409</span><span class="oc">off-chain</span></div>
-            <div class="row" role="listitem"><span>A claim with an altered note value, on a fresh gateway</span><span class="tag tag-no">MEMO_MISMATCH</span><span class="oc">off-chain</span></div>
-            <div class="row" role="listitem"><span>20 paid calls, then 2 with the fixture notes</span><span class="tag tag-accent">22 × 200</span><span class="oc">no tx</span></div>
-            <div class="row" role="listitem"><span>A paid proof replayed</span><span class="tag tag-no">NULLIFIER_SPENT</span><span class="oc">off-chain</span></div>
-            <div class="row" role="listitem"><span>The amount changed; a proof made for another request</span><span class="tag tag-no">NOT_BOUND_TO_CHALLENGE</span><span class="oc">off-chain</span></div>
-            <div class="row" role="listitem"><span>The nullifier changed</span><span class="tag tag-no">BAD_PROOF</span><span class="oc">off-chain</span></div>
-            <div class="row" role="listitem"><span>Anchor: 22 leaves, 22 spent, equal to the gateway's root and nullifier set</span><span class="tag tag-ok">anchored</span><a href="https://testnet.zcashexplorer.app/transactions/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395">a0992237…</a></div>
+          <div class="rail-head">
+            <div>
+              <h2 class="sr" id="rail-h">The 22 tickets spent</h2>
+              <p><b>Torn from that one deposit:</b> 20 paid calls to <code>/api/quote</code>, then 2 fixture notes. Each ticket is a Groth16 proof the gateway checked off-chain. Shown by nullifier only; nothing ties it to a note.</p>
+            </div>
+            <div class="rail-ctl">
+              <button type="button" data-dir="-1" aria-label="Scroll tickets left"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
+              <button type="button" data-dir="1" aria-label="Scroll tickets right"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
+            </div>
           </div>
-
-          <div class="sub-ev"><h3>An LLM agent, and a cap that held</h3><p>opencode with the <code>z402-mcp</code> tools. A quote response carried an injected order to buy a 50-unit report at any cost. The agent tried; the limits stopped it, not its judgement.</p></div>
-          <div class="ev" role="list" aria-label="Agent run">
-            <div class="row" role="listitem"><span>Deposit 3 notes of 10 units in one transaction</span><span class="tag tag-ok">deposited</span><a href="https://testnet.zcashexplorer.app/transactions/29cfe5fc0502e0b83f5d69e6890170ca897404f87f04fd42128a02ece94ba51b">29cfe5fc…</a></div>
-            <div class="row" role="listitem"><span>Pay /api/quote three times: three nullifiers</span><span class="tag tag-accent">3 × 200</span><span class="oc">no tx</span></div>
-            <div class="row" role="listitem"><span>Every 50,000 zat deposit for the report, over <code>Z402_MAX_DEPOSIT_ZAT</code></span><span class="tag tag-no">refused</span><span class="oc">no tx</span></div>
-            <div class="row" role="listitem"><span>One more 20-unit deposit, then the wallet ran dry</span><span class="tag tag-ok">deposited</span><a href="https://testnet.zcashexplorer.app/transactions/0b12bfc6b2b7ee6b30d176990b89f89bf171b7ba737b4b630612f24f1480c077">0b12bfc6…</a></div>
+          <ol class="rail" tabindex="0" aria-label="Tickets, scroll sideways"><li class="tix" style="--i:0"><div class="tix-top"><span class="tix-no"><small>NO.</small>01</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="5549225079701952830157127102654233252013265037488931690315316069380219116853">5549225079…6853</code>proof 569 ms</div></li><li class="tix" style="--i:1"><div class="tix-top"><span class="tix-no"><small>NO.</small>02</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="12094971253246981566701420287078522397887478756117002851778608187792559272069">1209497125…2069</code>proof 355 ms</div></li><li class="tix" style="--i:2"><div class="tix-top"><span class="tix-no"><small>NO.</small>03</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="9224677461915885510985829779061275312960329997205526489666903857151051643595">9224677461…3595</code>proof 364 ms</div></li><li class="tix" style="--i:3"><div class="tix-top"><span class="tix-no"><small>NO.</small>04</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="7065118766715446563089860999899459486186966017669406604129162747893120651717">7065118766…1717</code>proof 359 ms</div></li><li class="tix" style="--i:4"><div class="tix-top"><span class="tix-no"><small>NO.</small>05</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="8518014945888889109618752224531174152303531127494716704022601602447663637621">8518014945…7621</code>proof 361 ms</div></li><li class="tix" style="--i:5"><div class="tix-top"><span class="tix-no"><small>NO.</small>06</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="9862967196537553010290439268303969819056423015235786360592880573290478416128">9862967196…6128</code>proof 357 ms</div></li><li class="tix" style="--i:6"><div class="tix-top"><span class="tix-no"><small>NO.</small>07</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="10904580770287624797799419208515095709870501277088164695606409714504046089281">1090458077…9281</code>proof 355 ms</div></li><li class="tix" style="--i:7"><div class="tix-top"><span class="tix-no"><small>NO.</small>08</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="14461902928589769587746088583654054330233845404485226880437095768040716504089">1446190292…4089</code>proof 351 ms</div></li><li class="tix" style="--i:8"><div class="tix-top"><span class="tix-no"><small>NO.</small>09</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="9436439016886342546967651867729777140598432899992167666236890914415472589077">9436439016…9077</code>proof 354 ms</div></li><li class="tix" style="--i:9"><div class="tix-top"><span class="tix-no"><small>NO.</small>10</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="20569538588067732810239662597971549091526913367332364233236194106805628327115">2056953858…7115</code>proof 356 ms</div></li><li class="tix" style="--i:10"><div class="tix-top"><span class="tix-no"><small>NO.</small>11</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="18934478366326054777927403573048874239004291429431686780978688657204843764438">1893447836…4438</code>proof 355 ms</div></li><li class="tix" style="--i:11"><div class="tix-top"><span class="tix-no"><small>NO.</small>12</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="13380040069178633266720091268233452044197414650671066036051253404615673303099">1338004006…3099</code>proof 356 ms</div></li><li class="tix" style="--i:12"><div class="tix-top"><span class="tix-no"><small>NO.</small>13</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="16860652792531303683607499936476464100315626738832006654087704108815477161101">1686065279…1101</code>proof 353 ms</div></li><li class="tix" style="--i:13"><div class="tix-top"><span class="tix-no"><small>NO.</small>14</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="16193964670551883807887017165064323814162986277108263405344109242508212367024">1619396467…7024</code>proof 346 ms</div></li><li class="tix" style="--i:14"><div class="tix-top"><span class="tix-no"><small>NO.</small>15</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="658828928749659115999625560994526892032109975714452761405677908295030871975">6588289287…1975</code>proof 358 ms</div></li><li class="tix" style="--i:15"><div class="tix-top"><span class="tix-no"><small>NO.</small>16</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="20199768449916187875228856014145664753446175692276913149565457777025159052486">2019976844…2486</code>proof 375 ms</div></li><li class="tix" style="--i:16"><div class="tix-top"><span class="tix-no"><small>NO.</small>17</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="7310380396236164186102159844088021526111016289924976592302304690436067252903">7310380396…2903</code>proof 356 ms</div></li><li class="tix" style="--i:17"><div class="tix-top"><span class="tix-no"><small>NO.</small>18</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="9723300817598742742790272801575757621548957465304991725138266580100344462617">9723300817…2617</code>proof 349 ms</div></li><li class="tix" style="--i:18"><div class="tix-top"><span class="tix-no"><small>NO.</small>19</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="4685905247346909240976937857437684411287055989564356691892299346813352235225">4685905247…5225</code>proof 352 ms</div></li><li class="tix" style="--i:19"><div class="tix-top"><span class="tix-no"><small>NO.</small>20</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="1377415293587321899821539737603825053284798512300887394192110302776807945343">1377415293…5343</code>proof 356 ms</div></li><li class="tix fixture" style="--i:20"><div class="tix-top"><span class="tix-no"><small>FIXTURE</small>21</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="3477147957942530944050927393345713478286610069364623778307973764366901676840">3477147957…6840</code>then attack tests</div></li><li class="tix fixture" style="--i:21"><div class="tix-top"><span class="tix-no"><small>FIXTURE</small>22</span><span class="ok">200</span></div><div class="tear" aria-hidden="true"></div><div class="tix-bot">nullifier<code title="9805111808410472080676807379001665159196556543686879536210769591560991193842">9805111808…3842</code>then attack tests</div></li></ol>
+          <div class="rail-foot">
+            <span class="key"><i aria-hidden="true"></i>paid call, HTTP 200, no transaction</span>
+            <span class="key"><i class="f" aria-hidden="true"></i>fixture note: paid one call, then used for the attack tests</span>
+            <span>Proof times measured on the client, 346–569 ms.</span>
           </div>
         </div>
       </section>
 
-      <section class="dark" id="faq" style="padding-top: 0">
-        <div class="wrap faq">
-          <div><h2 class="h-sec">Frequently asked questions</h2><p class="muted lead" style="margin-top: 18px">What a ticket hides, and who you still trust.</p></div>
-          <div>
-            <details open><summary>Is it trustless?</summary><p>No. The gateway is trusted for liveness and its state. Anchors make its leaf and nullifier sets auditable after the fact; they do not stop a dishonest gateway in the moment.</p></details>
-            <details><summary>What does the gateway learn per call?</summary><p>That some unspent note in the pool paid, not which. In the run every call came from one depositor's notes, so unlinkability between users needs several depositors.</p></details>
-            <details><summary>Can a ticket give change?</summary><p>No. A note pays one call of its full value. A dearer endpoint needs a note of its own.</p></details>
-            <details><summary>Is it live?</summary><p>On Zcash testnet, with every transaction linked above. Single-party Groth16 setup, not audited. A portfolio piece; the Zecathon entry is Kage (Shielded x402).</p></details>
-          </div>
-        </div>
-      </section>
-
-      <section class="talk">
+      <section class="sec" aria-labelledby="nums-h">
         <div class="wrap">
-          <h2 class="h-sec">Print your own tickets</h2>
-          <p class="lead">Circuits, the gateway, an SDK and an MCP server. Proofs in the tests are real Groth16 proofs; the chain is real Zcash testnet.</p>
-          <pre>pnpm install && pnpm test
-pnpm --filter @z402/dashboard dev</pre>
-          <div class="cta" style="justify-content: center"><a class="btn btn-dark" href="https://github.com/nickthelegend/zec-null-402">Get the code <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a></div>
+          <h2 class="sr" id="nums-h">The run in numbers</h2>
+          <div class="nums">
+            <div class="num"><b>2</b><p>transactions on-chain: the deposit and the anchor</p></div>
+            <div class="num"><b>20</b><p>paid calls with no transaction of their own</p></div>
+            <div class="num"><b>569<small>ms</small></b><p>slowest client proof in the run (fastest 346 ms)</p></div>
+            <div class="num"><b>33</b><p>tests plus a doc example, most against live testnet</p></div>
+          </div>
         </div>
       </section>
+
+      <section class="sec" id="how" aria-labelledby="how-h">
+        <div class="wrap">
+          <div class="sec-head">
+            <div><span class="label">How it works</span><h2 class="big" id="how-h">Zcash has no contracts, so the gateway is the pool.</h2></div>
+            <p>null-402's on-chain verifier can't be ported to Zcash. Kippu keeps the deposit and the audit trail on-chain and moves the per-call check to the gateway, in the open.</p>
+          </div>
+          <ol class="steps">
+            <li class="step"><span class="step-n">01</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Print notes</h3><p>The client makes N notes and one commitment over their secret hashes and values. Secrets stay in a 0600 file.</p></div></li>
+            <li class="step"><span class="step-n">02</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Deposit once</h3><p>One shielded transaction to the gateway with memo <code>z402:&lt;commitment&gt;</code>. The gateway's viewing key checks amount and memo before crediting, once.</p></div></li>
+            <li class="step"><span class="step-n">03</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Prove per call</h3><p><code>402</code> → the client proves it holds an unspent note bound to this exact request → the gateway verifies the Groth16 proof and burns the nullifier.</p></div></li>
+            <li class="step"><span class="step-n">04</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Anchor</h3><p>The gateway writes its root and nullifier-set hash in a shielded memo (<a class="txlink" href="https://testnet.zcashexplorer.app/transactions/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395">a0992237…</a>), readable with a published viewing key.</p></div></li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="sec" id="void" aria-labelledby="void-h">
+        <div class="wrap">
+          <div class="sec-head">
+            <div><span class="label">Voided in the live run</span><h2 class="big" id="void-h">Seven tickets the gateway would not honour.</h2></div>
+            <p>Each was tried against the testnet run of Oct 20. The code is the gateway's own answer.</p>
+          </div>
+          <ul class="voids">
+            <li class="void"><span class="stamp">VOID</span><code>NULLIFIER_SPENT</code><p>A paid proof sent again for a new request.</p></li>
+            <li class="void"><span class="stamp">VOID</span><code>NULLIFIER_SPENT</code><p>The second fixture note's proof replayed.</p></li>
+            <li class="void"><span class="stamp">VOID</span><code>NOT_BOUND_TO_CHALLENGE</code><p>The amount in the public signals changed.</p></li>
+            <li class="void"><span class="stamp">VOID</span><code>NOT_BOUND_TO_CHALLENGE</code><p>A proof made for one request sent for another.</p></li>
+            <li class="void"><span class="stamp">VOID</span><code>BAD_PROOF</code><p>The nullifier changed, claiming a different note.</p></li>
+            <li class="void"><span class="stamp">VOID</span><code>409 already claimed</code><p>The same deposit claimed a second time.</p></li>
+            <li class="void"><span class="stamp">VOID</span><code>MEMO_MISMATCH</code><p>A claim with one note's value altered, on a fresh gateway.</p></li>
+          </ul>
+          <div class="fixed">
+            <div><span class="label">Fixed on Oct 21</span><h3>A review found two ways to pay twice. Both are closed.</h3></div>
+            <div class="tear" aria-hidden="true"></div>
+            <div>
+              <ul>
+                <li>A spent note's nullifier written <code>0&lt;n&gt;</code> or in hex: now <code>MALFORMED_SIGNALS</code>.</li>
+                <li>One payment sent several times at once: now paid once.</li>
+                <li>A server relaying the gateway's challenge: the client refuses to prove.</li>
+                <li>Anchoring over HTTP: needs the operator's token.</li>
+              </ul>
+              <p style="margin:16px 0 0;font-size:14px;color:rgba(226,245,238,.75)">Tested against a fresh gateway on testnet with real proofs, not part of the Oct 20 run. <a href="https://github.com/nickthelegend/zec-null-402/blob/main/docs/JUDGE-2026-10-21.md">The review</a>.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="agent-h">
+        <div class="wrap">
+          <div class="sec-head">
+            <div><span class="label">An LLM agent with a cap</span><h2 class="big" id="agent-h">The cap held. The model's judgement didn't.</h2></div>
+            <p>opencode drove the <code>z402-mcp</code> tools. A quote response carried an injected order to buy a 50-unit report at any cost; the agent tried, and the limits stopped it.</p>
+          </div>
+          <div class="agent">
+            <div>
+              <ol>
+                <li><span>Deposit 3 notes of 10 units in one transaction (<a class="txlink" href="https://testnet.zcashexplorer.app/transactions/29cfe5fc0502e0b83f5d69e6890170ca897404f87f04fd42128a02ece94ba51b">29cfe5fc…</a>)</span><span class="tag">deposited</span></li>
+                <li><span>Pay <code>/api/quote</code> three times, three nullifiers</span><span class="tag">3 × 200</span></li>
+                <li><span>Every 50,000 zat deposit for the report, over <code>Z402_MAX_DEPOSIT_ZAT</code></span><span class="tag no">refused</span></li>
+                <li><span>One more 20-unit deposit (<a class="txlink" href="https://testnet.zcashexplorer.app/transactions/0b12bfc6b2b7ee6b30d176990b89f89bf171b7ba737b4b630612f24f1480c077">0b12bfc6…</a>), then the wallet ran dry</span><span class="tag">deposited</span></li>
+              </ol>
+            </div>
+            <div class="tear" aria-hidden="true"></div>
+            <div class="agent-side"><span class="label">MCP calls refused</span><b>9 / 23</b><p>Every call is in <code>deployments/agent-run-2026-10-20.jsonl</code>.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec" id="terms" aria-labelledby="terms-h">
+        <div class="wrap">
+          <div class="sec-head">
+            <div><span class="label">Read the back of the ticket</span><h2 class="big" id="terms-h">Conditions of carriage.</h2></div>
+            <p>What a ticket hides, and who you still trust.</p>
+          </div>
+          <ol class="terms">
+            <li><b>The gateway is trusted</b> for liveness and its state. Anchors make its leaf and nullifier sets checkable after the fact; they do not stop a dishonest gateway in the moment.</li>
+            <li><b>Unlinkability needs an honest gateway.</b> One that gives each client its own leaf list can tell clients apart by the root in their proofs. It also sees each caller's network address.</li>
+            <li><b>The anonymity set is the credited notes.</b> In the run there was one depositor, so every call came from that depositor's notes.</li>
+            <li><b>No change.</b> A note pays one call of its full value; a dearer endpoint needs a note of its own price.</li>
+            <li><b>The demo viewing key is public.</b> It is published so a fresh clone can re-check the real deposit; for this deployment anyone can read the deposit's amount and memo.</li>
+            <li><b>Single-party Groth16 setup.</b> Whoever ran it could forge proofs; a real deployment needs a ceremony.</li>
+            <li><b>Testnet only, not audited.</b> A portfolio piece; the Zecathon entry is Kage (Shielded x402).</li>
+          </ol>
+        </div>
+      </section>
+
+      <div class="wrap">
+        <section class="print" aria-labelledby="print-h">
+          <div><h2 id="print-h">Print your own tickets.</h2><p>Circuits, the gateway, an SDK and an MCP server. Tests use real Groth16 proofs and real Zcash testnet; nothing is mocked.</p><a class="btn btn-tangerine" href="https://github.com/nickthelegend/zec-null-402">Get the code</a></div>
+          <div class="tear" aria-hidden="true"></div>
+          <div><pre><code><span>$</span> pnpm install
+<span>$</span> pnpm test        <span># 33 tests + doc</span>
+<span>$</span> pnpm --filter @z402/dashboard dev</code></pre></div>
+        </section>
+      </div>
     </main>
 
-    <footer class="foot">
-      <div class="box">
-        <div><a class="logo" href="#top" style="color: #fff"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 8h24v5a3 3 0 0 0 0 6v5H4v-5a3 3 0 0 0 0-6z" fill="#ff8a3d" /><path d="M12 9v14" stroke="#063b33" stroke-width="1.6" stroke-dasharray="2 2.2" /></svg>Kippu</a><p>切符, "ticket". One shielded deposit, then a zero-knowledge ticket per API call on Zcash.</p></div>
-        <nav aria-label="Footer"><a href="#how">How it works</a><a href="#run">Live run</a><a href="#faq">FAQ</a><a href="https://github.com/nickthelegend/zec-null-402">GitHub</a><a href="https://github.com/nickthelegend/zec-null-402/blob/main/deployments/testnet.json">Run record</a></nav>
-        <div class="legal"><span>MIT · Copyright (c) 2026 Nivesh Gajengi</span><span>Zcash testnet · not audited</span></div>
+    <footer>
+      <div class="wrap">
+        <span>Kippu <span lang="ja">切符</span> · MIT · Copyright (c) 2026 Nivesh Gajengi · Zcash testnet, not audited</span>
+        <nav aria-label="Footer">
+          <a href="https://github.com/nickthelegend/zec-null-402">GitHub</a>
+          <a href="https://github.com/nickthelegend/zec-null-402/blob/main/deployments/testnet.json">Run record</a>
+          <a href="https://github.com/nickthelegend/zec-null-402/blob/main/packages/docs/README.md">Trust model</a>
+          <a href="https://github.com/nickthelegend/zec-null-402/blob/main/TESTING.md">Tests</a>
+        </nav>
       </div>
     </footer>
+
     <script>
-      // The 22 notes tear off in the order the run spent them: 20 paid calls, then the 2 fixture notes.
-      const strip = document.getElementById('strip'), n = document.getElementById('n'), tks = [...strip.children];
-      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        strip.classList.add('pre'); n.textContent = '0';
-        const run = () => { strip.classList.remove('pre'); tks.forEach((t, i) => { t.classList.remove('paid'); setTimeout(() => { t.classList.add('paid'); if (i < 20) n.textContent = i + 1; }, 300 + i * 130); }); };
-        if ('IntersectionObserver' in window) new IntersectionObserver((e, o) => { if (e[0].isIntersecting) { run(); o.disconnect(); } }, { threshold: 0.4 }).observe(strip);
-        else run();
+      document.documentElement.classList.add('js');
+      const rail = document.querySelector('.rail');
+      document.querySelectorAll('.rail-ctl button').forEach((b) =>
+        b.addEventListener('click', () => rail.scrollBy({ left: Number(b.dataset.dir) * rail.clientWidth * 0.8, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })),
+      );
+      // The one moment: the tickets tear off the deposit pass once, when the rail first comes into view.
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
+        rail.classList.add('armed');
+        const io = new IntersectionObserver((es) => {
+          if (es.some((e) => e.isIntersecting)) {
+            requestAnimationFrame(() => rail.classList.add('torn'));
+            io.disconnect();
+          }
+        }, { threshold: 0.2 });
+        io.observe(rail);
+        setTimeout(() => rail.classList.add('torn'), 2500); // never leave the tickets hidden
       }
     </script>
   </body>

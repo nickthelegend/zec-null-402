@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kippu — one Zcash deposit, a ZK ticket per API call</title>
-    <meta name="description" content="Kippu: pay once with a shielded Zcash deposit, then pay each API call with a zero-knowledge proof of one prepaid note. 20 paid calls on testnet, no transaction per call; the gateway's state is anchored in a shielded memo." />
+    <meta name="description" content="Kippu: pay once with a shielded Zcash deposit, then pay each API call with a zero-knowledge proof of one prepaid note. 20 paid calls on testnet, no transaction per call; clients prove only against a root they read themselves in an on-chain anchor." />
     <meta name="theme-color" content="#063b33" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23063b33'/%3E%3Cpath d='M6 9h20v5a2 2 0 0 0 0 4v5H6v-5a2 2 0 0 0 0-4z' fill='%23ff8a3d'/%3E%3Cpath d='M20 10.5v11' stroke='%23063b33' stroke-width='1.4' stroke-dasharray='1.6 1.6'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -316,7 +316,7 @@
             <div class="num"><b>2</b><p>transactions on-chain: the deposit and the anchor</p></div>
             <div class="num"><b>20</b><p>paid calls with no transaction of their own</p></div>
             <div class="num"><b>569<small>ms</small></b><p>slowest client proof in the run (fastest 346 ms)</p></div>
-            <div class="num"><b>33</b><p>tests plus a doc example, most against live testnet</p></div>
+            <div class="num"><b>53</b><p>tests plus a doc example, most against live testnet</p></div>
           </div>
         </div>
       </section>
@@ -330,8 +330,8 @@
           <ol class="steps">
             <li class="step"><span class="step-n">01</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Print notes</h3><p>The client makes N notes and one commitment over their secret hashes and values. Secrets stay in a 0600 file.</p></div></li>
             <li class="step"><span class="step-n">02</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Deposit once</h3><p>One shielded transaction to the gateway with memo <code>z402:&lt;commitment&gt;</code>. The gateway's viewing key checks amount and memo before crediting, once.</p></div></li>
-            <li class="step"><span class="step-n">03</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Prove per call</h3><p><code>402</code> → the client proves it holds an unspent note bound to this exact request → the gateway verifies the Groth16 proof and burns the nullifier.</p></div></li>
-            <li class="step"><span class="step-n">04</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Anchor</h3><p>The gateway writes its root and nullifier-set hash in a shielded memo (<a class="txlink" href="https://testnet.zcashexplorer.app/transactions/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395">a0992237…</a>), readable with a published viewing key.</p></div></li>
+            <li class="step"><span class="step-n">03</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Prove per call</h3><p><code>402</code> → the client reads the named anchor on-chain itself, then proves it holds an unspent note under that anchored root, bound to this exact request → the gateway verifies the Groth16 proof and burns the nullifier.</p></div></li>
+            <li class="step"><span class="step-n">04</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Anchor</h3><p>The gateway writes its root and nullifier-set hash in a shielded memo (<a class="txlink" href="https://testnet.zcashexplorer.app/transactions/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395">a0992237…</a>), readable with a published viewing key. Clients prove only against a recent anchored root, so everyone proves against the same one.</p></div></li>
           </ol>
         </div>
       </section>
@@ -362,6 +362,19 @@
                 <li>Anchoring over HTTP: needs the operator's token.</li>
               </ul>
               <p style="margin:16px 0 0;font-size:14px;color:rgba(226,245,238,.75)">Tested against a fresh gateway on testnet with real proofs, not part of the Oct 20 run. <a href="https://github.com/nickthelegend/zec-null-402/blob/main/docs/JUDGE-2026-10-21.md">The review</a>.</p>
+            </div>
+          </div>
+          <div class="fixed">
+            <div><span class="label">Fixed on Oct 22</span><h3>A gateway can no longer hand each client its own root.</h3></div>
+            <div class="tear" aria-hidden="true"></div>
+            <div>
+              <ul>
+                <li>A root with no on-chain anchor: the client won't prove (<code>UNANCHORED_ROOT</code>).</li>
+                <li>A per-client root passed off as the real anchor: <code>ANCHOR_MISMATCH</code>.</li>
+                <li>An anchor older than 2,880 blocks: <code>ANCHOR_TOO_OLD</code>.</li>
+                <li>A restart keeps challenges and spent nullifiers; two gateway processes on one database pay a note once.</li>
+              </ul>
+              <p style="margin:16px 0 0;font-size:14px;color:rgba(226,245,238,.75)">The client reads the anchor from lightwalletd with the published anchor key before it proves. Tested against dishonest gateways in front of a real one, with real proofs.</p>
             </div>
           </div>
         </div>
@@ -395,8 +408,9 @@
             <p>What a ticket hides, and who you still trust.</p>
           </div>
           <ol class="terms">
-            <li><b>The gateway is trusted</b> for liveness and its state. Anchors make its leaf and nullifier sets checkable after the fact; they do not stop a dishonest gateway in the moment.</li>
-            <li><b>Unlinkability needs an honest gateway.</b> One that gives each client its own leaf list can tell clients apart by the root in their proofs. It also sees each caller's network address.</li>
+            <li><b>The gateway is trusted</b> for liveness and its nullifier set. Clients check its anchored root before every proof; its spent set is checkable only after the fact.</li>
+            <li><b>Roots are anchored, addresses are not.</b> A gateway would have to put a per-client root on-chain, where the published anchor key shows it; clients don't yet scan for competing anchors. It still sees each caller's network address.</li>
+            <li><b>New notes wait for an anchor.</b> A deposit pays once the gateway's next anchor is mined, about a block with auto-anchoring.</li>
             <li><b>The anonymity set is the credited notes.</b> In the run there was one depositor, so every call came from that depositor's notes.</li>
             <li><b>No change.</b> A note pays one call of its full value; a dearer endpoint needs a note of its own price.</li>
             <li><b>The demo viewing key is public.</b> It is published so a fresh clone can re-check the real deposit; for this deployment anyone can read the deposit's amount and memo.</li>
@@ -411,7 +425,7 @@
           <div><h2 id="print-h">Print your own tickets.</h2><p>Circuits, the gateway, an SDK and an MCP server. Tests use real Groth16 proofs and real Zcash testnet; nothing is mocked.</p><a class="btn btn-tangerine" href="https://github.com/nickthelegend/zec-null-402">Get the code</a></div>
           <div class="tear" aria-hidden="true"></div>
           <div><pre><code><span>$</span> pnpm install
-<span>$</span> pnpm test        <span># 33 tests + doc</span>
+<span>$</span> pnpm test        <span># 53 tests + doc</span>
 <span>$</span> pnpm --filter @z402/dashboard dev</code></pre></div>
         </section>
       </div>

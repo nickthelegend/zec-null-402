@@ -394,7 +394,7 @@ export function App() {
               <p>
                 The deposit, its {r.gateway.leaves} note leaves, {tickets.length} nullifiers and each caller's network address.
               </p>
-              <p className="not">Not which note paid which call, as long as it serves every client the same leaves.</p>
+              <p className="not">Not which note paid which call: since Oct 22 every client proves against the root of a recent on-chain anchor it reads itself.</p>
             </li>
             <li>
               <h3>Anyone with the anchor key</h3>
@@ -430,8 +430,9 @@ export function App() {
           </ul>
           <div className="fixed">
             <div>
-              <span className="label">Fixed on Oct 21, after this run</span>
+              <span className="label">Fixed on Oct 21 and 22, after this run</span>
               <p>A review found that a spent note could pay again with its nullifier written <code>0&lt;n&gt;</code> or in hex, and that one payment sent several times at once was paid each time. Both now fail, along with a relayed challenge and an unauthenticated anchor. Tested on a fresh gateway with real proofs; not part of this run.</p>
+              <p>Since Oct 22 the client proves only against a root it reads itself in a recent on-chain anchor, so a gateway can't hand one client its own root (<code>UNANCHORED_ROOT</code>, <code>ANCHOR_MISMATCH</code>, <code>ANCHOR_TOO_OLD</code>). The gateway's state is in SQLite: a restart keeps challenges and spent nullifiers.</p>
             </div>
             <a className="btn btn-tangerine btn-sm" href={`${REPO}/blob/main/docs/JUDGE-2026-10-21.md`} target="_blank" rel="noreferrer">
               Read the review
@@ -476,7 +477,7 @@ export function App() {
           <article className="receipt">
             <div className="receipt-l">
               <p>
-                The gateway wrote its state into a shielded memo to an address whose viewing key is published: <Tx id={r.anchor.txid} />.
+                The gateway wrote its state into a shielded memo to an address whose viewing key is published: <Tx id={r.anchor.txid} />. Clients now read this memo from lightwalletd themselves and prove only against its root.
               </p>
               <dl className="meta">
                 <div>
@@ -504,7 +505,7 @@ export function App() {
       </main>
       <footer className="wrap foot">
         <span>Kippu · MIT · Copyright (c) 2026 Nivesh Gajengi</span>
-        <span>Zcash testnet · not audited · the gateway is trusted for liveness; its state is anchored</span>
+        <span>Zcash testnet · not audited · the gateway is trusted for liveness; clients prove only against anchored roots</span>
       </footer>
     </>
   );

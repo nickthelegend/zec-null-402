@@ -20,66 +20,52 @@ const r = run as unknown as {
 const EXPLORER = 'https://testnet.zcashexplorer.app/transactions/';
 const REPO = 'https://github.com/nickthelegend/zec-null-402';
 const short = (s: string, a = 8, b = 6) => (s.length > a + b + 1 ? `${s.slice(0, a)}…${s.slice(-b)}` : s);
-const Tx = ({ id }: { id: string }) => (
-  <a className="hash" href={EXPLORER + id} target="_blank" rel="noreferrer" aria-label={`Transaction ${id} on the testnet explorer`}>
-    <code>{short(id)}</code>
-    <ArrowOut />
-  </a>
-);
-const zec = (zat: number) => `${(zat / 1e8).toLocaleString(undefined, { maximumFractionDigits: 8 })} TAZ`;
-/** The same number zec() prints, split into the whole part and the faded decimal part. */
-const zecParts = (zat: number): [string, string] => {
-  const parts = new Intl.NumberFormat(undefined, { maximumFractionDigits: 8 }).formatToParts(zat / 1e8);
-  const i = parts.findIndex((p) => p.type === 'decimal');
-  const join = (ps: Intl.NumberFormatPart[]) => ps.map((p) => p.value).join('');
-  return i < 0 ? [join(parts), ''] : [join(parts.slice(0, i)), join(parts.slice(i))];
-};
 const pad = (n: number) => String(n).padStart(2, '0');
+const zat = (n: number) => `${n.toLocaleString('en-US')} zat`;
+const taz = (n: number) => `${(n / 1e8).toLocaleString('en-US', { maximumFractionDigits: 8 })} TAZ`;
+
+/** Every spent note, in the order it was spent: the 20 paid calls, then the 2 fixture notes. */
+type Ticket = { key: string; label: string; nullifier: string; status: number; proveMs: number | null; fixture: boolean };
+const tickets: Ticket[] = [
+  ...r.calls.map((c) => ({ key: c.nullifier, label: pad(c.n), nullifier: c.nullifier, status: c.status, proveMs: c.proveMs, fixture: false })),
+  ...r.fixtureNullifiers.map((nf, i) => ({ key: nf, label: pad(r.calls.length + i + 1), nullifier: nf, status: 200, proveMs: null, fixture: true })),
+];
 
 const ATTACK: Record<string, string> = {
-  replayWithNewContext: 'a paid proof sent again for a new request',
-  tamperedAmount: 'the amount in the public signals changed',
-  tamperedNullifier: 'the nullifier changed (a different note claimed)',
-  proofForAnotherRequest: 'a proof made for one request sent for another',
-  replayOfSecondNote: 'the second note’s proof replayed',
+  replayWithNewContext: 'A paid proof sent again for a new request.',
+  replayOfSecondNote: 'The second fixture note’s proof replayed.',
+  tamperedAmount: 'The amount in the public signals changed.',
+  proofForAnotherRequest: 'A proof made for one request sent for another.',
+  tamperedNullifier: 'The nullifier changed, claiming a different note.',
 };
 
-function ArrowOut() {
+function Tx({ id, label }: { id: string; label?: string }) {
   return (
-    <svg className="ico" viewBox="0 0 16 16" aria-hidden="true">
-      <path d="M5 11 11 5M6 5h5v5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    <a className="tx" href={EXPLORER + id} target="_blank" rel="noreferrer">
+      <code>{label ?? short(id)}</code>
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M5 11 11 5M6 5h5v5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+      <span className="sr">transaction {id} on the testnet explorer (opens in a new tab)</span>
+    </a>
+  );
+}
+
+function Mark({ size = 30 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
+      <rect width="32" height="32" rx="8" fill="#063b33" />
+      <path d="M6 9h20v5a2 2 0 0 0 0 4v5H6v-5a2 2 0 0 0 0-4z" fill="#ff8a3d" />
+      <path d="M20 10.5v11" stroke="#063b33" strokeWidth="1.4" strokeDasharray="1.6 1.6" />
     </svg>
   );
 }
 
-function TicketMark({ size = 32 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" className="logo-mark">
-      <rect width="32" height="32" rx="10" fill="#ff8a3d" />
-      <path d="M8 10H24A1 1 0 0 1 25 11V13.5A2.5 2.5 0 0 0 25 18.5V21A1 1 0 0 1 24 22H8A1 1 0 0 1 7 21V18.5A2.5 2.5 0 0 0 7 13.5V11A1 1 0 0 1 8 10Z" fill="#063b33" />
-      <path d="M19 11.5V20.5" stroke="#ff8a3d" strokeWidth="1.2" strokeDasharray="1.4 1.4" />
-    </svg>
-  );
-}
-
-/** Balance-style number: bright whole part, faded tail, small unit. */
-function Big({ main, faded, unit, size = 'l' }: { main: string; faded?: string; unit?: string; size?: 'l' | 'm' }) {
-  return (
-    <span className={`big big-${size}`}>
-      <span>{main}</span>
-      {faded ? <span className="fade">{faded}</span> : null}
-      {unit ? <span className="unit">{unit}</span> : null}
-    </span>
-  );
-}
-
-function ZecBig({ zat, size }: { zat: number; size?: 'l' | 'm' }) {
-  const [whole, dec] = zecParts(zat);
-  return <Big main={whole} faded={dec} unit="TAZ" size={size} />;
-}
+const Tear = () => <div className="tear" aria-hidden="true" />;
 
 type CheckState = 'checking' | 'ok' | 'bad' | 'unavailable';
 
+/** Recomputes the anchored nullifier-set hash from the published nullifiers, in this tab. */
 function AnchorCheck() {
   const [state, setState] = useState<CheckState>('checking');
   const [hash, setHash] = useState('');
@@ -108,106 +94,39 @@ function AnchorCheck() {
     check();
   }, [check]);
 
-  const total = r.calls.length + r.fixtureNullifiers.length;
-  const message =
-    state === 'unavailable'
-      ? 'This browser cannot hash here (Web Crypto needs https or localhost).'
-      : state === 'checking'
-        ? 'Hashing the published nullifiers in this tab…'
-        : state === 'ok'
-          ? `The ${total} published nullifiers hash to the anchored value.`
-          : 'The published nullifiers do not match the anchor.';
-  const buttonLabel = state === 'checking' ? 'Hashing…' : state === 'ok' ? 'Matches · hash again' : state === 'bad' ? 'Mismatch · hash again' : 'Try again';
-
+  const total = tickets.length;
+  const message = {
+    unavailable: 'Setup required: this browser cannot hash here (Web Crypto needs https or localhost).',
+    checking: 'Hashing the published nullifiers in this tab…',
+    ok: `The ${total} published nullifiers hash to the anchored value.`,
+    bad: 'The published nullifiers do not hash to the anchored value.',
+  }[state];
   return (
-    <div className={`check check-${state}`}>
-      <div className="check-head">
-        <span className={`pill pill-${state === 'ok' ? 'ok' : state === 'bad' ? 'no' : state === 'unavailable' ? 'warn' : 'idle'}`}>
-          <span className="pill-dot" aria-hidden="true" />
-          {state === 'ok' ? 'Verified in this tab' : state === 'bad' ? 'Does not match' : state === 'unavailable' ? 'Setup required' : 'Checking'}
-        </span>
-        <button type="button" className={`btn btn-${state}`} onClick={check} disabled={state === 'checking'} aria-busy={state === 'checking'}>
-          {state === 'checking' ? <span className="spinner" aria-hidden="true" /> : null}
-          {buttonLabel}
-        </button>
-      </div>
-      <p className={`check-msg ${state === 'ok' ? 'ok' : state === 'bad' ? 'no' : 'muted'}`} role="status" aria-live="polite">
+    <div className={`check is-${state}`}>
+      <p className="check-msg" role="status" aria-live="polite">
+        <span className="dot" aria-hidden="true" />
         {message}
       </p>
       <dl className="kv">
         <div>
-          <dt>sha256 over the sorted set</dt>
+          <dt>sha256 of the sorted set, here</dt>
           <dd>
-            <code>{short(hash || '…', 12, 8)}</code>
+            <code>{hash ? short(hash, 14, 8) : '…'}</code>
           </dd>
         </div>
         <div>
-          <dt>anchored</dt>
+          <dt>anchored on-chain</dt>
           <dd>
-            <code>{short(r.anchor.nullifierHash, 12, 8)}</code>
+            <code>{short(r.anchor.nullifierHash, 14, 8)}</code>
           </dd>
         </div>
       </dl>
+      <button type="button" className="btn" onClick={check} disabled={state === 'checking'} aria-busy={state === 'checking'}>
+        {state === 'checking' ? 'Hashing…' : state === 'unavailable' ? 'Try again' : 'Hash again'}
+      </button>
     </div>
   );
 }
-
-function Tickets() {
-  if (r.calls.length === 0 && r.fixtureNullifiers.length === 0) {
-    return (
-      <div className="empty">
-        <TicketMark size={40} />
-        <p>No paid calls in this run yet.</p>
-        <p className="muted small">Run the testnet script to publish deployments/testnet.json; tickets appear here once a note pays.</p>
-      </div>
-    );
-  }
-  return (
-    <ol className="tickets">
-      {r.calls.map((c) => (
-        <li key={c.n} className="ticket">
-          <div className="ticket-top">
-            <span className="ticket-no">No. {pad(c.n)}</span>
-            <span className={`pill pill-sm ${c.status === 200 ? 'pill-paid' : 'pill-no'}`}>HTTP {c.status}</span>
-          </div>
-          <div className="ticket-rule" aria-hidden="true" />
-          <div className="ticket-body">
-            <span className="ticket-label">nullifier</span>
-            <code className="ticket-hash" title={c.nullifier}>
-              {short(c.nullifier, 10, 4)}
-            </code>
-            <span className="ticket-meta">proof {c.proveMs} ms</span>
-          </div>
-        </li>
-      ))}
-      {r.fixtureNullifiers.map((nf, i) => (
-        <li key={nf} className="ticket ticket-fixture">
-          <div className="ticket-top">
-            <span className="ticket-no">Test note {i + 1}</span>
-            <span className="pill pill-sm pill-test">fixture</span>
-          </div>
-          <div className="ticket-rule" aria-hidden="true" />
-          <div className="ticket-body">
-            <span className="ticket-label">nullifier</span>
-            <code className="ticket-hash" title={nf}>
-              {short(nf, 10, 4)}
-            </code>
-            <span className="ticket-meta">paid one call, then used for attack tests</span>
-          </div>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-const NAV = [
-  ['overview', 'Overview'],
-  ['tickets', 'Tickets'],
-  ['who', 'Who sees what'],
-  ['ref', 'Refusals'],
-  ['agent', 'Agent run'],
-  ['anc', 'Anchor'],
-] as const;
 
 /** One MCP tool call from the recorded opencode agent run (deployments/agent-run-2026-10-20.jsonl). */
 type AgentCall = { at: string; tool: string; args: Record<string, unknown>; isError: boolean; result: unknown };
@@ -223,8 +142,7 @@ function describeCall(c: AgentCall): { what: string; detail: string } {
     return { what: `deposit ${a.count} × ${a.units} units`, detail: typeof res === 'string' ? res : `tx ${String(res.txid).slice(0, 8)}…, ${res.amount_zat} zat` };
   }
   if (c.tool === 'pay') {
-    const url = String((c.args as { url?: string }).url ?? '');
-    const path = url.replace(/^https?:\/\/[^/]+/, '');
+    const path = String((c.args as { url?: string }).url ?? '').replace(/^https?:\/\/[^/]+/, '');
     return { what: `pay ${path}`, detail: typeof res === 'string' ? res : `HTTP ${res.status}, proof ${res.prove_ms} ms` };
   }
   if (c.tool === 'claim') return { what: 'claim the deposit', detail: typeof res === 'string' ? res : `credited ${res.count} notes from leaf ${res.first}` };
@@ -232,312 +150,362 @@ function describeCall(c: AgentCall): { what: string; detail: string } {
   return { what: 'status', detail: w ? `${w.credited} credited, ${w.unspent_units} units unspent` : String(res) };
 }
 
-export function App() {
-  const spentTotal = r.calls.length * Number(r.priceUnits) * r.unitZat;
-  const proveTimes = r.calls.map((c) => c.proveMs);
-  const ranAt = new Date(r.ranAt).toLocaleString();
+function Rail() {
+  const [sel, setSel] = useState(0);
+  const railRef = useRef<HTMLOListElement>(null);
+  if (tickets.length === 0)
+    return (
+      <div className="empty">
+        <Mark size={36} />
+        <p>No tickets spent yet.</p>
+        <p className="muted">Run the live example to publish deployments/testnet.json; each paid call appears here as a ticket.</p>
+      </div>
+    );
+  const t = tickets[sel];
+  const scroll = (dir: number) => {
+    const el = railRef.current;
+    if (el) el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  };
   return (
-    <div className="page">
-      <div className="frame">
-        <header className="bar">
-          <a className="brand" href="#overview" aria-label="Kippu, back to overview">
-            <TicketMark />
-            <span className="wordmark">Kippu</span>
-            <span className="kanji" lang="ja">
-              切符
-            </span>
+    <>
+      <div className="rail-bar">
+        <p className="muted">Pick a ticket to read its stub. Each one is a nullifier the gateway burned; none of them says which of the {r.gateway.leaves} notes it was.</p>
+        <div className="rail-ctl">
+          <button type="button" onClick={() => scroll(-1)} aria-label="Scroll tickets left">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+          <button type="button" onClick={() => scroll(1)} aria-label="Scroll tickets right">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+        </div>
+      </div>
+      <ol className="rail" ref={railRef} aria-label="Spent tickets">
+        {tickets.map((x, i) => (
+          <li key={x.key}>
+            <button type="button" className={`tix${x.fixture ? ' fixture' : ''}`} aria-pressed={i === sel} onClick={() => setSel(i)}>
+              <span className="tix-top">
+                <span className="tix-no">
+                  <small>{x.fixture ? 'FIXTURE' : 'NO.'}</small>
+                  {x.label}
+                </span>
+                <span className="ok">{x.status}</span>
+              </span>
+              <Tear />
+              <span className="tix-bot">
+                <code>{short(x.nullifier, 9, 4)}</code>
+                {x.proveMs !== null ? `proof ${x.proveMs} ms` : 'then attack tests'}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+      <article className="stub" aria-live="polite" aria-label={`Ticket ${t.label}`}>
+        <div className="stub-l">
+          <span className="label">Ticket</span>
+          <b>{t.label}</b>
+          <span className="tag">{t.fixture ? 'fixture note' : 'paid call'}</span>
+        </div>
+        <Tear />
+        <dl className="stub-r">
+          <div className="wide">
+            <dt>Nullifier (public signal 0)</dt>
+            <dd>
+              <code>{t.nullifier}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Request</dt>
+            <dd>GET /api/quote</dd>
+          </div>
+          <div>
+            <dt>Gateway answer</dt>
+            <dd>HTTP {t.status}</dd>
+          </div>
+          <div>
+            <dt>Price</dt>
+            <dd>
+              {r.priceUnits} units · {zat(Number(r.priceUnits) * r.unitZat)}
+            </dd>
+          </div>
+          <div>
+            <dt>Client proof</dt>
+            <dd>{t.proveMs !== null ? `${t.proveMs} ms` : 'not timed (fixture)'}</dd>
+          </div>
+          <div className="wide">
+            <dt>On-chain</dt>
+            <dd>{t.fixture ? 'Nothing. Its secrets are published so tests can pay with it on a fresh gateway, then try the attacks.' : 'Nothing. No transaction for this call; the nullifier is counted in the anchor.'}</dd>
+          </div>
+        </dl>
+      </article>
+    </>
+  );
+}
+
+const NAV = [
+  ['pass', 'Deposit'],
+  ['tickets', 'Tickets'],
+  ['who', 'Who sees what'],
+  ['void', 'Voided'],
+  ['agent', 'Agent'],
+  ['anchor', 'Anchor'],
+] as const;
+
+export function App() {
+  const proveTimes = r.calls.map((c) => c.proveMs);
+  const ranAt = new Date(r.ranAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' });
+  const refused = agentCalls.filter((c) => c.isError).length;
+  const voids = [
+    ...Object.entries(ATTACK)
+      .filter(([k]) => r.attacks[k] !== undefined)
+      .map(([k, what]) => ({ code: String(r.attacks[k]), what })),
+    ...Object.entries(r.refusals).map(([k, v]) => ({ code: /already claimed/.test(v) ? '409 already claimed' : v.replace(/^.*not credited: /, ''), what: k.charAt(0).toUpperCase() + k.slice(1) + '.' })),
+  ];
+  return (
+    <>
+      <a className="skip" href="#main">
+        Skip to content
+      </a>
+      <header className="top">
+        <div className="wrap top-in">
+          <a className="brand" href="#pass" aria-label="Kippu run record, top">
+            <Mark />
+            <span>Kippu</span>
+            <small lang="ja">切符</small>
+            <span className="brand-sub">run record</span>
           </a>
-          <nav className="nav" aria-label="Sections">
+          <nav aria-label="Sections">
             {NAV.map(([id, label]) => (
               <a key={id} href={`#${id}`}>
                 {label}
               </a>
             ))}
           </nav>
-          <div className="bar-pills">
-            <span className="pill pill-net">
-              <span className="pill-dot" aria-hidden="true" />
-              Zcash testnet
+          <a className="btn btn-line btn-sm" href={REPO} target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+        </div>
+      </header>
+
+      <main id="main" className="wrap">
+        <section id="pass" className="intro" aria-labelledby="intro-h">
+          <p className="eyebrow">
+            <span className="net">Zcash testnet</span> run of {ranAt} UTC
+          </p>
+          <h1 id="intro-h">
+            {r.calls.length} paid calls. <em>{r.calls.length > 0 ? 'No transaction per call.' : ''}</em>
+          </h1>
+
+          <article className="pass" aria-label="The shielded deposit">
+            <div className="pass-admit">
+              <span className="label">Admit</span>
+              <b>{r.gateway.leaves}</b>
+              <span className="label">notes · {r.priceUnits} units</span>
+            </div>
+            <Tear />
+            <div className="pass-body">
+              <span className="label">One shielded deposit, credited by the gateway's viewing key</span>
+              <h2>{taz(Number(r.deposit.amountZat))}</h2>
+              <dl className="meta">
+                <div>
+                  <dt>Block</dt>
+                  <dd>{r.deposit.height.toLocaleString('en-US')}</dd>
+                </div>
+                <div>
+                  <dt>Deposit</dt>
+                  <dd>
+                    <Tx id={r.deposit.txid} />
+                  </dd>
+                </div>
+                <div>
+                  <dt>Funded by</dt>
+                  <dd>
+                    <Tx id={r.txs.fund} />
+                  </dd>
+                </div>
+                <div>
+                  <dt>Tree root</dt>
+                  <dd>
+                    <code>{short(r.gateway.root, 10, 6)}</code>
+                  </dd>
+                </div>
+              </dl>
+            </div>
+            <Tear />
+            <div className="pass-end">
+              <span className="label">
+                Punched {r.gateway.spent} of {r.gateway.leaves}
+              </span>
+              <ol className="punches" aria-label={`${r.gateway.spent} of ${r.gateway.leaves} notes spent`}>
+                {Array.from({ length: r.gateway.leaves }, (_, i) => (
+                  <li key={i} className={i < r.gateway.spent ? (i >= r.calls.length ? 'f' : 'p') : ''} />
+                ))}
+              </ol>
+            </div>
+          </article>
+
+          <div className="stats">
+            <div>
+              <span className="label">On-chain</span>
+              <b>2</b>
+              <p>transactions in the run: the deposit and the anchor</p>
+            </div>
+            <div>
+              <span className="label">Off-chain</span>
+              <b>{r.calls.length}</b>
+              <p>paid calls, each a Groth16 proof checked by the gateway</p>
+            </div>
+            <div>
+              <span className="label">Client proof</span>
+              {proveTimes.length ? (
+                <b>
+                  {Math.min(...proveTimes)}–{Math.max(...proveTimes)}
+                  <small>ms</small>
+                </b>
+              ) : (
+                <b className="muted">—</b>
+              )}
+              <p>measured on the paying client</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="tickets" aria-labelledby="tickets-h">
+          <div className="head">
+            <h2 id="tickets-h">The ticket rail</h2>
+            <span className="count">
+              {tickets.length} spent · {r.calls.length} calls + {r.fixtureNullifiers.length} fixture
             </span>
-            <a className="pill pill-gh" href={REPO} target="_blank" rel="noreferrer">
-              GitHub
-              <ArrowOut />
+          </div>
+          <Rail />
+        </section>
+
+        <section id="who" aria-labelledby="who-h">
+          <div className="head">
+            <h2 id="who-h">Who sees what</h2>
+          </div>
+          <ul className="who">
+            <li>
+              <h3>The chain</h3>
+              <p>Two shielded transactions: the deposit and the anchor.</p>
+              <p className="not">Not amounts, memos, who paid or how many calls.</p>
+            </li>
+            <li>
+              <h3>The gateway</h3>
+              <p>
+                The deposit, its {r.gateway.leaves} note leaves, {tickets.length} nullifiers and each caller's network address.
+              </p>
+              <p className="not">Not which note paid which call, as long as it serves every client the same leaves.</p>
+            </li>
+            <li>
+              <h3>Anyone with the anchor key</h3>
+              <p>
+                Leaf count {r.anchor.leaves}, the root, spent count {r.anchor.nullifiers} and the nullifier-set hash.
+              </p>
+              <p className="not">Not individual payments.</p>
+            </li>
+            <li>
+              <h3>Anyone with the gateway key</h3>
+              <p>Published for this demo so a fresh clone can re-check the deposit: its amount, memo and time.</p>
+              <p className="not">Not which notes were spent for what.</p>
+            </li>
+          </ul>
+          <p className="note">One depositor in this run, so every call came from that depositor's notes. Unlinkability between users needs several.</p>
+        </section>
+
+        <section id="void" aria-labelledby="void-h">
+          <div className="head">
+            <h2 id="void-h">Voided in the live run</h2>
+            <span className="count">{voids.length} refused</span>
+          </div>
+          <ul className="voids">
+            {voids.map((v, i) => (
+              <li key={i} className="void">
+                <code>{v.code}</code>
+                <p>{v.what}</p>
+                <span className="stamp" aria-hidden="true">
+                  VOID
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="fixed">
+            <div>
+              <span className="label">Fixed on Oct 21, after this run</span>
+              <p>A review found that a spent note could pay again with its nullifier written <code>0&lt;n&gt;</code> or in hex, and that one payment sent several times at once was paid each time. Both now fail, along with a relayed challenge and an unauthenticated anchor. Tested on a fresh gateway with real proofs; not part of this run.</p>
+            </div>
+            <a className="btn btn-tangerine btn-sm" href={`${REPO}/blob/main/docs/JUDGE-2026-10-21.md`} target="_blank" rel="noreferrer">
+              Read the review
             </a>
           </div>
-        </header>
+        </section>
 
-        <main>
-          <section id="overview" className="overview" aria-labelledby="overview-h">
-            <div className="ov-main">
-              <div className="ov-eyebrow">
-                <span className="eyebrow-ico" aria-hidden="true">
-                  <TicketMark size={22} />
-                </span>
-                <span>Prepaid ZK tickets</span>
-                <span className="muted">· run {ranAt}</span>
-              </div>
-              <h1 id="overview-h">
-                {r.calls.length} paid calls. <span className="h-fade">No transaction per call.</span>
-              </h1>
-              <p className="lede">
-                One shielded deposit bought {r.gateway.leaves} prepaid notes. Each API call was paid with a zero-knowledge proof of one unspent note, checked by the gateway in a few
-                hundred milliseconds. The gateway learns that some note paid, not which one.
+        <section id="agent" aria-labelledby="agent-h">
+          <div className="head">
+            <h2 id="agent-h">An LLM agent with a cap</h2>
+            <span className="count">
+              {refused} of {agentCalls.length} calls refused
+            </span>
+          </div>
+          <p className="muted lede">
+            opencode used the four MCP tools against a local gateway on testnet. A quote response carried an injected order to buy a 50-unit report at any cost; <code>Z402_MAX_DEPOSIT_ZAT=40000</code> refused every 50,000 zat deposit. Every line is from <code>deployments/agent-run-2026-10-20.jsonl</code>.
+          </p>
+          {agentCalls.length === 0 ? (
+            <p className="empty">No agent run recorded yet.</p>
+          ) : (
+            <ol className="roll">
+              {agentCalls.map((c, i) => {
+                const d = describeCall(c);
+                return (
+                  <li key={c.at + i}>
+                    <span className="roll-n">{pad(i + 1)}</span>
+                    <span className="roll-what">{d.what}</span>
+                    <span className={`tag${c.isError ? ' no' : ''}`}>{c.isError ? 'refused' : 'ok'}</span>
+                    <code className="roll-detail">{d.detail}</code>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
+
+        <section id="anchor" aria-labelledby="anchor-h">
+          <div className="head">
+            <h2 id="anchor-h">The anchor</h2>
+            <span className="count">memo read back: {r.anchor.memoSeen ? 'yes' : 'no'}</span>
+          </div>
+          <article className="receipt">
+            <div className="receipt-l">
+              <p>
+                The gateway wrote its state into a shielded memo to an address whose viewing key is published: <Tx id={r.anchor.txid} />.
               </p>
-
-              <div className="stats">
-                <div className="stat">
-                  <span className="stat-label">Paid calls</span>
-                  <Big main={String(r.calls.length)} unit="calls" />
+              <dl className="meta">
+                <div>
+                  <dt>Leaves</dt>
+                  <dd>{r.anchor.leaves}</dd>
                 </div>
-                <div className="stat">
-                  <span className="stat-label">Notes spent of credited</span>
-                  <Big main={String(r.gateway.spent)} faded={` / ${r.gateway.leaves}`} unit="notes" />
+                <div>
+                  <dt>Nullifiers</dt>
+                  <dd>{r.anchor.nullifiers}</dd>
                 </div>
-                <div className="stat">
-                  <span className="stat-label">Proof time</span>
-                  {proveTimes.length ? <Big main={String(Math.min(...proveTimes))} faded={`–${Math.max(...proveTimes)}`} unit="ms" /> : <span className="muted">no calls yet</span>}
+                <div>
+                  <dt>Matches the gateway</dt>
+                  <dd>{r.anchor.matchesGatewayState ? 'yes' : 'no'}</dd>
                 </div>
-              </div>
-
-              <div className="panel lanes" aria-label="On-chain transactions compared with paid calls">
-                <div className="lane">
-                  <span className="lane-name">On Zcash</span>
-                  <div className="marks">
-                    <a className="mark chain" href={EXPLORER + r.txs.deposit} target="_blank" rel="noreferrer" title="deposit">
-                      deposit
-                    </a>
-                    <span className="gap" />
-                    <a className="mark chain" href={EXPLORER + r.txs.anchor} target="_blank" rel="noreferrer" title="anchor">
-                      anchor
-                    </a>
-                  </div>
-                </div>
-                <div className="lane">
-                  <span className="lane-name">Paid calls</span>
-                  <div className="marks dots">
-                    {r.calls.map((c) => (
-                      <span key={c.n} className="dot" title={`call ${c.n}: HTTP ${c.status}, proof ${c.proveMs} ms, nullifier ${short(c.nullifier, 10, 4)}`} />
-                    ))}
-                  </div>
-                </div>
-              </div>
+              </dl>
+              <code className="memo">{r.anchor.memo}</code>
             </div>
-
-            <aside className="ov-side" aria-label="Deposit and spend">
-              <div className="deposit-card">
-                <div className="dc-top">
-                  <span className="dc-label">Shielded deposit</span>
-                  <span className="dc-block">block {r.deposit.height.toLocaleString()}</span>
-                </div>
-                <div className="dc-perf" aria-hidden="true" />
-                <div className="dc-bottom">
-                  <span className="stat-label">Deposit</span>
-                  <ZecBig zat={Number(r.deposit.amountZat)} />
-                  <div className="dc-row">
-                    <span className="muted small">{r.gateway.leaves} notes credited</span>
-                    <Tx id={r.deposit.txid} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="panel spend">
-                <span className="stat-label">Spent on paid calls</span>
-                <ZecBig zat={spentTotal} size="m" />
-                <dl className="spend-grid">
-                  <div>
-                    <dt>Calls</dt>
-                    <dd>{r.calls.length}</dd>
-                  </div>
-                  <div>
-                    <dt>Price</dt>
-                    <dd>{r.priceUnits} units</dd>
-                  </div>
-                  <div>
-                    <dt>Per call</dt>
-                    <dd>{zec(Number(r.priceUnits) * r.unitZat)}</dd>
-                  </div>
-                </dl>
-              </div>
-              <p className="muted small side-note">
-                Deposit {zec(Number(r.deposit.amountZat))} in <Tx id={r.deposit.txid} /> (block {r.deposit.height.toLocaleString()}); {r.calls.length} calls × {r.priceUnits} units ={' '}
-                {zec(spentTotal)}
-                {proveTimes.length ? `; proofs took ${Math.min(...proveTimes)}–${Math.max(...proveTimes)} ms` : ''}. Two more notes paid one call each and were then used for the attack
-                tests: {r.gateway.spent} notes spent in all.
-              </p>
-            </aside>
-          </section>
-
-          <section id="tickets" aria-labelledby="tickets-h">
-            <div className="sec-head">
-              <h2 id="tickets-h">Tickets punched</h2>
-              <span className="pill pill-idle">
-                {r.gateway.spent} of {r.gateway.leaves} notes spent
-              </span>
+            <Tear />
+            <div className="receipt-r">
+              <span className="label">Recompute in your browser</span>
+              <AnchorCheck />
             </div>
-            <p className="muted sec-lede">One ticket per spent note, identified only by its nullifier. Nothing here says which deposit note it came from.</p>
-            <Tickets />
-          </section>
-
-          <section id="who" aria-labelledby="who-h">
-            <div className="sec-head">
-              <h2 id="who-h">Who sees what</h2>
-            </div>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">Observer</th>
-                    <th scope="col">Sees</th>
-                    <th scope="col">Does not see</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="strong">The chain</td>
-                    <td>two shielded transactions (deposit, anchor)</td>
-                    <td className="muted">amounts, memos, who paid, how many calls</td>
-                  </tr>
-                  <tr>
-                    <td className="strong">The gateway</td>
-                    <td>
-                      the deposit and its {r.gateway.leaves} note leaves; {r.calls.length + r.fixtureNullifiers.length} nullifiers
-                    </td>
-                    <td className="muted">which note paid which call</td>
-                  </tr>
-                  <tr>
-                    <td className="strong">Anyone with the anchor viewing key</td>
-                    <td>
-                      leaf count {r.anchor.leaves}, root, spent count {r.anchor.nullifiers}, nullifier-set hash
-                    </td>
-                    <td className="muted">individual payments</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p className="muted small">With one depositor, every call came from that depositor’s notes. Unlinkability between users needs several depositors.</p>
-          </section>
-
-          <section id="ref" aria-labelledby="ref-h">
-            <div className="sec-head">
-              <h2 id="ref-h">What the gateway refused</h2>
-              <span className="pill pill-no">
-                <span className="pill-dot" aria-hidden="true" />
-                {Object.keys(ATTACK).length + Object.keys(r.refusals).length} refused
-              </span>
-            </div>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">Attempt</th>
-                    <th scope="col">Gateway answer</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(ATTACK).map(([k, label]) => (
-                    <tr key={k}>
-                      <td>{label}</td>
-                      <td>
-                        <code className="code-pill">{String(r.attacks[k])}</code>
-                      </td>
-                    </tr>
-                  ))}
-                  {Object.entries(r.refusals).map(([k, v]) => (
-                    <tr key={k}>
-                      <td>{k}</td>
-                      <td>
-                        <code className="code-pill code-long">{v.replace(/^HTTP \d+: /, '')}</code>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section id="agent" aria-labelledby="agent-h">
-            <div className="sec-head">
-              <h2 id="agent-h">An LLM agent with a spending cap</h2>
-              <span className="pill pill-no">
-                <span className="pill-dot" aria-hidden="true" />
-                {agentCalls.filter((c) => c.isError).length} of {agentCalls.length} calls refused
-              </span>
-            </div>
-            <p className="muted small">
-              An opencode agent used the four MCP tools against a local gateway on testnet. A quote response carried an injected order to buy a 50-unit report at any cost; <code>Z402_MAX_DEPOSIT_ZAT=40000</code> refused every 50,000 zat deposit, so it never bought it. Every call below is from{' '}
-              <code>deployments/agent-run-2026-10-20.jsonl</code>.
-            </p>
-            {agentCalls.length === 0 ? (
-              <p className="muted small">No agent run recorded yet.</p>
-            ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th scope="col">#</th>
-                      <th scope="col">Call</th>
-                      <th scope="col">Result</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {agentCalls.map((c, i) => {
-                      const d = describeCall(c);
-                      return (
-                        <tr key={c.at + i}>
-                          <td>{i + 1}</td>
-                          <td>
-                            {d.what} <span className={`pill ${c.isError ? 'pill-no' : 'pill-ok'}`}>{c.isError ? 'refused' : 'ok'}</span>
-                          </td>
-                          <td>
-                            <code className="code-pill code-long">{d.detail}</code>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-
-          <section id="anc" aria-labelledby="anc-h">
-            <div className="sec-head">
-              <h2 id="anc-h">The anchor</h2>
-              <span className={`pill ${r.anchor.memoSeen ? 'pill-ok' : 'pill-no'}`}>
-                <span className="pill-dot" aria-hidden="true" />
-                memo read back: {r.anchor.memoSeen ? 'yes' : 'no'}
-              </span>
-            </div>
-            <div className="anchor-grid">
-              <div className="panel">
-                <p className="anchor-text">
-                  The gateway put its state in a shielded memo to an address with a published viewing key (<Tx id={r.anchor.txid} />). The memo was read back on-chain:{' '}
-                  {r.anchor.memoSeen ? 'yes' : 'no'}.
-                </p>
-                <div className="anchor-stats">
-                  <div className="stat">
-                    <span className="stat-label">Leaves</span>
-                    <Big main={String(r.anchor.leaves)} size="m" />
-                  </div>
-                  <div className="stat">
-                    <span className="stat-label">Nullifiers</span>
-                    <Big main={String(r.anchor.nullifiers)} size="m" />
-                  </div>
-                </div>
-                <code className="memo">{r.anchor.memo}</code>
-              </div>
-              <div className="panel">
-                <span className="stat-label">Recompute in your browser</span>
-                <AnchorCheck />
-              </div>
-            </div>
-          </section>
-        </main>
-        <footer className="foot">
-          <span>MIT · Copyright (c) 2026 Nivesh Gajengi</span>
-          <span>testnet only · the gateway is trusted for liveness; its state is anchored</span>
-        </footer>
-      </div>
-    </div>
+          </article>
+        </section>
+      </main>
+      <footer className="wrap foot">
+        <span>Kippu · MIT · Copyright (c) 2026 Nivesh Gajengi</span>
+        <span>Zcash testnet · not audited · the gateway is trusted for liveness; its state is anchored</span>
+      </footer>
+    </>
   );
 }

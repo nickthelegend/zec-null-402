@@ -104,3 +104,18 @@ describe('the gateway wallet and its keys', () => {
     expect(JSON.parse(info)).not.toHaveProperty('depositUivk');
   });
 });
+
+describe('bounded memory', () => {
+  it('outstanding challenges are capped: the oldest is dropped first', async () => {
+    const g = await fresh({ maxChallenges: 3 });
+    const p = await g.prove(notes[0]);
+    for (let i = 0; i < 3; i++) await g.challenge();
+    expect((await g.pay(p)).body.reason).toBe('UNKNOWN_CHALLENGE');
+  }, 180_000);
+
+  it('a request body over 64 KiB is refused with 413', async () => {
+    const g = await fresh({}, false);
+    const r = await fetch(`${g.base}/api/deposits`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ txid: 'a'.repeat(64), items: [{ secretHash: '1'.repeat(70_000), value: '1' }] }) });
+    expect(r.status).toBe(413);
+  });
+});

@@ -32,6 +32,8 @@ export interface GatewayOptions {
   anchorUa?: string;
   /** bearer token for POST /api/anchor, which spends from the gateway wallet */
   adminToken?: string;
+  /** outstanding unpaid challenges kept in memory (default 10,000); the oldest is dropped first */
+  maxChallenges?: number;
 }
 
 export interface Challenge {
@@ -48,6 +50,8 @@ export interface Challenge {
 }
 
 const ROOTS_KEPT = 64;
+const CHALLENGE_TTL_MS = 5 * 60_000;
+const MAX_BODY = 64 * 1024;
 const SIGNALS = ['nullifier', 'merkle_root', 'pay_to', 'required_amount', 'context_hash'] as const;
 /**
  * snarkjs parses "0123" and "0x7b" as the same field element as "123", so a proof verifies with any of
@@ -124,8 +128,16 @@ export class Gateway {
       nonce,
       contextHash: contextHash(method, path, price, this.payTo, nonce).toString(),
       root: await this.root(),
-      expiresAt: Date.now() + 5 * 60_000,
+      expiresAt: Date.now() + CHALLENGE_TTL_MS,
     };
+    // Every unpaid GET makes a challenge: drop expired ones, then the oldest beyond the cap (Map keeps insertion order).
+    const now = Date.now();
+    for (const [n, x] of this.issued) if (x.expiresAt < now) this.issued.delete(n);
+    const max = this.o.maxChallenges ?? 10_000;
+    for (const n of this.issued.keys()) {
+      if (this.issued.size < max) break;
+      this.issued.delete(n);
+    }
     this.issued.set(nonce, c);
     return c;
   }
@@ -186,7 +198,10 @@ export function serveGateway(g: Gateway): Server {
     res.writeHead(status, { 'content-type': 'application/json', 'access-control-allow-origin': '*', ...headers }).end(JSON.stringify(body));
   const body = async (req: IncomingMessage) => {
     let s = '';
-    for await (const c of req) s += c;
+    for await (const c of req) {
+      s += c;
+      if (s.length > MAX_BODY) throw new GatewayError(413, `request body over ${MAX_BODY} bytes`);
+    }
     return JSON.parse(s || '{}');
   };
   async function handle(req: IncomingMessage, res: ServerResponse) {

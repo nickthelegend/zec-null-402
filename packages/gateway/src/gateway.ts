@@ -6,7 +6,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import { commitmentOf, contextHash, fieldOfSha256, leafFromItem, Tree, verifyOffChain, type PaymentPublic } from '@z402/circuits';
+import { commitmentOf, contextHash, fieldOfSha256, leafFromItem, R, Tree, verifyOffChain, type PaymentPublic } from '@z402/circuits';
 import { scan } from './scan.js';
 
 export interface GatewayState {
@@ -46,6 +46,13 @@ export interface Challenge {
 }
 
 const ROOTS_KEPT = 64;
+const SIGNALS = ['nullifier', 'merkle_root', 'pay_to', 'required_amount', 'context_hash'] as const;
+/**
+ * snarkjs parses "0123" and "0x7b" as the same field element as "123", so a proof verifies with any of
+ * them. The gateway keys nullifiers by string; it accepts only the one canonical decimal form (no sign,
+ * no leading zero, below the field modulus) so one note has exactly one nullifier key.
+ */
+export const isCanonicalField = (v: unknown): v is string => typeof v === 'string' && /^(0|[1-9]\d{0,76})$/.test(v) && BigInt(v) < R;
 export const nullifierSetHash = (ns: string[]) => createHash('sha256').update(`zec-null-402:v1:nullifiers:${[...ns].sort().join(',')}`).digest('hex');
 export const anchorMemo = (leaves: number, root: string, nullifiers: number, nh: string) => `z402:anchor:${leaves}:${root}:${nullifiers}:${nh}`;
 
@@ -113,7 +120,8 @@ export class Gateway {
     const c = this.issued.get(payment?.nonce);
     if (!c || c.resource !== path || c.expiresAt < Date.now()) return 'UNKNOWN_CHALLENGE';
     const s = payment.signals;
-    if (!s || s.pay_to !== c.payTo || s.required_amount !== c.requiredAmount || s.context_hash !== c.contextHash) return 'NOT_BOUND_TO_CHALLENGE';
+    if (!s || typeof s !== 'object' || !SIGNALS.every((k) => isCanonicalField(s[k]))) return 'MALFORMED_SIGNALS';
+    if (s.pay_to !== c.payTo || s.required_amount !== c.requiredAmount || s.context_hash !== c.contextHash) return 'NOT_BOUND_TO_CHALLENGE';
     if (!this.state.roots.includes(s.merkle_root)) return 'UNKNOWN_ROOT';
     if (this.state.nullifiers[s.nullifier]) return 'NULLIFIER_SPENT';
     const ok = await verifyOffChain([s.nullifier, s.merkle_root, s.pay_to, s.required_amount, s.context_hash], payment.proof).catch(() => false);

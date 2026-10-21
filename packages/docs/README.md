@@ -26,12 +26,17 @@ pool contract (NEAR) cannot be ported to Zcash L1. Here **the gateway is the poo
 3. **Claim.** The client sends `{txid, items}`. The gateway recomputes the commitment, checks with its
    own incoming viewing key that the transaction pays at least that much with exactly that memo and
    is mined, and appends `Poseidon(secretHash_i, value_i)` for each note. A deposit is credited once.
-4. **Pay.** `GET` → 402 `{payTo, requiredAmount, contextHash, nonce, root}` → the client proves
-   `Payment(20)` for one note of exactly the price, bound to this request → `X-PAYMENT` → the gateway
+4. **Anchor.** The gateway sends `z402:anchor:<leaves>:<root>:<spent>:<sha256 of the sorted nullifier set>`
+   in a shielded memo to an address whose incoming viewing key is public (after every credited
+   deposit with `Z402_AUTO_ANCHOR=1`). New notes can pay once an anchor covering them is mined.
+5. **Pay.** `GET` → 402 `{payTo, requiredAmount, contextHash, nonce, root, anchor: {txid, leaves, root, height}}`
+   → the client reads that anchor tx from lightwalletd with the anchor viewing key it was configured
+   with (never one the gateway sends), requires a memo for exactly that leaf count and root, mined and
+   at most 2,880 blocks old, rebuilds the root from the first `leaves` leaves of `GET /api/leaves`,
+   and checks the anchor extends the last one it accepted → proves `Payment(20)` for one note of
+   exactly the price under that anchored root, bound to this request → `X-PAYMENT` → the gateway
    checks canonical signals, binding, known root, unspent nullifier, Groth16 → 200, nullifier burned.
    The client pays only challenges from its own gateway for the path it asked for.
-5. **Anchor.** The gateway sends `z402:anchor:<leaves>:<root>:<spent>:<sha256 of the sorted nullifier set>`
-   in a shielded memo to an address whose incoming viewing key is public.
 
 ## What each party learns
 
@@ -48,15 +53,20 @@ needs several depositors.
 
 ## Trust model
 
-- **The gateway is trusted** for liveness and for its state: it could refuse to credit a deposit,
-  refuse a valid proof, or (by editing its state) allow a double spend. The anchors make its leaf
-  set and nullifier set auditable after the fact: a published nullifier list that does not hash to
-  the anchored value, or a root that does not match the published leaves, is evidence.
-- **A dishonest gateway can partition users.** Clients build their tree from `GET /api/leaves`. A
-  gateway that gives each client a different leaf list sees a different root in each client's
-  proofs and can tell them apart. Comparing the root you prove against with the anchored roots
-  makes that visible; proving only against anchored roots would prevent it (the bold idea in
-  [JUDGE-2026-10-21.md](../../docs/JUDGE-2026-10-21.md), not built).
+- **The gateway is trusted** for liveness and for its nullifier set: it could refuse to credit a
+  deposit, refuse a valid proof, or (by editing its state) allow a double spend. The anchors make
+  its nullifier set auditable after the fact: a published nullifier list that does not hash to the
+  anchored value is evidence.
+- **Roots come from anchors, not from the gateway's word** (the bold idea in
+  [JUDGE-2026-10-21.md](../../docs/JUDGE-2026-10-21.md), built Oct 22). Every client proves against
+  the root of a recent anchor it has read on-chain itself, so clients that see the same anchor prove
+  against the same root, and leaves served after the anchor never enter a proof. To partition
+  clients by root, a gateway would have to anchor one root per client on-chain, where the published
+  anchor key shows them. Limits: clients check the anchor the gateway names (age, fork and rollback
+  against the last anchor they accepted) but do not scan the anchor address for competing anchors;
+  a gateway can still anchor between two clients' requests (timing); it sees network addresses.
+- **State** is SQLite: a restart keeps outstanding challenges, nullifiers, deposits and anchors;
+  two gateway processes on one database cannot both accept one nullifier or one challenge.
 - **Anchoring over HTTP** needs `Z402_ADMIN_TOKEN`: it spends from the gateway wallet.
 - **Trusted setup:** single-party local Groth16 setup (`packages/circuits/scripts/build.sh`). Whoever
   ran it could forge proofs; a real deployment needs a ceremony.
@@ -68,8 +78,8 @@ needs several depositors.
 | Do | See |
 |---|---|
 | `pnpm --filter @z402/circuits test` | real proofs; tampered inputs fail; no proof above a note's value; deposit commitments bind every note |
-| `pnpm --filter @z402/gateway test` | a fresh gateway credits the real published deposit (viewing key), refuses a second claim and altered values, accepts a real proof, refuses replay, tamper and wrong request; re-encoded nullifiers, parallel double spends, concurrent claims and an unauthenticated anchor are refused |
-| `pnpm --filter @z402/sdk test` | a real relay server in front of the gateway cannot get the client to pay its challenge |
+| `pnpm --filter @z402/gateway test` | a fresh gateway credits the real published deposit (viewing key), refuses a second claim and altered values, accepts a real proof, refuses replay, tamper and wrong request; re-encoded nullifiers, parallel double spends, concurrent claims and an unauthenticated anchor are refused; a restart keeps challenges and nullifiers; a second gateway process on the same database cannot pay a note twice; the published anchor is read on-chain and adopted only when it matches |
+| `pnpm --filter @z402/sdk test` | a real relay server in front of the gateway cannot get the client to pay its challenge; dishonest gateways serving the client its own root, a fake anchor, a rewritten leaf or no anchor are refused before proving; leaves added after the anchor never reach the proof |
 | run the live example | one deposit → 20 paid calls, no transaction per call, anchor memo found on-chain |
 
 ## Pre-existing work

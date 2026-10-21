@@ -84,7 +84,7 @@ export function createServer(): McpServer {
 
   server.registerTool(
     'pay',
-    { title: 'Fetch a paid URL', description: 'GETs `url`; on a zec-null-402 402 it pays with a zero-knowledge proof of one unspent note of the price. No transaction per call.', inputSchema: { url: z.string().url() } },
+    { title: 'Fetch a paid URL', description: 'GETs `url`; on a zec-null-402 402 it pays with a zero-knowledge proof of one unspent note of the price. No transaction per call. Pays only Z402_GATEWAY_URL, for the path requested; any other challenge is refused.', inputSchema: { url: z.string().url() } },
     (a) =>
       run('pay', a, async () => {
         const r = await client().pay(a.url);

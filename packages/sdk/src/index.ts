@@ -88,12 +88,21 @@ export class Z402Client {
     return { notes: f.notes.length, credited: f.notes.filter((n) => n.index !== null).length, unspent: unspent.length, unspent_units: unspent.reduce((t, n) => t + BigInt(n.value), 0n).toString(), deposits: Object.values(f.plans).map((p) => ({ txid: p.txid, units: p.units })) };
   }
 
-  /** GET a paid URL; on 402, prove with an unspent note of exactly the price and retry. */
+  /**
+   * GET a paid URL; on 402, prove with an unspent note of exactly the price and retry.
+   * Pays only challenges from this client's gateway, for the path it asked for, to the gateway's payTo:
+   * otherwise a server could relay a challenge from the gateway and redeem the proof for its own request.
+   */
   async pay(url: string): Promise<{ status: number; body: unknown; nullifier: string | null; proveMs: number }> {
+    const target = new URL(url);
     const first = await fetch(url);
     if (first.status !== 402) return { status: first.status, body: await first.json(), nullifier: null, proveMs: 0 };
-    const c = ((await first.json()) as { accepts: { scheme: string; payTo: string; requiredAmount: string; contextHash: string; nonce: string }[] }).accepts.find((a) => a.scheme === 'zec-null-402');
+    const c = ((await first.json()) as { accepts?: { scheme: string; payTo: string; requiredAmount: string; contextHash: string; nonce: string; resource: string }[] }).accepts?.find((a) => a.scheme === 'zec-null-402');
     if (!c) throw new Error('402 without a zec-null-402 challenge');
+    const origin = new URL(this.gateway).origin;
+    if (target.origin !== origin) throw new Error(`refusing to pay ${target.origin}: this client pays only its gateway ${origin}`);
+    if (c.resource !== target.pathname) throw new Error(`refusing to pay: the challenge is for ${c.resource}, the request was ${target.pathname}`);
+    if (c.payTo !== (await this.info()).payTo) throw new Error('refusing to pay: the challenge payTo is not the gateway’s');
     const f = this.read();
     const pick = f.notes.find((n) => n.index !== null && !n.spent && n.value === c.requiredAmount);
     if (!pick) throw new Error(`no unspent note of exactly ${c.requiredAmount} units (a note pays one call of its full value)`);

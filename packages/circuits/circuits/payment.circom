@@ -4,16 +4,17 @@ include "../node_modules/circomlib/circuits/poseidon.circom";
 include "../node_modules/circomlib/circuits/comparators.circom";
 
 /*
- * null-402 payment circuit, ported to NEAR (near-null-402). One change: the leaf is
- * Poseidon(Poseidon(noteSecret, nullifierSecret), noteValue), see below.
+ * null-402 payment circuit as changed for near-null-402 (same author): the leaf is
+ * Poseidon(Poseidon(noteSecret, nullifierSecret), noteValue), see below. In zec-null-402 (Kippu) the
+ * gateway verifies it off-chain, because Zcash has no contracts.
  *
  * Proves, in zero knowledge:
  *   "I know the secret to an unspent note that is a leaf in the Pool's Poseidon
  *    Merkle tree (public root), whose value >= requiredAmount, and I reveal
  *    exactly one nullifier for it, bound to payTo and contextHash."
  *
- * PUBLIC SIGNAL ORDER (must match PaymentPublicSignals in null-402-sdk and the
- * verifier contract's public_inputs):
+ * PUBLIC SIGNAL ORDER (must match PaymentPublic in packages/circuits/src/index.ts
+ * and the order the gateway passes to snarkjs):
  *   [0] nullifier       Poseidon(nullifierSecret) — one-time spend tag
  *   [1] merkleRoot      Pool commitment root
  *   [2] payTo           recipient binding
@@ -81,10 +82,10 @@ template Payment(levels) {
     signal input requiredAmount;
     signal input contextHash;
 
-    // near-null-402 change from null-402: the leaf binds the value the contract itself saw.
-    // secretHash = Poseidon(noteSecret, nullifierSecret) is what the depositor submits; the NEAR
-    // contract computes leaf = Poseidon(secretHash, value) from the NEAR actually attached, so a
-    // note can never claim more than was deposited (null-402 trusted the depositor's commitment).
+    // The leaf binds the note value. secretHash = Poseidon(noteSecret, nullifierSecret) is what the
+    // depositor submits; the gateway computes leaf = Poseidon(secretHash, value) only for a deposit
+    // whose memo commits to these values and whose amount covers their sum (its viewing key checks
+    // that), so a note can never claim more than was deposited.
     component sh = Poseidon(2);
     sh.inputs[0] <== noteSecret;
     sh.inputs[1] <== nullifierSecret;

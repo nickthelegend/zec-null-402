@@ -24,24 +24,22 @@ const rand248 = () => BigInt('0x' + randomBytes(31).toString('hex'));
 export interface Note {
   noteSecret: bigint;
   nullifierSecret: bigint;
-  /** value in pool units (1 unit = unit_yocto, e.g. milliNEAR) */
+  /** value in gateway units (1 unit = unitZat zatoshi; 1,000 in the live run) */
   value: bigint;
 }
 
 export const newNote = (value: bigint): Note => ({ noteSecret: rand248(), nullifierSecret: rand248(), value });
 /** What the depositor submits: Poseidon(noteSecret, nullifierSecret). */
 export const secretHash = (n: Note) => H(n.noteSecret, n.nullifierSecret);
-/** The leaf the pool computes on-chain: Poseidon(secretHash, value). */
+/** The leaf the gateway computes for a credited note: Poseidon(secretHash, value). */
 export const leafOf = async (n: Note) => H(await secretHash(n), n.value);
 export const nullifierOf = (n: Note) => H(n.nullifierSecret);
 
-/** sha256(bytes)[..31] as a field element (matches the contract's field_of_sha256). */
+/** sha256(bytes)[..31] as a field element (248 bits, always below the BN254 modulus). */
 export function fieldOfSha256(data: Uint8Array | string): bigint {
   return BigInt('0x' + createHash('sha256').update(data).digest('hex').slice(0, 62));
 }
 
-/** payTo for a merchant ML-DSA-65 public key. */
-export const payToFor = (mlDsaPk: Uint8Array) => fieldOfSha256(mlDsaPk);
 
 /** Request binding: method, path, price, payTo and a server nonce. */
 export const contextHash = (method: string, path: string, price: bigint, payTo: bigint, nonce: string) =>

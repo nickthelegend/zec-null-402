@@ -7,6 +7,9 @@
 //     a claim with altered note values
 //  5. the gateway anchors (leaf count, root, nullifier-set hash) in a shielded memo; re-read it with the
 //     anchor address's published viewing key
+//  Since Oct 22 the client proves only against a root it has read in a mined anchor, so a run from
+//  scratch anchors the credited notes before the calls ("opening anchor"). The published Oct 20 run
+//  predates that and anchored once, after the calls.
 //  Two notes ("fixture notes") are spent here and their secrets published, so tests in a fresh clone
 //  can pay against a fresh gateway with a real chain-backed deposit.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -76,19 +79,21 @@ async function main() {
   await mined(st.uivk.payer, st.tx.fund, 'fund');
 
   const gw = new Gateway({
-    statePath: resolve(DEMO, 'gateway-state.json'),
+    statePath: resolve(DEMO, 'gateway-state.db'),
+    legacyJsonState: resolve(DEMO, 'gateway-state.json'),
     depositUa: st.addr.gateway,
     depositUivk: st.uivk.gateway,
     unitZat: UNIT,
     prices: { '/api/quote': PRICE },
     content: () => ({ quote: 'ZEC/USD', note: 'paid with a proof' }),
     anchorUa: st.addr.anchor,
-    sendAnchor: async (memo) => sendOnce(`anchor:${memo.slice(0, 40)}`, W('gateway'), [{ address: st.addr.anchor, amount: 10_000n, memo }]),
+    anchorUivk: st.uivk.anchor,
+    sendAnchor: async (memo) => sendOnce(`anchor:${memo}`, W('gateway'), [{ address: st.addr.anchor, amount: 10_000n, memo }]),
   });
   const server = serveGateway(gw);
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  const client = new Z402Client(base, resolve(DEMO, 'payer-notes.json'));
+  const client = new Z402Client(base, resolve(DEMO, 'payer-notes.json'), { anchorUivk: st.uivk.anchor });
 
   // 1-2: one deposit for 22 notes
   if (!st.plan) {
@@ -114,7 +119,7 @@ async function main() {
     say(`refused ${label}: ${refusals[label]}`);
   };
   await tryClaim('second claim of the deposit', items);
-  const fresh = new Gateway({ statePath: resolve(DEMO, 'scratch-gateway.json'), depositUa: st.addr.gateway, depositUivk: st.uivk.gateway, unitZat: UNIT, prices: {}, content: () => null });
+  const fresh = new Gateway({ statePath: resolve(DEMO, 'scratch-gateway.db'), depositUa: st.addr.gateway, depositUivk: st.uivk.gateway, unitZat: UNIT, prices: {}, content: () => null });
   try {
     await fresh.claim(deposit, items.map((i, k) => (k === 0 ? { ...i, value: '1000' } : i)));
     throw new Error('altered values were credited');
@@ -125,6 +130,12 @@ async function main() {
 
   // 3: 20 paid calls
   const calls = (st.calls ??= []) as { n: number; status: number; nullifier: string; proveMs: number }[];
+  if (calls.length < CALLS && !gw.latestAnchor()) {
+    st.openingAnchor ??= await gw.anchor();
+    save();
+    await mined(st.uivk.anchor, st.openingAnchor.txid, 'opening anchor');
+    await gw.confirmAnchors();
+  }
   while (calls.length < CALLS) {
     const r = await client.pay(`${base}/api/quote`);
     calls.push({ n: calls.length + 1, status: r.status, nullifier: r.nullifier!, proveMs: r.proveMs });

@@ -112,7 +112,7 @@ export class Z402Client {
   }
 
   info() {
-    return this.get<{ depositUa: string; unitZat: number; payTo: string; prices: Record<string, string>; leaves: number; root: string; spent: number; anchors: unknown[] }>('/api/info');
+    return this.get<{ depositUa: string; unitZat: number; payTo: string; prices: Record<string, string>; leaves: number; root: string; spent: number; anchors: unknown[]; latestAnchor: { txid: string; leaves: number; root: string; height: number | null } | null }>('/api/info');
   }
 
   /** Creates `count` notes of `value` units and returns what to send: address, zatoshi and memo. */

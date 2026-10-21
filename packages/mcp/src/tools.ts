@@ -4,11 +4,14 @@
 //   Z402_WALLET        the agent's zingo data dir (deposit only)
 //   Z402_MAX_DEPOSIT_ZAT  cap on one deposit (default 300000)
 //   Z402_MCP_LOG       one JSON line per call
+//   Z402_ANCHOR_UIVK   the anchor address's published viewing key (pay proves only against a root read
+//                      on-chain with it); Z402_MAX_ANCHOR_AGE_BLOCKS (default 2880); Z402_LWD_URL;
+//                      Z402_ANCHOR_WAIT_SEC (default 900): how long pay waits for the next anchor
 import { appendFileSync } from 'node:fs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { quicksend, SetupRequiredError, zingoConfig } from '@z402/gateway';
-import { Z402Client } from '@z402/sdk';
+import { AnchorRefusedError, Z402Client } from '@z402/sdk';
 
 const need = (k: string) => process.env[k] || (() => { throw new SetupRequiredError(k); })();
 const client = () => new Z402Client(process.env.Z402_GATEWAY_URL ?? 'http://127.0.0.1:8405', need('Z402_NOTES_FILE'));
@@ -84,12 +87,23 @@ export function createServer(): McpServer {
 
   server.registerTool(
     'pay',
-    { title: 'Fetch a paid URL', description: 'GETs `url`; on a zec-null-402 402 it pays with a zero-knowledge proof of one unspent note of the price. No transaction per call. Pays only Z402_GATEWAY_URL, for the path requested; any other challenge is refused.', inputSchema: { url: z.string().url() } },
+    { title: 'Fetch a paid URL', description: 'GETs `url`; on a zec-null-402 402 it pays with a zero-knowledge proof of one unspent note of the price. No transaction per call. Pays only Z402_GATEWAY_URL, for the path requested; any other challenge is refused. Proves only against a root it has read itself in a recent on-chain anchor; if every note of the price was credited after the latest anchor, waits for the next one (up to Z402_ANCHOR_WAIT_SEC, default 900 s).', inputSchema: { url: z.string().url() } },
     (a) =>
       run('pay', a, async () => {
-        const r = await client().pay(a.url);
+        const deadline = Date.now() + Number(process.env.Z402_ANCHOR_WAIT_SEC ?? 900) * 1000;
+        let r;
+        for (;;) {
+          try {
+            r = await client().pay(a.url);
+            break;
+          } catch (e) {
+            // Only "your notes are newer than the latest anchor" is worth waiting for; nothing was proven.
+            if (!(e instanceof AnchorRefusedError && e.code === 'NOTE_NOT_ANCHORED') || Date.now() > deadline) throw e;
+            await new Promise((res) => setTimeout(res, 20_000));
+          }
+        }
         if (r.status !== 200) throw new Error(`payment refused (HTTP ${r.status}): ${JSON.stringify(r.body)}`);
-        return { status: r.status, nullifier: r.nullifier, prove_ms: r.proveMs, data: (r.body as { data?: unknown }).data };
+        return { status: r.status, nullifier: r.nullifier, prove_ms: r.proveMs, anchor: r.anchor, data: (r.body as { data?: unknown }).data };
       }),
   );
   return server;

@@ -8,6 +8,8 @@ importers:
 
   .: {}
 
+  packages/agent: {}
+
   packages/circuits:
     dependencies:
       circomlib:
@@ -132,13 +134,13 @@ importers:
       '@z402/circuits':
         specifier: workspace:*
         version: link:../circuits
+      '@z402/gateway':
+        specifier: workspace:*
+        version: link:../gateway
     devDependencies:
       '@types/node':
         specifier: ^22.20.5
         version: 22.20.5
-      '@z402/gateway':
-        specifier: workspace:*
-        version: link:../gateway
       typescript:
         specifier: ~5.9.3
         version: 5.9.3

@@ -1,7 +1,11 @@
 // zec-null-402 client: plan a deposit of N notes, claim it after the shielded deposit is mined, then
 // pay per call with a zero-knowledge proof of one unspent note. Note secrets live in a 0600 file.
+// The client proves only against a root it has read itself in an on-chain anchor (lightwalletd + the
+// anchor address's published viewing key), so a gateway cannot tell clients apart by handing each its
+// own root.
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { depositCommitment, leafOf, newNote, nullifierOf, provePayment, Tree, type Note } from '@z402/circuits';
+import { readAnchor, SetupRequiredError } from '@z402/gateway';
 
 export interface StoredNote {
   noteSecret: string;
@@ -19,6 +23,47 @@ interface NotesFile {
   gateway: string;
   plans: Record<string, { commitment: string; units: string; items: { secretHash: string; value: string }[]; txid: string | null }>;
   notes: StoredNote[];
+  /** the newest anchor this client has accepted: later anchors must extend it */
+  anchor?: AcceptedAnchor;
+}
+
+export interface AcceptedAnchor {
+  txid: string;
+  leaves: number;
+  root: string;
+  height: number;
+}
+
+export interface ClientOptions {
+  /** the anchor address's published incoming viewing key (default: Z402_ANCHOR_UIVK); pinned here, never taken from the gateway */
+  anchorUivk?: string;
+  /** refuse an anchor mined more than this many blocks before the tip (default: Z402_MAX_ANCHOR_AGE_BLOCKS or 2,880, about 2.5 days at 75 s) */
+  maxAnchorAgeBlocks?: number;
+  /** confirmations the anchor needs (default 1) */
+  minAnchorConf?: number;
+  /** lightwalletd (default: Z402_LWD_URL or https://testnet.zec.rocks:443) */
+  lwdUrl?: string;
+}
+
+export const DEFAULT_MAX_ANCHOR_AGE_BLOCKS = 2880;
+
+/** The client would not prove: the gateway's root is not one it could check on-chain. Nothing was sent. */
+export class AnchorRefusedError extends Error {
+  constructor(readonly code: 'UNANCHORED_ROOT' | 'ANCHOR_MISMATCH' | 'ANCHOR_NOT_CONFIRMED' | 'ANCHOR_TOO_OLD' | 'LEAVES_NOT_ANCHORED' | 'ANCHOR_ROLLBACK' | 'ANCHOR_FORK' | 'NOTE_NOT_ANCHORED', detail: string) {
+    super(`refusing to pay: ${code}: ${detail}`);
+    this.name = 'AnchorRefusedError';
+  }
+}
+
+interface WireChallenge {
+  scheme: string;
+  payTo: string;
+  requiredAmount: string;
+  contextHash: string;
+  nonce: string;
+  resource: string;
+  root?: string;
+  anchor?: { txid: string; leaves: number; root: string; height: number } | null;
 }
 
 export class GatewayError extends Error {
@@ -27,8 +72,20 @@ export class GatewayError extends Error {
   }
 }
 
+const short = (s: string) => (s.length > 16 ? `${s.slice(0, 12)}…` : s);
+
 export class Z402Client {
-  constructor(readonly gateway: string, readonly notesPath: string) {}
+  readonly anchorUivk: string | undefined;
+  readonly maxAnchorAgeBlocks: number;
+  readonly minAnchorConf: number;
+  readonly lwdUrl: string | undefined;
+
+  constructor(readonly gateway: string, readonly notesPath: string, o: ClientOptions = {}) {
+    this.anchorUivk = o.anchorUivk ?? (process.env.Z402_ANCHOR_UIVK || undefined);
+    this.maxAnchorAgeBlocks = o.maxAnchorAgeBlocks ?? Number(process.env.Z402_MAX_ANCHOR_AGE_BLOCKS || DEFAULT_MAX_ANCHOR_AGE_BLOCKS);
+    this.minAnchorConf = o.minAnchorConf ?? 1;
+    this.lwdUrl = o.lwdUrl ?? (process.env.Z402_LWD_URL || undefined);
+  }
 
   private read(): NotesFile {
     if (!existsSync(this.notesPath)) return { type: 'zec-null-402-notes', gateway: this.gateway, plans: {}, notes: [] };
@@ -89,27 +146,62 @@ export class Z402Client {
   }
 
   /**
+   * Checks, before any proof is made, that the challenge's root is in an on-chain anchor this client
+   * reads itself, that the anchor is mined and recent, that it extends the last anchor this client
+   * accepted, and that the gateway's leaves rebuild it. Returns the tree of the anchored leaves only:
+   * leaves the gateway added after the anchor (perhaps for this client alone) never enter the proof.
+   */
+  async checkAnchor(c: WireChallenge, f: NotesFile): Promise<{ anchor: AcceptedAnchor; tree: Tree; leaves: string[] }> {
+    if (!this.anchorUivk) throw new SetupRequiredError('Z402_ANCHOR_UIVK', "the anchor address's published viewing key; the client proves only against roots it has read on-chain");
+    const a = c.anchor;
+    if (!a || typeof a.txid !== 'string' || !Number.isSafeInteger(a.leaves) || a.leaves < 1 || typeof a.root !== 'string')
+      throw new AnchorRefusedError('UNANCHORED_ROOT', `the gateway offers root ${short(String(c.root))} with no on-chain anchor`);
+    if (c.root !== undefined && c.root !== a.root) throw new AnchorRefusedError('UNANCHORED_ROOT', `the challenge root ${short(String(c.root))} is not the root of the anchor it names (${short(a.root)})`);
+    const onchain = await readAnchor(this.anchorUivk, a.txid, this.lwdUrl);
+    if (!onchain.found) throw new AnchorRefusedError('ANCHOR_MISMATCH', `anchor tx ${short(a.txid)} is not on-chain`);
+    if (!onchain.anchors.some((m) => m.root === a.root && m.leaves === a.leaves))
+      throw new AnchorRefusedError('ANCHOR_MISMATCH', `tx ${short(a.txid)} has no anchor memo for ${a.leaves} leaves and root ${short(a.root)} readable by the anchor viewing key`);
+    if (onchain.height === null || onchain.confirmations < this.minAnchorConf) throw new AnchorRefusedError('ANCHOR_NOT_CONFIRMED', `anchor ${short(a.txid)} has ${onchain.confirmations} of ${this.minAnchorConf} confirmations`);
+    const age = onchain.tip - onchain.height;
+    if (age > this.maxAnchorAgeBlocks) throw new AnchorRefusedError('ANCHOR_TOO_OLD', `anchor ${short(a.txid)} was mined ${age} blocks ago; this client accepts at most ${this.maxAnchorAgeBlocks}`);
+    const last = f.anchor;
+    if (last && (onchain.height < last.height || a.leaves < last.leaves))
+      throw new AnchorRefusedError('ANCHOR_ROLLBACK', `anchor at height ${onchain.height} with ${a.leaves} leaves is behind the one this client accepted (${last.height}, ${last.leaves} leaves)`);
+    const { leaves } = await this.get<{ leaves: string[] }>('/api/leaves');
+    if (!Array.isArray(leaves) || leaves.length < a.leaves) throw new AnchorRefusedError('LEAVES_NOT_ANCHORED', `the gateway serves ${leaves?.length} leaves, the anchor has ${a.leaves}`);
+    const tree = await Tree.build(leaves.slice(0, a.leaves).map(BigInt));
+    if (tree.root.toString() !== a.root) throw new AnchorRefusedError('LEAVES_NOT_ANCHORED', `the first ${a.leaves} leaves the gateway serves do not rebuild the anchored root`);
+    if (last && last.txid !== a.txid && (await Tree.build(leaves.slice(0, last.leaves).map(BigInt))).root.toString() !== last.root)
+      throw new AnchorRefusedError('ANCHOR_FORK', `the anchored leaves do not extend the anchor this client accepted (${short(last.txid)}): the gateway's history forked`);
+    return { anchor: { txid: a.txid, leaves: a.leaves, root: a.root, height: onchain.height }, tree, leaves: leaves.slice(0, a.leaves) };
+  }
+
+  /**
    * GET a paid URL; on 402, prove with an unspent note of exactly the price and retry.
    * Pays only challenges from this client's gateway, for the path it asked for, to the gateway's payTo:
    * otherwise a server could relay a challenge from the gateway and redeem the proof for its own request.
+   * Proves only against the root of an anchor it has checked on-chain (checkAnchor).
    */
-  async pay(url: string): Promise<{ status: number; body: unknown; nullifier: string | null; proveMs: number }> {
+  async pay(url: string): Promise<{ status: number; body: unknown; nullifier: string | null; proveMs: number; anchor: AcceptedAnchor | null }> {
     const target = new URL(url);
     const first = await fetch(url);
-    if (first.status !== 402) return { status: first.status, body: await first.json(), nullifier: null, proveMs: 0 };
-    const c = ((await first.json()) as { accepts?: { scheme: string; payTo: string; requiredAmount: string; contextHash: string; nonce: string; resource: string }[] }).accepts?.find((a) => a.scheme === 'zec-null-402');
+    if (first.status !== 402) return { status: first.status, body: await first.json(), nullifier: null, proveMs: 0, anchor: null };
+    const c = ((await first.json()) as { accepts?: WireChallenge[] }).accepts?.find((a) => a.scheme === 'zec-null-402');
     if (!c) throw new Error('402 without a zec-null-402 challenge');
     const origin = new URL(this.gateway).origin;
     if (target.origin !== origin) throw new Error(`refusing to pay ${target.origin}: this client pays only its gateway ${origin}`);
     if (c.resource !== target.pathname) throw new Error(`refusing to pay: the challenge is for ${c.resource}, the request was ${target.pathname}`);
     if (c.payTo !== (await this.info()).payTo) throw new Error('refusing to pay: the challenge payTo is not the gateway’s');
     const f = this.read();
-    const pick = f.notes.find((n) => n.index !== null && !n.spent && n.value === c.requiredAmount);
-    if (!pick) throw new Error(`no unspent note of exactly ${c.requiredAmount} units (a note pays one call of its full value)`);
-    const { leaves } = await this.get<{ leaves: string[] }>('/api/leaves');
-    const tree = await Tree.build(leaves.map(BigInt));
+    const priced = f.notes.filter((n) => n.index !== null && !n.spent && n.value === c.requiredAmount);
+    if (priced.length === 0) throw new Error(`no unspent note of exactly ${c.requiredAmount} units (a note pays one call of its full value)`);
+    const { anchor, tree, leaves } = await this.checkAnchor(c, f);
+    const pick = priced.find((n) => n.index! < anchor.leaves);
+    if (!pick) throw new AnchorRefusedError('NOTE_NOT_ANCHORED', `every unspent ${c.requiredAmount}-unit note was credited after the latest anchor (${anchor.leaves} leaves); it can pay once the gateway's next anchor is mined`);
     const note: Note = { noteSecret: BigInt(pick.noteSecret), nullifierSecret: BigInt(pick.nullifierSecret), value: BigInt(pick.value) };
     if ((await leafOf(note)).toString() !== leaves[pick.index!]) throw new Error(`leaf ${pick.index} on the gateway is not this note's leaf`);
+    f.anchor = anchor;
+    this.write(f);
     const t0 = Date.now();
     const { proof, signals } = await provePayment(note, pick.index!, tree, BigInt(c.payTo), BigInt(c.requiredAmount), BigInt(c.contextHash));
     const proveMs = Date.now() - t0;
@@ -119,6 +211,6 @@ export class Z402Client {
       pick.spent = true;
       this.write(f);
     }
-    return { status: res.status, body, nullifier: signals.nullifier, proveMs };
+    return { status: res.status, body, nullifier: signals.nullifier, proveMs, anchor };
   }
 }

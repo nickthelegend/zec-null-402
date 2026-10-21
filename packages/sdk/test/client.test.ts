@@ -5,8 +5,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { nullifierOf } from '@z402/circuits';
-import { Gateway, serveGateway } from '@z402/gateway';
-import { Z402Client } from '../src/index.js';
+import { Gateway, readAnchor, serveGateway } from '@z402/gateway';
+import { Z402Client, type ClientOptions } from '../src/index.js';
+
+let opts: ClientOptions;
 
 const d = JSON.parse(readFileSync(resolve(__dirname, '../../../deployments/testnet.json'), 'utf8'));
 const dir = mkdtempSync(join(tmpdir(), 'z402-sdk-'));
@@ -14,8 +16,12 @@ let base = '';
 let close = () => {};
 
 beforeAll(async () => {
-  const gw = new Gateway({ statePath: join(dir, 'state.json'), depositUa: d.wallets.gateway.address, depositUivk: d.wallets.gateway.uivk, unitZat: d.unitZat, prices: { '/api/quote': 10n, '/api/report': 50n }, content: (p) => ({ served: p }) });
+  const gw = new Gateway({ statePath: join(dir, 'state.db'), depositUa: d.wallets.gateway.address, depositUivk: d.wallets.gateway.uivk, unitZat: d.unitZat, prices: { '/api/quote': 10n, '/api/report': 50n }, content: (p) => ({ served: p }), anchorUivk: d.wallets.anchor.uivk });
   await gw.claim(d.deposit.txid, d.deposit.items);
+  // the run's real anchor (Oct 20), read on-chain with the anchor address's published viewing key
+  await gw.adoptAnchor(d.anchor.txid);
+  const a = await readAnchor(d.wallets.anchor.uivk, d.anchor.txid);
+  opts = { anchorUivk: d.wallets.anchor.uivk, maxAnchorAgeBlocks: a.tip - a.height! + 10 };
   const s = serveGateway(gw);
   await new Promise<void>((r) => s.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${(s.address() as AddressInfo).port}`;
@@ -30,7 +36,7 @@ afterAll(() => close());
 
 describe('Z402Client', () => {
   it('plan: N notes, one deposit of N × units × unitZat with a z402 commitment memo, secrets in a 0600 file', async () => {
-    const c = new Z402Client(base, join(dir, 'plan.json'));
+    const c = new Z402Client(base, join(dir, 'plan.json'), opts);
     const p = await c.plan(3, 10n);
     expect(p).toMatchObject({ address: d.wallets.gateway.address, amountZat: 30_000n });
     expect(p.memo).toBe(`z402:${p.plan}`);
@@ -39,7 +45,7 @@ describe('Z402Client', () => {
   });
 
   it('pays two calls with proofs (no transaction), then has no note left of the price', async () => {
-    const c = new Z402Client(base, join(dir, 'notes.json'));
+    const c = new Z402Client(base, join(dir, 'notes.json'), opts);
     for (let i = 0; i < 2; i++) {
       const r = await c.pay(`${base}/api/quote`);
       expect(r.status).toBe(200);
@@ -50,7 +56,7 @@ describe('Z402Client', () => {
   }, 120_000);
 
   it('a dearer endpoint needs a note of its price', async () => {
-    const c = new Z402Client(base, join(dir, 'notes.json'));
+    const c = new Z402Client(base, join(dir, 'notes.json'), opts);
     await expect(c.pay(`${base}/api/report`)).rejects.toThrow(/exactly 50 units/);
   });
 });

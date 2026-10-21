@@ -8,6 +8,6 @@
   "types": "dist/index.d.ts",
   "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
   "scripts": { "build": "tsc -p tsconfig.json", "test": "vitest run" },
-  "dependencies": { "@z402/circuits": "workspace:*" },
-  "devDependencies": { "@types/node": "^22.20.5", "@z402/gateway": "workspace:*", "typescript": "~5.9.3", "vitest": "^3.2.7" }
+  "dependencies": { "@z402/circuits": "workspace:*", "@z402/gateway": "workspace:*" },
+  "devDependencies": { "@types/node": "^22.20.5", "typescript": "~5.9.3", "vitest": "^3.2.7" }
 }

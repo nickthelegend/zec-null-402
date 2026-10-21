@@ -8,8 +8,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { nullifierOf } from '@z402/circuits';
-import { Gateway, serveGateway } from '@z402/gateway';
-import { Z402Client } from '../src/index.js';
+import { Gateway, readAnchor, serveGateway } from '@z402/gateway';
+import { Z402Client, type ClientOptions } from '../src/index.js';
+
+let opts: ClientOptions;
 
 const d = JSON.parse(readFileSync(resolve(__dirname, '../../../deployments/testnet.json'), 'utf8'));
 const dir = mkdtempSync(join(tmpdir(), 'z402-relay-'));
@@ -25,8 +27,12 @@ const listen = async (s: Server) => {
 };
 
 beforeAll(async () => {
-  gw = new Gateway({ statePath: join(dir, 'state.json'), depositUa: d.wallets.gateway.address, depositUivk: d.wallets.gateway.uivk, unitZat: d.unitZat, prices: { '/api/quote': 10n }, content: (p) => ({ served: p }) });
+  gw = new Gateway({ statePath: join(dir, 'state.db'), depositUa: d.wallets.gateway.address, depositUivk: d.wallets.gateway.uivk, unitZat: d.unitZat, prices: { '/api/quote': 10n }, content: (p) => ({ served: p }), anchorUivk: d.wallets.anchor.uivk });
   await gw.claim(d.deposit.txid, d.deposit.items);
+  // the run's real anchor (Oct 20), read on-chain with the anchor address's published viewing key
+  await gw.adoptAnchor(d.anchor.txid);
+  const a = await readAnchor(d.wallets.anchor.uivk, d.anchor.txid);
+  opts = { anchorUivk: d.wallets.anchor.uivk, maxAnchorAgeBlocks: a.tip - a.height! + 10 };
   base = await listen(serveGateway(gw));
   // The attacker: /free costs the agent nothing it can see, and passes /api/info and /api/leaves through.
   relay = await listen(
@@ -47,7 +53,7 @@ afterAll(() => servers.forEach((s) => s.close()));
 
 describe('the client pays only its own gateway, for the request it made', () => {
   it('a challenge relayed by another origin is refused before any proof is made', async () => {
-    const c = new Z402Client(base, join(dir, 'notes.json'));
+    const c = new Z402Client(base, join(dir, 'notes.json'), opts);
     await expect(c.pay(`${relay}/free`)).rejects.toThrow(/refusing to pay/);
     expect(redeemed).toEqual([]);
     expect(Object.keys(gw.state.nullifiers)).toHaveLength(0);
@@ -55,14 +61,14 @@ describe('the client pays only its own gateway, for the request it made', () => 
   }, 120_000);
 
   it('a challenge for another resource is refused even from the configured origin', async () => {
-    const c = new Z402Client(relay, join(dir, 'notes.json'));
+    const c = new Z402Client(relay, join(dir, 'notes.json'), opts);
     await expect(c.pay(`${relay}/free`)).rejects.toThrow(/refusing to pay.*\/api\/quote.*\/free/);
     expect(redeemed).toEqual([]);
     expect(Object.keys(gw.state.nullifiers)).toHaveLength(0);
   }, 120_000);
 
   it('its own gateway is still paid', async () => {
-    const c = new Z402Client(base, join(dir, 'notes.json'));
+    const c = new Z402Client(base, join(dir, 'notes.json'), opts);
     expect((await c.pay(`${base}/api/quote`)).status).toBe(200);
     expect(Object.keys(gw.state.nullifiers)).toHaveLength(1);
   }, 120_000);

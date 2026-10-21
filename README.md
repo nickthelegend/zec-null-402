@@ -1,7 +1,8 @@
 # Kippu — pay per API call on Zcash with ZK tickets
 
 **Pay once with a shielded Zcash deposit, then pay per API call with a zero-knowledge proof.** No
-transaction and no block wait per call; the gateway learns that *some* prepaid note paid, not which.
+transaction and no block wait per call; a gateway that follows the protocol learns that *some* prepaid
+note paid, not which (see [limits](#honest-limits) for what a dishonest one can do).
 
 Zcash has no contracts, so null-402's on-chain Groth16 pool can't be ported. Here **the gateway is
 the pool**: it credits notes only for a deposit its own viewing key sees on-chain (the memo commits
@@ -51,12 +52,30 @@ Needs Node 22+, pnpm 10, Rust 1.89 (pinned in `packages/scan`), circom 2.2 only 
 
 ```sh
 pnpm install
-pnpm test                          # 21 tests + doc: scan 3 + doc, circuits 5 (local); gateway 6 + sdk 3 + mcp 4 (live testnet)
+pnpm test                          # 33 tests + doc: scan 3 + doc, circuits 5 (local); gateway 15 + sdk 6 + mcp 4 (live testnet)
 pnpm --filter @z402/dashboard dev  # http://localhost:5183
 Z402_FUNDER_WALLET=<demo wallet> pnpm --filter @z402/examples run-live
 ```
 
-Demo video: `zec-null-402-demo.mp4` (shared separately until hosted).
+Demo video: `zec-null-402-demo.mp4` (shared separately until hosted). It was recorded on Oct 20, before
+the review fixes below.
+
+### Review fixes (Oct 21, 2026)
+
+A strict review ([docs/JUDGE-2026-10-21.md](docs/JUDGE-2026-10-21.md)) found that the Oct 20 gateway
+could be made to pay twice. Each fix has a test that fails on the old code:
+
+| Was possible | Now |
+|---|---|
+| a spent note paid again with its nullifier written `0<n>` or in hex (snarkjs parses both) | public signals must be canonical decimal, else `MALFORMED_SIGNALS` |
+| one payment, or two proofs of one note, sent at once were all paid | challenge and nullifier reserved before the proof check |
+| two concurrent claims of one deposit both credited it | a deposit is locked while it is scanned |
+| a server could relay the gateway's challenge and redeem the agent's proof | the SDK pays only its gateway, for the path asked, to the gateway's `payTo` |
+| any web page could make the gateway send anchor transactions | `POST /api/anchor` needs `Authorization: Bearer $Z402_ADMIN_TOKEN` |
+| `/api/info` served the deposit viewing key | it no longer does |
+| unpaid challenges and request bodies were unbounded | 10,000 challenges, 64 KiB bodies |
+
+The live run's results above are unchanged: they never used these paths.
 
 ### LLM agent run (Oct 20, 2026)
 
@@ -75,6 +94,13 @@ The caps did the refusing, not the model's judgement.
   auditable after the fact, they do not stop a dishonest gateway in the moment.
 - One depositor in the run: every call came from that depositor's notes. Unlinkability between
   users needs several depositors.
+- Unlinkability holds against a gateway that serves everyone the same leaves. A dishonest gateway
+  could give each client its own leaf list and tell clients apart by the root in their proofs; it
+  also sees each caller's network address. Anchors make a forked history visible only if clients
+  compare roots with the anchored ones (not automated yet).
+- The demo gateway's incoming viewing key is published in `deployments/testnet.json` so a fresh
+  clone can re-check the real deposit; for this deployment anyone can read the deposit's amount and
+  memo.
 - Single-party Groth16 setup; a note pays one call of its full value; testnet only; not audited.
 - Portfolio piece; the Zecathon entry is Shielded x402.
 

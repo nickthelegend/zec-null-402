@@ -3,8 +3,8 @@
 ## The idea
 
 Pay once with a real shielded Zcash deposit, then pay per API call with a zero-knowledge proof of an
-unspent prepaid note. A call costs no transaction and no block wait, and the gateway learns only that
-*some* credited note paid, not which one.
+unspent prepaid note. A call costs no transaction and no block wait, and a gateway that follows the
+protocol learns only that *some* credited note paid, not which one.
 
 ## Why the verifier is off-chain
 
@@ -14,7 +14,7 @@ pool contract (NEAR) cannot be ported to Zcash L1. Here **the gateway is the poo
 | Piece | null-402 (Fuji) | near-null-402 (NEAR) | zec-null-402 (Zcash) |
 |---|---|---|---|
 | deposit | ERC-20 into a contract | NEAR into a contract | shielded ZEC to the gateway's address, memo `z402:<commitment>` |
-| leaf value bound to the deposit | no | yes, computed on-chain | yes, computed by the gateway from what its viewing key sees |
+| leaf value bound to the deposit | no | yes, computed on-chain | the sum is: the gateway checks with its viewing key that the deposit covers the committed values |
 | proof verified by | Solidity verifier | `alt_bn128_*` host functions | the gateway (snarkjs, off-chain) |
 | nullifiers | contract storage | contract storage | gateway state, anchored on-chain |
 
@@ -28,7 +28,8 @@ pool contract (NEAR) cannot be ported to Zcash L1. Here **the gateway is the poo
    is mined, and appends `Poseidon(secretHash_i, value_i)` for each note. A deposit is credited once.
 4. **Pay.** `GET` → 402 `{payTo, requiredAmount, contextHash, nonce, root}` → the client proves
    `Payment(20)` for one note of exactly the price, bound to this request → `X-PAYMENT` → the gateway
-   checks binding, known root, unspent nullifier, Groth16 → 200, nullifier burned.
+   checks canonical signals, binding, known root, unspent nullifier, Groth16 → 200, nullifier burned.
+   The client pays only challenges from its own gateway for the path it asked for.
 5. **Anchor.** The gateway sends `z402:anchor:<leaves>:<root>:<spent>:<sha256 of the sorted nullifier set>`
    in a shielded memo to an address whose incoming viewing key is public.
 
@@ -36,8 +37,9 @@ pool contract (NEAR) cannot be ported to Zcash L1. Here **the gateway is the poo
 
 | Party | Learns | Does not learn |
 |---|---|---|
-| the chain | a shielded deposit and the anchor transactions happened | amounts, memos, who deposited |
-| the gateway | each deposit (amount, its note leaves) and each paid call's nullifier | which note paid which call; whether two calls came from the same deposit, beyond the anonymity set |
+| the chain | a shielded deposit and the anchor transactions happened | amounts, memos, who deposited (but see below: the demo's gateway viewing key is published) |
+| the gateway | each deposit (amount, its note leaves), each paid call's nullifier and the caller's network address | which note paid which call, if it serves everyone the same leaves |
+| anyone with the gateway's viewing key (published for the demo) | each deposit's amount, memo commitment and time | which notes were spent for what |
 | anyone with the anchor viewing key | the gateway's leaf count, root, spent count and nullifier-set hash at each anchor | individual payments |
 
 **The anonymity set is the set of credited notes.** With one depositor (the live run), the gateway
@@ -50,6 +52,12 @@ needs several depositors.
   refuse a valid proof, or (by editing its state) allow a double spend. The anchors make its leaf
   set and nullifier set auditable after the fact: a published nullifier list that does not hash to
   the anchored value, or a root that does not match the published leaves, is evidence.
+- **A dishonest gateway can partition users.** Clients build their tree from `GET /api/leaves`. A
+  gateway that gives each client a different leaf list sees a different root in each client's
+  proofs and can tell them apart. Comparing the root you prove against with the anchored roots
+  makes that visible; proving only against anchored roots would prevent it (the bold idea in
+  [JUDGE-2026-10-21.md](../../docs/JUDGE-2026-10-21.md), not built).
+- **Anchoring over HTTP** needs `Z402_ADMIN_TOKEN`: it spends from the gateway wallet.
 - **Trusted setup:** single-party local Groth16 setup (`packages/circuits/scripts/build.sh`). Whoever
   ran it could forge proofs; a real deployment needs a ceremony.
 - **No change:** a note pays one call of its full value; plan notes of the price.
@@ -60,7 +68,8 @@ needs several depositors.
 | Do | See |
 |---|---|
 | `pnpm --filter @z402/circuits test` | real proofs; tampered inputs fail; no proof above a note's value; deposit commitments bind every note |
-| `pnpm --filter @z402/gateway test` | a fresh gateway credits the real published deposit (viewing key), refuses a second claim and altered values, accepts a real proof, refuses replay, tamper and wrong request |
+| `pnpm --filter @z402/gateway test` | a fresh gateway credits the real published deposit (viewing key), refuses a second claim and altered values, accepts a real proof, refuses replay, tamper and wrong request; re-encoded nullifiers, parallel double spends, concurrent claims and an unauthenticated anchor are refused |
+| `pnpm --filter @z402/sdk test` | a real relay server in front of the gateway cannot get the client to pay its challenge |
 | run the live example | one deposit → 20 paid calls, no transaction per call, anchor memo found on-chain |
 
 ## Pre-existing work

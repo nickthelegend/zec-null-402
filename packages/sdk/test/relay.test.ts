@@ -98,3 +98,76 @@ describe('the client pays only its own gateway, for the request it made', () => 
     expect(Object.keys(gw.state.nullifiers)).toHaveLength(1);
   }, 120_000);
 });
+
+describe('the client pays the price it was told, for the request it made', () => {
+  // A second real gateway with three priced paths. The client's gateway is a server in front of it that
+  // answers every unpaid request with the gateway's challenge for /api/report (relabelled with the path the
+  // client asked for) and redeems the client's proof at /api/report: the note pays for the attacker's report.
+  let gw2: Gateway;
+  let up = '';
+  const forwarded: number[] = [];
+  const infoHits: string[] = [];
+  let n = 0;
+  const notesFile = async () => {
+    const notes = await Promise.all(d.fixtureNotes.map(async (x: Record<string, string>) => ({ ...x, deposit: 'published', spent: false, nullifier: (await nullifierOf({ noteSecret: BigInt(x.noteSecret), nullifierSecret: BigInt(x.nullifierSecret), value: BigInt(x.value) })).toString() })));
+    const p = join(dir, `notes-price-${n++}.json`);
+    writeFileSync(p, JSON.stringify({ type: 'zec-null-402-notes', gateway: up, plans: {}, notes }), { mode: 0o600 });
+    return p;
+  };
+  const unspent = (p: string) => (JSON.parse(readFileSync(p, 'utf8')).notes as { spent: boolean }[]).filter((x) => !x.spent).length;
+  beforeAll(async () => {
+    gw2 = new Gateway({ statePath: join(dir, 'state2.db'), depositUa: d.wallets.gateway.address, depositUivk: d.wallets.gateway.uivk, unitZat: d.unitZat, prices: { '/api/quote': 10n, '/api/report': 10n, '/api/cheap': 5n }, content: (p) => ({ served: p }), anchorUivk: d.wallets.anchor.uivk });
+    await gw2.claim(d.deposit.txid, d.deposit.items);
+    await gw2.adoptAnchor(d.anchor.txid);
+    up = await listen(serveGateway(gw2));
+  }, 120_000);
+
+  const relabelling = () =>
+    listen(
+      createServer(async (req, res) => {
+        const send = (status: number, body: string) => res.writeHead(status, { 'content-type': 'application/json' }).end(body);
+        if (req.url === '/api/info' || req.url === '/api/leaves') return send(200, await (await fetch(up + req.url)).text());
+        const header = req.headers['x-payment'];
+        if (typeof header === 'string') {
+          const r = await fetch(`${up}/api/report`, { headers: { 'x-payment': header } });
+          forwarded.push(r.status);
+          return send(r.status, await r.text());
+        }
+        const b = (await (await fetch(`${up}/api/report`)).json()) as { accepts: Record<string, unknown>[] };
+        return send(402, JSON.stringify({ ...b, accepts: b.accepts.map((c) => ({ ...c, resource: new URL(req.url!, 'http://x').pathname })) }));
+      }),
+    );
+
+  it('a challenge asking more than the listed price of the path is refused before any proof (the note is not burned for a 5-unit call)', async () => {
+    const h = await relabelling();
+    const notes = await notesFile();
+    await expect(new Z402Client(h, notes, opts).pay(`${h}/api/cheap`)).rejects.toThrow(/refusing to pay: the challenge asks 10 units for \/api\/cheap; the gateway's price is 5/);
+    expect(forwarded).toEqual([]);
+    expect(Object.keys(gw2.state.nullifiers)).toHaveLength(0);
+    expect(unspent(notes)).toBe(2);
+  }, 120_000);
+
+  it('a challenge of the right price whose context hash is bound to another path is refused before any proof', async () => {
+    const h = await relabelling();
+    const notes = await notesFile();
+    await expect(new Z402Client(h, notes, opts).pay(`${h}/api/quote`)).rejects.toThrow(/refusing to pay: the challenge's context hash is not bound to GET \/api\/quote/);
+    expect(forwarded).toEqual([]);
+    expect(Object.keys(gw2.state.nullifiers)).toHaveLength(0);
+    expect(unspent(notes)).toBe(2);
+  }, 120_000);
+
+  it('two payments read /api/info once (payTo and prices are cached per client)', async () => {
+    const counting = await listen(
+      createServer(async (req, res) => {
+        if (req.url === '/api/info') infoHits.push(req.url);
+        const header = req.headers['x-payment'];
+        const r = await fetch(up + req.url, typeof header === 'string' ? { headers: { 'x-payment': header } } : {});
+        res.writeHead(r.status, { 'content-type': 'application/json' }).end(await r.text());
+      }),
+    );
+    const c = new Z402Client(counting, await notesFile(), opts);
+    expect((await c.pay(`${counting}/api/quote`)).status).toBe(200);
+    expect((await c.pay(`${counting}/api/quote`)).status).toBe(200);
+    expect(infoHits).toHaveLength(1);
+  }, 120_000);
+});

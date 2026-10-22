@@ -7,7 +7,7 @@
 // signed root on-chain that every client sees, and naming an older anchor learns nothing.
 import { closeSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, writeSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
-import { depositCommitment, leafOf, newNote, nullifierOf, provePayment, Tree, type Note } from '@z402/circuits';
+import { contextHash, depositCommitment, leafOf, newNote, nullifierOf, provePayment, Tree, type Note } from '@z402/circuits';
 import { fileLock, intEnv, readAnchor, scanAnchors, SetupRequiredError, verifyAnchorSignature, wholeNumber, type AnchorMemo, type ScannedAnchor } from '@z402/gateway';
 
 export interface StoredNote {
@@ -155,6 +155,22 @@ interface WireChallenge {
   anchor?: { txid: string; leaves: number; root: string; height: number } | null;
 }
 
+interface GatewayInfo {
+  depositUa: string;
+  unitZat: number;
+  payTo: string;
+  prices: Record<string, string>;
+  leaves: number;
+  root: string;
+  spent: number;
+  anchorCount?: number;
+  anchors: unknown[];
+  latestAnchor: { txid: string; leaves: number; root: string; height: number | null } | null;
+}
+
+/** pay() reuses the gateway's payTo and prices this long, so a payment does not read /api/info each time */
+const INFO_TTL_MS = 5 * 60_000;
+
 export class GatewayError extends Error {
   constructor(readonly status: number, message: string) {
     super(message);
@@ -172,6 +188,7 @@ export class Z402Client {
   readonly replayAtHeight: number | undefined;
   /** the anchor address's anchors in the window, from the last scan (reused for ANCHOR_SCAN_TTL_MS, then extended) */
   private scanned: { at: number; tip: number; to: number; anchors: ScannedAnchor[] } | null = null;
+  private infoCache: { at: number; info: GatewayInfo } | null = null;
 
   constructor(readonly gateway: string, readonly notesPath: string, o: ClientOptions = {}) {
     this.anchorUivk = o.anchorUivk ?? (process.env.Z402_ANCHOR_UIVK || undefined);
@@ -258,7 +275,15 @@ export class Z402Client {
   }
 
   info() {
-    return this.get<{ depositUa: string; unitZat: number; payTo: string; prices: Record<string, string>; leaves: number; root: string; spent: number; anchors: unknown[]; latestAnchor: { txid: string; leaves: number; root: string; height: number | null } | null }>('/api/info');
+    return this.get<GatewayInfo>('/api/info');
+  }
+
+  /** payTo and prices for pay(): read once and kept for INFO_TTL_MS, or read again when `fresh`. */
+  private async terms(fresh = false): Promise<GatewayInfo> {
+    if (!fresh && this.infoCache && Date.now() - this.infoCache.at < INFO_TTL_MS) return this.infoCache.info;
+    const info = await this.info();
+    this.infoCache = { at: Date.now(), info };
+    return info;
   }
 
   /**
@@ -396,7 +421,17 @@ export class Z402Client {
     const c = ((await first.json()) as { accepts?: WireChallenge[] }).accepts?.find((a) => a.scheme === 'zec-null-402');
     if (!c) throw new Error('402 without a zec-null-402 challenge');
     if (c.resource !== target.pathname) throw new Error(`refusing to pay: the challenge is for ${c.resource}, the request was ${target.pathname}`);
-    if (c.payTo !== (await this.info()).payTo) throw new Error('refusing to pay: the challenge payTo is not the gateway’s');
+    // The challenge must ask the gateway's listed price for this path and bind the proof to this request:
+    // otherwise a note could pay for another (dearer) resource. The terms are cached; a mismatch re-reads them once.
+    const path = target.pathname;
+    let terms = await this.terms();
+    if (c.payTo !== terms.payTo || c.requiredAmount !== terms.prices?.[path]) terms = await this.terms(true);
+    if (c.payTo !== terms.payTo) throw new Error('refusing to pay: the challenge payTo is not the gateway’s');
+    const price = terms.prices?.[path];
+    if (price === undefined) throw new Error(`refusing to pay: the gateway lists no price for ${path}`);
+    if (typeof c.requiredAmount !== 'string' || c.requiredAmount !== price) throw new Error(`refusing to pay: the challenge asks ${String(c.requiredAmount)} units for ${path}; the gateway's price is ${price}`);
+    if (typeof c.nonce !== 'string' || typeof c.contextHash !== 'string' || c.contextHash !== contextHash('GET', path, BigInt(price), BigInt(c.payTo), c.nonce).toString())
+      throw new Error(`refusing to pay: the challenge's context hash is not bound to GET ${path} at ${price} units with its nonce`);
     const f = this.read();
     const usable = (n: StoredNote, now: number) => n.index !== null && !n.spent && n.value === c.requiredAmount && !(n.pending && now - n.pending < PENDING_MS);
     if (!f.notes.some((n) => n.index !== null && !n.spent && n.value === c.requiredAmount)) throw new Error(`no unspent note of exactly ${c.requiredAmount} units (a note pays one call of its full value)`);

@@ -105,12 +105,36 @@ describe('the gateway wallet and its keys', () => {
   });
 });
 
-describe('bounded memory', () => {
-  it('outstanding challenges are capped: the oldest is dropped first', async () => {
-    const g = await fresh({ maxChallenges: 3 });
+describe('bounded memory, and challenges no one can evict', () => {
+  it('unpaid requests store nothing, so 10,000 bare GETs cannot evict an honest challenge: it still pays', async () => {
+    const g = await fresh();
+    const c = await g.challenge();
+    const tree = await Tree.build(g.gw.state.leaves.map(BigInt));
+    const proveFor = async (n: Note & { index: number }) => {
+      const x = await provePayment(n, n.index, tree, BigInt(c.payTo), BigInt(c.requiredAmount), BigInt(c.contextHash));
+      return { nonce: c.nonce, proof: x.proof, signals: x.signals };
+    };
+    const p = await proveFor(notes[0]);
+    // anyone, unauthenticated, floods the priced path while the honest client is proving
+    for (let i = 0; i < 10_000; i += 100) await Promise.all(Array.from({ length: 100 }, () => fetch(`${g.base}/api/quote`).then((r) => r.text())));
+    expect((await g.pay(p)).status).toBe(200);
+    // the flood stored nothing: what is stored is the one answered nonce, until it expires; it cannot be
+    // answered again, not even with another note's valid proof
+    expect(Number((g.gw.db.prepare('SELECT count(*) AS n FROM challenge_uses').get() as { n: number }).n)).toBe(1);
+    expect((await g.pay(p)).body.reason).toBe('NULLIFIER_SPENT');
+    expect((await g.pay(await proveFor(notes[1]))).body.reason).toBe('UNKNOWN_CHALLENGE');
+  }, 180_000);
+
+  it('a nonce the gateway did not issue, one moved to another path, or one with its expiry changed is UNKNOWN_CHALLENGE', async () => {
+    const g = await fresh({ prices: { '/api/quote': BigInt(d.priceUnits), '/api/report': BigInt(d.priceUnits) } });
     const p = await g.prove(notes[0]);
-    for (let i = 0; i < 3; i++) await g.challenge();
-    expect((await g.pay(p)).body.reason).toBe('UNKNOWN_CHALLENGE');
+    const parts = p.nonce.split('.');
+    expect(parts).toHaveLength(4);
+    const later = [parts[0], parts[1], String(Number(parts[2]) + 3_600_000), parts[3]].join('.');
+    for (const nonce of ['never-issued', later, `${p.nonce.slice(0, -1)}${p.nonce.endsWith('0') ? '1' : '0'}`]) expect((await g.pay({ ...p, nonce })).body.reason, nonce).toBe('UNKNOWN_CHALLENGE');
+    const report = await fetch(`${g.base}/api/report`, { headers: { 'x-payment': Buffer.from(JSON.stringify(p)).toString('base64') } });
+    expect(((await report.json()) as { reason: string }).reason).toBe('UNKNOWN_CHALLENGE');
+    expect((await g.pay(p)).status).toBe(200);
   }, 180_000);
 
   it('a request body over 64 KiB is refused with 413', async () => {

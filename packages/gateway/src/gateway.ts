@@ -5,9 +5,11 @@
 // public-viewing-key address, signed with its anchor key; clients prove only against an anchored root they
 // have read on-chain themselves, so handing each client its own root means putting a separate signed root
 // on-chain per client, which clients scanning the anchor address refuse (ANCHOR_COMPETING).
-// State (leaves, deposits, nullifiers, outstanding challenges, anchors) lives in SQLite, so a restart
+// State (leaves, deposits, nullifiers, answered challenge nonces, anchors) lives in SQLite, so a restart
 // keeps it and two gateway processes on one database cannot both accept one nullifier or one challenge.
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+// A challenge itself is stateless: its nonce carries its expiry and a MAC over the path and price, so an
+// unpaid request stores nothing and no number of them can push an honest challenge out.
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
@@ -73,8 +75,6 @@ export interface GatewayOptions {
   chainTip?: () => Promise<number>;
   /** bearer token for POST /api/anchor, which spends from the gateway wallet */
   adminToken?: string;
-  /** outstanding unpaid challenges kept (default 10,000); the oldest is dropped first */
-  maxChallenges?: number;
   /** deposit scans (a scanner process and a lightwalletd connection each) run at once (default 4); more get 503 */
   maxScans?: number;
 }
@@ -118,7 +118,9 @@ CREATE TABLE IF NOT EXISTS leaves (idx INTEGER PRIMARY KEY, leaf TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS roots (seq INTEGER PRIMARY KEY AUTOINCREMENT, root TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS deposits (txid TEXT PRIMARY KEY, commitment TEXT NOT NULL, first INTEGER NOT NULL, count INTEGER NOT NULL, zat INTEGER NOT NULL, height INTEGER);
 CREATE TABLE IF NOT EXISTS nullifiers (nullifier TEXT PRIMARY KEY, at TEXT NOT NULL, resource TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS challenges (nonce TEXT PRIMARY KEY, expires_at INTEGER NOT NULL, body TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS challenge_uses (nonce TEXT PRIMARY KEY, expires_at INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, busy INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS challenge_uses_expiry ON challenge_uses (expires_at);
+CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS anchors (seq INTEGER PRIMARY KEY AUTOINCREMENT, txid TEXT NOT NULL UNIQUE, leaves INTEGER NOT NULL, root TEXT NOT NULL, nullifiers INTEGER NOT NULL, nullifier_hash TEXT NOT NULL, at TEXT NOT NULL, height INTEGER);
 CREATE INDEX IF NOT EXISTS anchors_height ON anchors (height);
 `;
@@ -144,6 +146,9 @@ export class Gateway {
   private retrying = false;
   private ticking = false;
   private timer: NodeJS.Timeout | null = null;
+  private readonly challengeKey: Buffer;
+  /** challenges this process has issued (nothing is stored for them; a count for logs and tests) */
+  challengesIssued = 0;
 
   constructor(readonly o: GatewayOptions) {
     if (!Number.isSafeInteger(o.unitZat) || o.unitZat < 1) throw new RangeError(`gateway: unitZat must be a whole number of zatoshi, at least 1, got ${o.unitZat}`);
@@ -153,8 +158,11 @@ export class Gateway {
     this.db = new DatabaseSync(o.statePath);
     this.db.exec('PRAGMA busy_timeout = 5000;');
     this.db.exec(SCHEMA);
-    // databases from before the proof-check limit
-    if (!(this.db.prepare("SELECT 1 FROM pragma_table_info('challenges') WHERE name = 'attempts'").get())) this.db.exec('ALTER TABLE challenges ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0');
+    // databases from before stateless challenges kept every unpaid challenge (those expire within 5 minutes)
+    this.db.exec('DROP TABLE IF EXISTS challenges');
+    // the challenge MAC key: one per database, so every process on it (and a restart) accepts its challenges
+    this.db.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES ('challenge_key', ?)").run(randomBytes(32).toString('hex'));
+    this.challengeKey = Buffer.from(String((this.db.prepare("SELECT v FROM meta WHERE k = 'challenge_key'").get() as Row).v), 'hex');
     this.payTo = fieldOfSha256(`zec-null-402:payTo:${o.depositUa}`);
     this.signer = o.anchorSigningKey ? anchorSigner(o.anchorSigningKey) : null;
     if (o.legacyJsonState && existsSync(o.legacyJsonState)) this.importLegacy(o.legacyJsonState);
@@ -178,7 +186,7 @@ export class Gateway {
     this.db.close();
   }
 
-  private count(table: 'leaves' | 'nullifiers' | 'challenges' | 'deposits'): number {
+  private count(table: 'leaves' | 'nullifiers' | 'deposits'): number {
     return Number((this.db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as Row).n);
   }
 
@@ -293,11 +301,22 @@ export class Gateway {
     return r ? anchorOf(r) : null;
   }
 
+  private challengeMac(method: string, path: string, price: bigint, rand: string, expiresAt: number): string {
+    return createHmac('sha256', this.challengeKey).update(`zec-null-402:challenge:v1:${method.toUpperCase()}:${path}:${price}:${rand}:${expiresAt}`).digest('hex').slice(0, 32);
+  }
+
+  /**
+   * A challenge stores nothing: its nonce is `v1.<random>.<expiresAt>.<MAC over method, path, price, random,
+   * expiresAt>`, so redeem() can check it without a row, and unpaid requests cannot fill or evict anything.
+   */
   async challenge(method: string, path: string, price: bigint): Promise<Challenge> {
     this.refreshAnchorsSoon();
     const a = this.latestAnchor();
-    const nonce = randomBytes(16).toString('hex');
-    const c: Challenge = {
+    const rand = randomBytes(16).toString('hex');
+    const expiresAt = Date.now() + CHALLENGE_TTL_MS;
+    const nonce = `v1.${rand}.${expiresAt}.${this.challengeMac(method, path, price, rand, expiresAt)}`;
+    this.challengesIssued++;
+    return {
       x402Version: 1,
       scheme: 'zec-null-402',
       network: 'zcash-testnet',
@@ -308,17 +327,21 @@ export class Gateway {
       contextHash: contextHash(method, path, price, this.payTo, nonce).toString(),
       root: a?.root ?? (await this.root()),
       anchor: a ? { txid: a.txid, leaves: a.leaves, root: a.root, height: a.height! } : null,
-      expiresAt: Date.now() + CHALLENGE_TTL_MS,
+      expiresAt,
     };
-    // Every unpaid GET makes a challenge: drop expired ones, then the oldest beyond the cap.
-    const max = this.o.maxChallenges ?? 10_000;
-    this.tx(() => {
-      this.db.prepare('DELETE FROM challenges WHERE expires_at < ?').run(Date.now());
-      const over = this.count('challenges') - max + 1;
-      if (over > 0) this.db.prepare('DELETE FROM challenges WHERE nonce IN (SELECT nonce FROM challenges ORDER BY rowid LIMIT ?)').run(over);
-      this.db.prepare('INSERT INTO challenges (nonce, expires_at, body) VALUES (?, ?, ?)').run(nonce, c.expiresAt, JSON.stringify(c));
-    });
-    return c;
+  }
+
+  /** The expiry of a nonce this gateway issued for `method` and `path`, or null (forged, moved, expired or malformed). */
+  private openNonce(nonce: unknown, method: string, path: string, price: bigint): number | null {
+    if (typeof nonce !== 'string') return null;
+    const m = /^v1\.([0-9a-f]{32})\.(\d{13})\.([0-9a-f]{32})$/.exec(nonce);
+    if (!m) return null;
+    const expiresAt = Number(m[2]);
+    const want = Buffer.from(this.challengeMac(method, path, price, m[1], expiresAt), 'hex');
+    if (!timingSafeEqual(want, Buffer.from(m[3], 'hex'))) return null;
+    const now = Date.now();
+    if (expiresAt < now || expiresAt > now + CHALLENGE_TTL_MS) return null;
+    return expiresAt;
   }
 
   private knownRoot(root: string): boolean {
@@ -326,26 +349,31 @@ export class Gateway {
   }
 
   /** Checks a payment for an issued challenge; on success burns the nullifier. Returns null or the refusal. */
-  async redeem(path: string, payment: { nonce: string; proof: object; signals: PaymentPublic }): Promise<string | null> {
+  async redeem(path: string, payment: { nonce: string; proof: object; signals: PaymentPublic }, method = 'GET'): Promise<string | null> {
+    const price = this.o.prices[path];
     const nonce = payment?.nonce;
-    const row = typeof nonce === 'string' ? (this.db.prepare('SELECT body, attempts FROM challenges WHERE nonce = ?').get(nonce) as Row | undefined) : undefined;
-    const c = row ? (JSON.parse(String(row.body)) as Challenge) : undefined;
-    if (!c || c.resource !== path || c.expiresAt < Date.now()) return 'UNKNOWN_CHALLENGE';
+    const expiresAt = price === undefined ? null : this.openNonce(nonce, method, path, price);
+    if (expiresAt === null) return 'UNKNOWN_CHALLENGE';
+    const c = { payTo: this.payTo.toString(), requiredAmount: price.toString(), contextHash: contextHash(method, path, price, this.payTo, nonce).toString() };
     const s = payment.signals;
     if (!s || typeof s !== 'object' || !SIGNALS.every((k) => isCanonicalField(s[k]))) return 'MALFORMED_SIGNALS';
     if (s.pay_to !== c.payTo || s.required_amount !== c.requiredAmount || s.context_hash !== c.contextHash) return 'NOT_BOUND_TO_CHALLENGE';
     if (!this.knownRoot(s.merkle_root)) return 'UNKNOWN_ROOT';
     if (this.db.prepare('SELECT 1 FROM nullifiers WHERE nullifier = ?').get(s.nullifier) || this.inflight.has(s.nullifier)) return 'NULLIFIER_SPENT';
-    // Reserve before the async proof check: a challenge is answered once (also across processes: the
-    // DELETE is atomic), a nullifier checked once at a time in this process.
-    if (this.db.prepare('DELETE FROM challenges WHERE nonce = ? RETURNING nonce').all(c.nonce).length === 0) return 'UNKNOWN_CHALLENGE';
+    // Reserve before the async proof check: a challenge is answered once (also across processes: the upsert
+    // is atomic), a nullifier checked once at a time in this process. Only answered nonces are stored, until
+    // they expire.
+    this.db.prepare('DELETE FROM challenge_uses WHERE expires_at < ?').run(Date.now());
+    const reserved = this.db
+      .prepare('INSERT INTO challenge_uses (nonce, expires_at, attempts, busy) VALUES (?, ?, 0, 1) ON CONFLICT (nonce) DO UPDATE SET busy = 1 WHERE busy = 0 AND attempts < ? RETURNING attempts')
+      .all(nonce, expiresAt, PROOF_TRIES);
+    if (reserved.length === 0) return 'UNKNOWN_CHALLENGE';
     this.inflight.add(s.nullifier);
     try {
       const ok = await verifyOffChain([s.nullifier, s.merkle_root, s.pay_to, s.required_amount, s.context_hash], payment.proof).catch(() => false);
       if (!ok) {
         // A bad proof does not use up the challenge, but one challenge buys at most PROOF_TRIES pairing checks.
-        const tries = Number(row!.attempts) + 1;
-        if (tries < PROOF_TRIES) this.db.prepare('INSERT OR IGNORE INTO challenges (nonce, expires_at, body, attempts) VALUES (?, ?, ?, ?)').run(c.nonce, c.expiresAt, JSON.stringify(c), tries);
+        this.db.prepare('UPDATE challenge_uses SET attempts = attempts + 1, busy = 0 WHERE nonce = ?').run(nonce);
         return 'BAD_PROOF';
       }
       // The primary key decides between two processes that verified the same note at once.
@@ -599,7 +627,7 @@ export function serveGateway(g: Gateway): Server {
     } catch {
       return json(res, 400, { error: 'X-PAYMENT is not base64 JSON' });
     }
-    const refused = await g.redeem(url.pathname, p);
+    const refused = await g.redeem(url.pathname, p, req.method ?? 'GET');
     if (refused) return json(res, 402, { error: `payment refused: ${refused}`, reason: refused, accepts: [await g.challenge(req.method ?? 'GET', url.pathname, price)] });
     const receipt = { nullifier: p.signals.nullifier, amount: p.signals.required_amount };
     return json(res, 200, { paid: receipt, data: g.o.content(url.pathname) }, { 'x-payment-response': Buffer.from(JSON.stringify(receipt)).toString('base64') });

@@ -1,11 +1,17 @@
-// Demo, live, no transaction sent: the shipped client (Z402Client) against a fresh gateway on Zcash testnet.
+// Demo, live reads of Zcash testnet, no transaction sent: the shipped client (Z402Client) against fresh
+// gateways rebuilt from the two published runs.
 //   pnpm --filter @z402/examples demo
 // 1. a fresh gateway credits the Oct 20 run's real deposit through its viewing key and adopts the run's
 //    anchor (read on-chain with the published anchor viewing key)
-// 2. the client, with the default 2,880-block window, refuses that anchor: ANCHOR_TOO_OLD
+// 2. a live client, with the default 2,880-block window, refuses that anchor: ANCHOR_TOO_OLD
 // 3. a dishonest gateway in front of it hands the client its own root with no anchor: UNANCHORED_ROOT
-// 4. with the window widened explicitly to cover the Oct 20 anchor, the client pays two calls with the two
-//    published fixture notes (real proofs, against the anchored root); a third call has no note left
+// 4. a replay of the Oct 20 run as the chain stood 10 blocks after its anchor (replayAtHeight, default
+//    window, a fixed scan range): two calls pay with the published fixture notes; a third has no note left.
+//    That run predates signed anchors (its anchor is unsigned).
+// 5. the Oct 22 pass-2 run (signed anchors): a gateway rebuilt from its deposits; a live pinned-key client
+//    refuses it (its competing anchor, or the age of its anchors); replayed at block 4,529,604 it pays
+//    against the newest signed anchor under the default window; replayed at the record's end it refuses
+//    ANCHOR_COMPETING. No gateway of the current protocol is running live for a clone to pay.
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -18,6 +24,7 @@ import { AnchorRefusedError, DEFAULT_MAX_ANCHOR_AGE_BLOCKS, Z402Client } from '@
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const d = JSON.parse(readFileSync(resolve(ROOT, 'deployments/testnet.json'), 'utf8'));
+const p2 = JSON.parse(readFileSync(resolve(ROOT, 'deployments/testnet-pass2.json'), 'utf8'));
 const dir = mkdtempSync(join(tmpdir(), 'z402-demo-'));
 const say = (s: string) => console.log(s);
 const refusal = (e: unknown) => (e instanceof AnchorRefusedError ? e.message : `unexpected: ${(e as Error).message}`);
@@ -42,7 +49,7 @@ async function main() {
   const fixture = await Promise.all(d.fixtureNotes.map(async (n: Record<string, string>) => ({ ...n, index: Number(n.index), deposit: 'published', spent: false, nullifier: (await nullifierOf({ noteSecret: BigInt(n.noteSecret), nullifierSecret: BigInt(n.nullifierSecret), value: BigInt(n.value) })).toString() })));
   writeFileSync(notes, JSON.stringify({ type: 'zec-null-402-notes', gateway: base, plans: {}, notes: fixture }), { mode: 0o600 });
 
-  say(`\n2. the client with the default window (${DEFAULT_MAX_ANCHOR_AGE_BLOCKS} blocks) pays /api/quote`);
+  say(`\n2. a live client with the default window (${DEFAULT_MAX_ANCHOR_AGE_BLOCKS} blocks) pays /api/quote`);
   await new Z402Client(base, notes, { anchorUivk: d.wallets.anchor.uivk }).pay(`${base}/api/quote`).then(
     (r) => say(`   unexpected: HTTP ${r.status}`),
     (e) => say(`   ${refusal(e)}`),
@@ -62,14 +69,15 @@ async function main() {
   });
   await new Promise<void>((r) => proxy.listen(0, '127.0.0.1', r));
   const pbase = `http://127.0.0.1:${(proxy.address() as AddressInfo).port}`;
-  await new Z402Client(pbase, notes, { anchorUivk: d.wallets.anchor.uivk, maxAnchorAgeBlocks: age + 10 }).pay(`${pbase}/api/quote`).then(
+  const replay = { anchorUivk: d.wallets.anchor.uivk, replayAtHeight: a.height! + 10 };
+  await new Z402Client(pbase, notes, replay).pay(`${pbase}/api/quote`).then(
     (r) => say(`   unexpected: HTTP ${r.status}`),
     (e) => say(`   ${refusal(e)}  (no proof was made, nothing sent)`),
   );
   proxy.close();
 
-  say(`\n4. replaying the Oct 20 anchor: the window is widened explicitly to its age + 10 blocks (maxAnchorAgeBlocks: ${age + 10}); the default refused it above`);
-  const client = new Z402Client(base, notes, { anchorUivk: d.wallets.anchor.uivk, maxAnchorAgeBlocks: age + 10 });
+  say(`\n4. a replay of the Oct 20 run as of block ${replay.replayAtHeight} (10 blocks after its anchor), default window: the scan range is fixed, so this does not slow down as the chain grows. Its anchor is unsigned (that run predates signed anchors)`);
+  const client = new Z402Client(base, notes, replay);
   for (let i = 0; i < 2; i++) {
     const r = await client.pay(`${base}/api/quote`);
     say(`   GET /api/quote → 402 → proof ${r.proveMs} ms → HTTP ${r.status}, nullifier ${r.nullifier?.slice(0, 12)}…, against anchor ${r.anchor?.txid.slice(0, 12)}… (${r.anchor?.leaves} leaves)`);
@@ -79,6 +87,38 @@ async function main() {
     (r) => say(`   unexpected: HTTP ${r.status}`),
     (e) => say(`   a third call: ${(e as Error).message}`),
   );
+
+  say(`\n5. the Oct 22 pass-2 run (current protocol, signed anchors, key ${p2.protocol.anchorPubkey.slice(0, 12)}… pinned from the record): a fresh gateway credits its two deposits and adopts its four anchors`);
+  const g2 = new Gateway({ statePath: join(dir, 'pass2.db'), depositUa: p2.wallets.gateway.address, depositUivk: p2.wallets.gateway.uivk, unitZat: 1000, prices: { '/api/quote': 10n }, content: () => ({ quote: 'ZEC/USD' }), anchorUivk: p2.wallets.anchor.uivk });
+  for (const x of p2.deposits) await g2.claim(x.txid, x.items);
+  for (const x of p2.anchors) await g2.adoptAnchor(x.txid);
+  const s2 = serveGateway(g2);
+  await new Promise<void>((r) => s2.listen(0, '127.0.0.1', r));
+  const base2 = `http://127.0.0.1:${(s2.address() as AddressInfo).port}`;
+  say(`   ${(await g2.root()) === p2.gateway.root ? 'root matches the record' : 'ROOT DIFFERS FROM THE RECORD'}; newest anchor ${g2.latestAnchor()?.txid.slice(0, 12)}… at block ${g2.latestAnchor()?.height}`);
+  const notes2 = () => {
+    const f = join(dir, `pass2-notes-${Date.now()}.json`);
+    writeFileSync(f, JSON.stringify({ type: 'zec-null-402-notes', gateway: base2, plans: {}, notes: [{ ...p2.fixtureNote, deposit: p2.deposits[1].memo.slice(5), spent: false }] }), { mode: 0o600 });
+    return f;
+  };
+  const pinned = { anchorUivk: p2.wallets.anchor.uivk, anchorPubkey: p2.protocol.anchorPubkey };
+  say('   a live client (current tip, default window):');
+  await new Z402Client(base2, notes2(), pinned).pay(`${base2}/api/quote`).then(
+    (r) => say(`   unexpected: HTTP ${r.status}`),
+    (e) => say(`   ${refusal(e)}`),
+  );
+  const at = p2.competing.height - 2;
+  say(`   replayed as of block ${at} (after the newest honest anchor, before the competing one), default window:`);
+  const r2 = await new Z402Client(base2, notes2(), { ...pinned, replayAtHeight: at }).pay(`${base2}/api/quote`);
+  say(`   GET /api/quote → 402 → proof ${r2.proveMs} ms → HTTP ${r2.status}, nullifier ${r2.nullifier?.slice(0, 12)}…, against signed anchor ${r2.anchor?.txid.slice(0, 12)}… (${r2.anchor?.leaves} leaves, block ${r2.anchor?.height})`);
+  say(`   replayed as of block ${p2.tipAtEnd} (the record's end, after the competing anchor at ${p2.competing.height}):`);
+  await new Z402Client(base2, notes2(), { ...pinned, replayAtHeight: p2.tipAtEnd }).pay(`${base2}/api/quote`).then(
+    (r) => say(`   unexpected: HTTP ${r.status}`),
+    (e) => say(`   ${refusal(e)}`),
+  );
+  say('   no gateway of the current protocol is anchoring live for a clone to pay; the live signed-anchor payments are the ones recorded in deployments/testnet-pass2.json');
+  s2.close();
+  g2.close();
   s.close();
   gw.close();
   say(`\ndone in ${((Date.now() - t0) / 1000).toFixed(1)} s`);

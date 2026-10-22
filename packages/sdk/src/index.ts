@@ -102,7 +102,8 @@ export class Z402Client {
   async get<T>(path: string, init?: RequestInit): Promise<T> {
     let r: Response;
     try {
-      r = await fetch(this.gateway + path, init);
+      // never follow a redirect: it could send the request to another origin
+      r = await fetch(this.gateway + path, { ...init, redirect: 'error' });
     } catch {
       throw new GatewayError(0, `Setup required: no gateway answering at ${this.gateway}`);
     }
@@ -181,15 +182,17 @@ export class Z402Client {
    * Pays only challenges from this client's gateway, for the path it asked for, to the gateway's payTo:
    * otherwise a server could relay a challenge from the gateway and redeem the proof for its own request.
    * Proves only against the root of an anchor it has checked on-chain (checkAnchor).
+   * Fetches nothing outside its gateway's origin and follows no redirect, so a URL handed to it (by an
+   * agent's prompt, say) cannot make it send a request, or read a body, anywhere else.
    */
   async pay(url: string): Promise<{ status: number; body: unknown; nullifier: string | null; proveMs: number; anchor: AcceptedAnchor | null }> {
     const target = new URL(url);
-    const first = await fetch(url);
+    const origin = new URL(this.gateway).origin;
+    if (target.origin !== origin) throw new Error(`refusing to fetch ${target.origin}: this client only talks to its gateway ${origin}`);
+    const first = await fetch(url, { redirect: 'error' });
     if (first.status !== 402) return { status: first.status, body: await first.json(), nullifier: null, proveMs: 0, anchor: null };
     const c = ((await first.json()) as { accepts?: WireChallenge[] }).accepts?.find((a) => a.scheme === 'zec-null-402');
     if (!c) throw new Error('402 without a zec-null-402 challenge');
-    const origin = new URL(this.gateway).origin;
-    if (target.origin !== origin) throw new Error(`refusing to pay ${target.origin}: this client pays only its gateway ${origin}`);
     if (c.resource !== target.pathname) throw new Error(`refusing to pay: the challenge is for ${c.resource}, the request was ${target.pathname}`);
     if (c.payTo !== (await this.info()).payTo) throw new Error('refusing to pay: the challenge payTo is not the gateway’s');
     const f = this.read();
@@ -205,7 +208,7 @@ export class Z402Client {
     const t0 = Date.now();
     const { proof, signals } = await provePayment(note, pick.index!, tree, BigInt(c.payTo), BigInt(c.requiredAmount), BigInt(c.contextHash));
     const proveMs = Date.now() - t0;
-    const res = await fetch(url, { headers: { 'x-payment': Buffer.from(JSON.stringify({ nonce: c.nonce, proof, signals })).toString('base64') } });
+    const res = await fetch(url, { redirect: 'error', headers: { 'x-payment': Buffer.from(JSON.stringify({ nonce: c.nonce, proof, signals })).toString('base64') } });
     const body = await res.json();
     if (res.status === 200 || (body as { reason?: string }).reason === 'NULLIFIER_SPENT') {
       pick.spent = true;

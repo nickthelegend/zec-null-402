@@ -19,6 +19,11 @@ let gw: Gateway;
 let base = '';
 let relay = '';
 const redeemed: number[] = [];
+/** every request the attacker's relay receives, and every request a redirect target receives */
+const relayHits: string[] = [];
+const sinkHits: string[] = [];
+let sink = '';
+let redirector = '';
 const servers: Server[] = [];
 const listen = async (s: Server) => {
   servers.push(s);
@@ -37,6 +42,7 @@ beforeAll(async () => {
   // The attacker: /free costs the agent nothing it can see, and passes /api/info and /api/leaves through.
   relay = await listen(
     createServer(async (req, res) => {
+      relayHits.push(req.url ?? '');
       const send = (status: number, body: string) => res.writeHead(status, { 'content-type': 'application/json' }).end(body);
       if (req.url === '/api/info' || req.url === '/api/leaves') return send(200, await (await fetch(base + req.url)).text());
       const header = req.headers['x-payment'];
@@ -46,15 +52,25 @@ beforeAll(async () => {
       return send(200, JSON.stringify({ free: true }));
     }),
   );
+  // A server that records whatever reaches it, and a "gateway" that redirects every request to it.
+  sink = await listen(
+    createServer((req, res) => {
+      sinkHits.push(req.url ?? '');
+      res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ q: req.url }));
+    }),
+  );
+  redirector = await listen(createServer((req, res) => res.writeHead(302, { location: `${sink}${req.url}` }).end()));
   const notes = await Promise.all(d.fixtureNotes.map(async (n: Record<string, string>) => ({ ...n, deposit: 'published', spent: false, nullifier: (await nullifierOf({ noteSecret: BigInt(n.noteSecret), nullifierSecret: BigInt(n.nullifierSecret), value: BigInt(n.value) })).toString() })));
   writeFileSync(join(dir, 'notes.json'), JSON.stringify({ type: 'zec-null-402-notes', gateway: base, plans: {}, notes }), { mode: 0o600 });
 }, 120_000);
 afterAll(() => servers.forEach((s) => s.close()));
 
 describe('the client pays only its own gateway, for the request it made', () => {
-  it('a challenge relayed by another origin is refused before any proof is made', async () => {
+  it('a URL on another origin is never fetched: no request reaches it, so nothing can be sent out or relayed', async () => {
     const c = new Z402Client(base, join(dir, 'notes.json'), opts);
-    await expect(c.pay(`${relay}/free`)).rejects.toThrow(/refusing to pay/);
+    await expect(c.pay(`${relay}/exfil?d=secret`)).rejects.toThrow(/refusing to fetch http:\/\/127\.0\.0\.1:\d+: this client only talks to its gateway/);
+    await expect(c.pay(`${relay}/free`)).rejects.toThrow(/refusing to fetch/);
+    expect(relayHits).toEqual([]);
     expect(redeemed).toEqual([]);
     expect(Object.keys(gw.state.nullifiers)).toHaveLength(0);
     expect(c.status()).toMatchObject({ credited: 2, unspent: 2 });
@@ -64,6 +80,14 @@ describe('the client pays only its own gateway, for the request it made', () => 
     const c = new Z402Client(relay, join(dir, 'notes.json'), opts);
     await expect(c.pay(`${relay}/free`)).rejects.toThrow(/refusing to pay.*\/api\/quote.*\/free/);
     expect(redeemed).toEqual([]);
+    expect(Object.keys(gw.state.nullifiers)).toHaveLength(0);
+  }, 120_000);
+
+  it('a redirect from the gateway origin is not followed: the target receives nothing', async () => {
+    const c = new Z402Client(redirector, join(dir, 'notes.json'), opts);
+    await expect(c.pay(`${redirector}/api/quote?d=secret`)).rejects.toThrow();
+    await expect(c.info()).rejects.toThrow();
+    expect(sinkHits).toEqual([]);
     expect(Object.keys(gw.state.nullifiers)).toHaveLength(0);
   }, 120_000);
 

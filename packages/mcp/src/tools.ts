@@ -87,7 +87,7 @@ export function createServer(): McpServer {
 
   server.registerTool(
     'pay',
-    { title: 'Fetch a paid URL', description: 'GETs `url`; on a zec-null-402 402 it pays with a zero-knowledge proof of one unspent note of the price. No transaction per call. Pays only Z402_GATEWAY_URL, for the path requested; any other challenge is refused. Proves only against a root it has read itself in a recent on-chain anchor; if every note of the price was credited after the latest anchor, waits for the next one (up to Z402_ANCHOR_WAIT_SEC, default 900 s).', inputSchema: { url: z.string().url() } },
+    { title: 'Fetch a paid URL', description: 'GETs `url`; on a zec-null-402 402 it pays with a zero-knowledge proof of one unspent note of the price. No transaction per call. Talks only to Z402_GATEWAY_URL: a URL on any other origin is never fetched (no request is sent there and no redirect is followed), and only a challenge for the path requested is paid. Proves only against a root it has read itself in a recent on-chain anchor; if every note of the price was credited after the latest anchor, waits for the next one (up to Z402_ANCHOR_WAIT_SEC, default 900 s).', inputSchema: { url: z.string().url() } },
     (a) =>
       run('pay', a, async () => {
         const deadline = Date.now() + Number(process.env.Z402_ANCHOR_WAIT_SEC ?? 900) * 1000;

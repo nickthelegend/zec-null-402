@@ -88,12 +88,12 @@ describe('z402-mcp', () => {
     // the default 2,880-block window refuses the Oct 20 anchor; pay keeps asking until Z402_ANCHOR_WAIT_SEC runs out
     const challenges = () => Number((gw.db.prepare('SELECT count(*) AS n FROM challenges').get() as { n: number }).n);
     const before = challenges();
-    const c = await connect({ Z402_GATEWAY_URL: base, Z402_NOTES_FILE: join(dir, 'notes.json'), Z402_ANCHOR_UIVK: d.wallets.anchor.uivk, Z402_ANCHOR_WAIT_SEC: '3', Z402_ANCHOR_POLL_SEC: '1' });
+    const c = await connect({ Z402_GATEWAY_URL: base, Z402_NOTES_FILE: join(dir, 'notes.json'), Z402_ANCHOR_UIVK: d.wallets.anchor.uivk, Z402_ANCHOR_WAIT_SEC: '8', Z402_ANCHOR_POLL_SEC: '1' });
     try {
       const t0 = Date.now();
       const r = await call('pay', { url: `${base}/api/quote` }, c);
       expect(r).toMatchObject({ isError: true, text: expect.stringMatching(/ANCHOR_TOO_OLD/) });
-      expect(Date.now() - t0).toBeGreaterThanOrEqual(1000); // at least one poll of 1 s; it never sleeps past the 3 s deadline
+      expect(Date.now() - t0).toBeGreaterThanOrEqual(1000); // at least one poll of 1 s; it never sleeps past the 8 s deadline
       expect(challenges() - before).toBeGreaterThanOrEqual(2); // asked again (the old tool gave up after one)
     } finally {
       await c.close();

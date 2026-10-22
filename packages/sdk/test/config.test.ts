@@ -21,6 +21,25 @@ describe('Z402Client settings', () => {
     }
   });
 
+  it('Z402_REPLAY_AT_HEIGHT: unset or blank is a live client; malformed is Setup required', () => {
+    const was = process.env.Z402_REPLAY_AT_HEIGHT;
+    try {
+      delete process.env.Z402_REPLAY_AT_HEIGHT;
+      expect(new Z402Client('http://127.0.0.1:1', notes).replayAtHeight).toBeUndefined();
+      process.env.Z402_REPLAY_AT_HEIGHT = '';
+      expect(new Z402Client('http://127.0.0.1:1', notes).replayAtHeight).toBeUndefined();
+      process.env.Z402_REPLAY_AT_HEIGHT = '4529604';
+      expect(new Z402Client('http://127.0.0.1:1', notes).replayAtHeight).toBe(4529604);
+      for (const bad of ['4,529,604', '0', '-1', 'tip']) {
+        process.env.Z402_REPLAY_AT_HEIGHT = bad;
+        expect(() => new Z402Client('http://127.0.0.1:1', notes), bad).toThrow(/^Setup required: Z402_REPLAY_AT_HEIGHT/);
+      }
+    } finally {
+      if (was === undefined) delete process.env.Z402_REPLAY_AT_HEIGHT;
+      else process.env.Z402_REPLAY_AT_HEIGHT = was;
+    }
+  });
+
   it('blank means the default window; a number is used as given', () => {
     process.env.Z402_MAX_ANCHOR_AGE_BLOCKS = '';
     expect(new Z402Client('http://127.0.0.1:1', notes).maxAnchorAgeBlocks).toBe(DEFAULT_MAX_ANCHOR_AGE_BLOCKS);

@@ -77,10 +77,12 @@ async function wallet(gatewayBase: string) {
   return path;
 }
 
-// The published anchor was mined on Oct 20. The window used here is its age plus 10 blocks; the default
-// window (2,880 blocks) refuses it, which a test below shows.
+// The published anchor was mined on Oct 20. These clients replay the run as the chain stood 10 blocks
+// after it (replayAtHeight), with the default 2,880-block window: a fixed scan range that does not grow
+// with the tip. A live client (no replay) refuses it as too old, which a test below shows.
 let opts: ClientOptions;
 let age = 0;
+let anchorHeight = 0;
 const extraLeaf = async () => (await leafFromItem({ secretHash: '4242424242', value: '10' })).toString();
 const rootOf = async (l: string[]) => (await Tree.build(l.map(BigInt))).root.toString();
 const unspent = (path: string) => (JSON.parse(readFileSync(path, 'utf8')).notes as { spent: boolean }[]).filter((n) => !n.spent).length;
@@ -88,7 +90,8 @@ const unspent = (path: string) => (JSON.parse(readFileSync(path, 'utf8')).notes 
 beforeAll(async () => {
   const a = await readAnchor(d.wallets.anchor.uivk, d.anchor.txid);
   age = a.tip - a.height!;
-  opts = { anchorUivk: d.wallets.anchor.uivk, maxAnchorAgeBlocks: age + 10 };
+  anchorHeight = a.height!;
+  opts = { anchorUivk: d.wallets.anchor.uivk, replayAtHeight: anchorHeight + 10 };
 }, 60_000);
 
 describe('the client proves only against a root it has read in an on-chain anchor', () => {
@@ -184,7 +187,9 @@ describe('anchor freshness and history', () => {
   }, 120_000);
 
   it('an anchor older than the configured window: ANCHOR_TOO_OLD (and the default 2,880-block window refuses the Oct 20 anchor)', async () => {
-    await expect(new Z402Client(g.base, await wallet(g.base), { ...opts, maxAnchorAgeBlocks: age - 10 }).pay(`${g.base}/api/quote`)).rejects.toThrow(/ANCHOR_TOO_OLD.*accepts at most/);
+    // 10 blocks old at the replay height, against a 5-block window
+    await expect(new Z402Client(g.base, await wallet(g.base), { ...opts, maxAnchorAgeBlocks: 5 }).pay(`${g.base}/api/quote`)).rejects.toThrow(/ANCHOR_TOO_OLD.*mined 10 blocks ago.*accepts at most 5/);
+    // a live client (the current tip, the default window)
     expect(age).toBeGreaterThan(DEFAULT_MAX_ANCHOR_AGE_BLOCKS);
     await expect(new Z402Client(g.base, await wallet(g.base), { anchorUivk: d.wallets.anchor.uivk }).pay(`${g.base}/api/quote`)).rejects.toThrow(/ANCHOR_TOO_OLD/);
     expect(Object.keys(g.gw.state.nullifiers)).toHaveLength(0);

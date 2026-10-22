@@ -29,9 +29,10 @@ const connect = async (extra: Record<string, string>) => {
 
 beforeAll(async () => {
   gw = new Gateway({ statePath: join(dir, 'state.db'), depositUa: d.wallets.gateway.address, depositUivk: d.wallets.gateway.uivk, unitZat: d.unitZat, prices: { '/api/quote': 10n }, content: (p) => ({ served: p }), anchorUivk: d.wallets.anchor.uivk });
-  // the client proves only against an anchored root: the run's real anchor (Oct 20) and a window that still covers it
+  // the client proves only against an anchored root: the run's real anchor (Oct 20), replayed as the chain
+  // stood 10 blocks after it (a fixed scan range) with the default window
   const a = await readAnchor(d.wallets.anchor.uivk, d.anchor.txid);
-  anchorEnv = { Z402_ANCHOR_UIVK: d.wallets.anchor.uivk, Z402_MAX_ANCHOR_AGE_BLOCKS: String(a.tip - a.height! + 10) };
+  anchorEnv = { Z402_ANCHOR_UIVK: d.wallets.anchor.uivk, Z402_REPLAY_AT_HEIGHT: String(a.height! + 10) };
   const s = serveGateway(gw);
   await new Promise<void>((r) => s.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${(s.address() as AddressInfo).port}`;

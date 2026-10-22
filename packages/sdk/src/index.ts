@@ -55,6 +55,15 @@ export interface ClientOptions {
    * unsigned: a signed anchor is Setup required, and only unsigned memos on the address count.
    */
   anchorPubkey?: string;
+  /**
+   * Re-checks a published run as the chain stood at this block height (default: Z402_REPLAY_AT_HEIGHT,
+   * else none). The window is the maxAnchorAgeBlocks blocks ending at this height, scanned once, and
+   * an anchor's age and confirmations are counted from it: anchors and memos mined later are not seen.
+   * The work is bounded (it does not grow with the tip) and memos sent to the anchor address after the
+   * run cannot change the result. It is for replaying a recorded deployment, never for paying a live
+   * gateway: a live client judges anchors against the current tip.
+   */
+  replayAtHeight?: number;
 }
 
 export const DEFAULT_MAX_ANCHOR_AGE_BLOCKS = 2880;
@@ -157,6 +166,7 @@ export class Z402Client {
   readonly minAnchorConf: number;
   readonly lwdUrl: string | undefined;
   readonly anchorPubkey: string | undefined;
+  readonly replayAtHeight: number | undefined;
   /** the anchor address's anchors in the window, from the last scan (reused for ANCHOR_SCAN_TTL_MS, then extended) */
   private scanned: { at: number; tip: number; to: number; anchors: ScannedAnchor[] } | null = null;
 
@@ -168,15 +178,27 @@ export class Z402Client {
     this.lwdUrl = o.lwdUrl ?? (process.env.Z402_LWD_URL || undefined);
     this.anchorPubkey = o.anchorPubkey ?? (process.env.Z402_ANCHOR_PUBKEY || undefined);
     if (this.anchorPubkey !== undefined && !/^[0-9a-f]{64}$/.test(this.anchorPubkey)) throw new SetupRequiredError('Z402_ANCHOR_PUBKEY', "the gateway's anchor public key as 64 lowercase hex characters");
+    const replay = o.replayAtHeight ?? (process.env.Z402_REPLAY_AT_HEIGHT ? intEnv('Z402_REPLAY_AT_HEIGHT', 0, { min: 1 }) : undefined);
+    this.replayAtHeight = replay === undefined ? undefined : wholeNumber('replayAtHeight', replay);
   }
 
   /**
    * Every anchor memo on the anchor address mined in the last maxAnchorAgeBlocks blocks, found by scanning
    * compact blocks with the anchor viewing key. One scan is reused for 30 s; after that only the new
    * blocks are scanned, so lightwalletd is read about once per block, not once per payment.
+   * With replayAtHeight the window ends at that height instead of the tip, and is scanned once.
    */
   async windowAnchors(): Promise<{ tip: number; anchors: ScannedAnchor[] }> {
     const s = this.scanned;
+    const at = this.replayAtHeight;
+    if (at !== undefined) {
+      if (s) return { tip: s.tip, anchors: s.anchors };
+      const r = await scanAnchors(this.anchorUivk!, { from: Math.max(0, at - this.maxAnchorAgeBlocks), to: at }, this.lwdUrl);
+      if (r.tip < at || r.to !== at) throw new Error(`replayAtHeight ${at} is above the chain tip ${r.tip}`);
+      const anchors = r.anchors.filter((a) => a.height <= at);
+      this.scanned = { at: Date.now(), tip: at, to: at, anchors };
+      return { tip: at, anchors };
+    }
     if (s && Date.now() - s.at < ANCHOR_SCAN_TTL_MS) return { tip: s.tip, anchors: s.anchors };
     const r = s ? await scanAnchors(this.anchorUivk!, { from: s.to + 1 }, this.lwdUrl) : await scanAnchors(this.anchorUivk!, { last: this.maxAnchorAgeBlocks + 1 }, this.lwdUrl);
     const floor = r.tip - this.maxAnchorAgeBlocks;
@@ -315,6 +337,11 @@ export class Z402Client {
       const onchain = await readAnchor(this.anchorUivk, a.txid, this.lwdUrl);
       if (!onchain.found) throw new AnchorRefusedError('ANCHOR_MISMATCH', `anchor tx ${short(a.txid)} is not on-chain`);
       ({ anchors: memos, height, tip } = onchain);
+      // a replay sees the chain as it stood at replayAtHeight: a tx mined after it was not mined yet
+      if (this.replayAtHeight !== undefined) {
+        tip = this.replayAtHeight;
+        if (height !== null && height > tip) height = null;
+      }
     }
     const memo = memos.find((m) => m.root === a.root && m.leaves === a.leaves);
     if (!memo) throw new AnchorRefusedError('ANCHOR_MISMATCH', `tx ${short(a.txid)} has no anchor memo for ${a.leaves} leaves and root ${short(a.root)} readable by the anchor viewing key`);

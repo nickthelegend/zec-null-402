@@ -12,6 +12,8 @@
 //   Z402_CLAIM_WAIT_SEC   how long claim waits for the deposit to be mined (default 900)
 //   Z402_ANCHOR_PUBKEY    the gateway's anchor signing key (64 hex), pinned from its deployment record:
 //                         pay then needs anchors signed by it and ignores other memos on the anchor address
+//   Z402_REPLAY_AT_HEIGHT replays a published run as the chain stood at this height (fixed scan range);
+//                         blank for a live gateway
 import { appendFileSync } from 'node:fs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';

@@ -36,7 +36,8 @@ const file = (p: string) => JSON.parse(readFileSync(p, 'utf8')) as { plans: Reco
 let opts: ClientOptions;
 beforeAll(async () => {
   const a = await readAnchor(d.wallets.anchor.uivk, d.anchor.txid);
-  opts = { anchorUivk: d.wallets.anchor.uivk, maxAnchorAgeBlocks: a.tip - a.height! + 10 };
+  // a replay of the Oct 20 run as of 10 blocks after its anchor, with the default window: a fixed scan range
+  opts = { anchorUivk: d.wallets.anchor.uivk, replayAtHeight: a.height! + 10 };
 }, 60_000);
 
 describe('the notes file under concurrent calls', () => {

@@ -37,7 +37,8 @@ beforeAll(async () => {
   // the run's real anchor (Oct 20), read on-chain with the anchor address's published viewing key
   await gw.adoptAnchor(d.anchor.txid);
   const a = await readAnchor(d.wallets.anchor.uivk, d.anchor.txid);
-  opts = { anchorUivk: d.wallets.anchor.uivk, maxAnchorAgeBlocks: a.tip - a.height! + 10 };
+  // a replay of the Oct 20 run as of 10 blocks after its anchor, with the default window: a fixed scan range
+  opts = { anchorUivk: d.wallets.anchor.uivk, replayAtHeight: a.height! + 10 };
   base = await listen(serveGateway(gw));
   // The attacker: /free costs the agent nothing it can see, and passes /api/info and /api/leaves through.
   relay = await listen(

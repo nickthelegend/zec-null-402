@@ -3,6 +3,7 @@
 // sent at the end makes a client refuse the deployment. A fresh gateway is rebuilt from the run's two real
 // deposits (its viewing key checks them) and adopts the run's newest honest anchor. Clients here replay the
 // run at a pinned block height (replayAtHeight), so the scan range is fixed and later memos cannot change it.
+import { createServer } from 'node:http';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -38,6 +39,20 @@ async function fixtureNotes(base: string) {
   return notes;
 }
 
+/** A proxy in front of `upstream` whose 402 challenges name `named` instead of the anchor the gateway names (the run's probe). */
+async function naming(upstream: string, named: A) {
+  const s = createServer(async (req, res) => {
+    const header = req.headers['x-payment'];
+    const r = await fetch(upstream + req.url, typeof header === 'string' ? { headers: { 'x-payment': header } } : {});
+    const body = (await r.json()) as { accepts?: Record<string, unknown>[] };
+    if (r.status === 402 && body.accepts) body.accepts = body.accepts.map((c) => ({ ...c, root: named.root, anchor: { txid: named.txid, leaves: named.leaves, root: named.root, height: named.height } }));
+    res.writeHead(r.status, { 'content-type': 'application/json' }).end(JSON.stringify(body));
+  });
+  await new Promise<void>((r) => s.listen(0, '127.0.0.1', r));
+  closers.push(() => s.close());
+  return `http://127.0.0.1:${(s.address() as { port: number }).port}`;
+}
+
 describe('pass 2 (Oct 22) on testnet', () => {
   it('every anchor of the run, and the competing one, is on-chain with a memo signed by the published anchor key', async () => {
     for (const a of [...(p.anchors as A[]), p.competing as A]) {
@@ -65,6 +80,31 @@ describe('pass 2 (Oct 22) on testnet', () => {
     expect(r.nullifier).toBe(p.fixtureNote.nullifier);
     expect(Object.keys(gw.state.nullifiers)).toEqual([p.fixtureNote.nullifier]);
   }, 180_000);
+
+  it('after it has accepted the newest anchor, a gateway that still names an older anchor of the same history is paid again (no ANCHOR_ROLLBACK): the client proves against the newest in its window each time', async () => {
+    const oldest = (p.anchors as A[]).reduce((b, a) => (a.height < b.height ? a : b));
+    expect(oldest.txid).toBe(p.probe.named.txid);
+    const at = p.competing.height - 2;
+    const opts = { anchorUivk: p.wallets.anchor.uivk, anchorPubkey: p.protocol.anchorPubkey, replayAtHeight: at };
+    const g1 = await rebuilt(p.anchors as A[]);
+    const notes = await fixtureNotes(g1.base);
+    const proxy1 = await naming(g1.base, oldest);
+    const first = await new Z402Client(proxy1, notes, opts).pay(`${proxy1}/api/quote`);
+    expect(first.status).toBe(200);
+    expect(first.anchor).toMatchObject({ txid: newest.txid, leaves: 6 });
+    expect(JSON.parse(readFileSync(notes, 'utf8')).anchor).toMatchObject({ txid: newest.txid, height: newest.height });
+    // the same note again on a second rebuilt gateway (which has burned nothing), still named the older anchor
+    const f = JSON.parse(readFileSync(notes, 'utf8'));
+    f.notes[0].spent = false;
+    writeFileSync(notes, JSON.stringify(f), { mode: 0o600 });
+    const g2 = await rebuilt(p.anchors as A[]);
+    const proxy2 = await naming(g2.base, oldest);
+    const again = await new Z402Client(proxy2, notes, opts).pay(`${proxy2}/api/quote`).catch((e) => e);
+    expect(again).not.toBeInstanceOf(Error);
+    expect(again.status).toBe(200);
+    expect(again.anchor).toMatchObject({ txid: newest.txid, leaves: 6 });
+    expect(Object.keys(g2.gw.state.nullifiers)).toEqual([p.fixtureNote.nullifier]);
+  }, 240_000);
 
   it('a client of a gateway rebuilt from the run refuses once the competing signed root is in its window: ANCHOR_COMPETING, nothing proven', async () => {
     const { gw, base } = await rebuilt();

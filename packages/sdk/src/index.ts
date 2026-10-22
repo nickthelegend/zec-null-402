@@ -316,9 +316,10 @@ export class Z402Client {
 
   /**
    * Checks, before any proof is made, that the challenge's anchor is on-chain (read by this client with the
-   * pinned anchor viewing key), mined, recent, signed by the pinned key if there is one, extends the last
-   * anchor this client accepted, and is rebuilt by the gateway's leaves; then that every anchor of the
-   * gateway in the window sits on those leaves, and picks the newest (pickAnchor). Returns the tree of that
+   * pinned anchor viewing key), mined, recent, signed by the pinned key if there is one, and is rebuilt by
+   * the gateway's leaves; then that every anchor of the gateway in the window sits on those leaves, picks
+   * the newest (pickAnchor), and checks that one is not behind, and extends, the last anchor this client
+   * accepted (the named anchor may be older: it is not the one proven against). Returns the tree of that
    * anchor's leaves only: leaves the gateway added after it (perhaps for this client alone) never enter the proof.
    */
   async checkAnchor(c: WireChallenge, f: NotesFile): Promise<{ anchor: AcceptedAnchor; tree: Tree; leaves: string[] }> {
@@ -349,13 +350,15 @@ export class Z402Client {
     if (height === null || confirmations < this.minAnchorConf) throw new AnchorRefusedError('ANCHOR_NOT_CONFIRMED', `anchor ${short(a.txid)} has ${confirmations} of ${this.minAnchorConf} confirmations`);
     const age = tip - height;
     if (age > this.maxAnchorAgeBlocks) throw new AnchorRefusedError('ANCHOR_TOO_OLD', `anchor ${short(a.txid)} was mined ${age} blocks ago; this client accepts at most ${this.maxAnchorAgeBlocks}`);
-    const last = f.anchor;
-    if (last && (height < last.height || a.leaves < last.leaves))
-      throw new AnchorRefusedError('ANCHOR_ROLLBACK', `anchor at height ${height} with ${a.leaves} leaves is behind the one this client accepted (${last.height}, ${last.leaves} leaves)`);
     const { leaves } = await this.get<{ leaves: string[] }>('/api/leaves');
     if (!Array.isArray(leaves) || leaves.length < a.leaves) throw new AnchorRefusedError('LEAVES_NOT_ANCHORED', `the gateway serves ${leaves?.length} leaves, the anchor has ${a.leaves}`);
     if ((await Tree.build(leaves.slice(0, a.leaves).map(BigInt))).root.toString() !== a.root) throw new AnchorRefusedError('LEAVES_NOT_ANCHORED', `the first ${a.leaves} leaves the gateway serves do not rebuild the anchored root`);
     const chosen = await pickAnchor({ named: { txid: a.txid, height, ...memo }, window: win.anchors, leaves, anchorPubkey: this.anchorPubkey });
+    // The anchor proven against must not be behind the last one accepted. The named one may be: an older
+    // anchor of the same history is fine, since the client proves against the newest in its window anyway.
+    const last = f.anchor;
+    if (last && (chosen.height < last.height || chosen.leaves < last.leaves))
+      throw new AnchorRefusedError('ANCHOR_ROLLBACK', `the newest anchor in this client's window (height ${chosen.height}, ${chosen.leaves} leaves) is behind the one it accepted before (${last.height}, ${last.leaves} leaves)`);
     if (last && last.txid !== chosen.txid && (chosen.leaves < last.leaves || (await Tree.build(leaves.slice(0, last.leaves).map(BigInt))).root.toString() !== last.root))
       throw new AnchorRefusedError('ANCHOR_FORK', `the anchored leaves do not extend the anchor this client accepted (${short(last.txid)}): the gateway's history forked`);
     const used = leaves.slice(0, chosen.leaves);

@@ -3,6 +3,7 @@
 //   Z402_NOTES_FILE    the agent's note secrets (0600; never returned by a tool)
 //   Z402_WALLET        the agent's zingo data dir (deposit only)
 //   Z402_MAX_DEPOSIT_ZAT  cap on one deposit (default 300000)
+//   Z402_MAX_TOTAL_DEPOSIT_ZAT  optional cap on all deposits this notes file has sent, together
 //   Z402_MCP_LOG       one JSON line per call
 //   Z402_ANCHOR_UIVK   the anchor address's published viewing key (pay proves only against a root read
 //                      on-chain with it); Z402_MAX_ANCHOR_AGE_BLOCKS (default 2880); Z402_LWD_URL;
@@ -56,7 +57,7 @@ export function createServer(): McpServer {
     'deposit',
     {
       title: 'Prepay notes with one shielded deposit',
-      description: 'Creates `count` notes of `units` each, sends ONE shielded deposit to the gateway with memo z402:<commitment> from the agent wallet, and returns the plan id and txid. Call `claim` once it is mined. Spends real testnet funds.',
+      description: 'Creates `count` notes of `units` each, sends ONE shielded deposit to the gateway with memo z402:<commitment> from the agent wallet, and returns the plan id and txid. Call `claim` once it is mined. Spends real testnet funds. Refused above Z402_MAX_DEPOSIT_ZAT for one deposit, or above Z402_MAX_TOTAL_DEPOSIT_ZAT for all of them together.',
       inputSchema: { count: z.number().int().min(1).max(64), units: z.number().int().positive() },
     },
     (a) =>
@@ -69,6 +70,10 @@ export function createServer(): McpServer {
         const max = BigInt(intEnv('Z402_MAX_DEPOSIT_ZAT', 300_000, { min: 1 }));
         const total = BigInt(a.count) * BigInt(a.units) * BigInt(info.unitZat);
         if (total > max) throw new Error(`refused: deposit of ${total} zat is above Z402_MAX_DEPOSIT_ZAT (${max})`);
+        // optional budget over every deposit this notes file has sent (0 or unset: none)
+        const budget = BigInt(intEnv('Z402_MAX_TOTAL_DEPOSIT_ZAT', 0));
+        const spent = c.depositedZat(info.unitZat);
+        if (budget > 0n && spent + total > budget) throw new Error(`refused: deposits from this notes file would total ${spent + total} zat, above Z402_MAX_TOTAL_DEPOSIT_ZAT (${budget}); ${spent} zat already deposited`);
         const p = await c.plan(a.count, BigInt(a.units));
         let txid: string;
         try {

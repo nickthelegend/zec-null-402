@@ -273,6 +273,13 @@ export class Z402Client {
     return r;
   }
 
+  /** Zatoshi this notes file has sent in deposits (plans with a txid), for a total budget. */
+  depositedZat(unitZat: number): bigint {
+    return Object.values(this.read().plans)
+      .filter((p) => p.txid)
+      .reduce((t, p) => t + (p.amountZat !== undefined ? BigInt(p.amountZat) : BigInt(p.units) * BigInt(unitZat)), 0n);
+  }
+
   status() {
     const f = this.read();
     const unspent = f.notes.filter((n) => n.index !== null && !n.spent);

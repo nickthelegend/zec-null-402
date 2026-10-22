@@ -12,3 +12,10 @@ dist/
 wallets/
 .demo/
 CLAUDE.md
+
+# Pre-push audit: local secrets and state, videos, Playwright output
+*.mp4
+*.mov
+*.webm
+test-results/
+playwright-report/

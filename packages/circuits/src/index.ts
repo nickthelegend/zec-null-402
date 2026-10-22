@@ -107,7 +107,9 @@ export async function provePayment(note: Note, leafIndex: number, tree: Tree, pa
   return { proof, publicSignals: publicSignals as string[], signals: { nullifier, merkle_root, pay_to, required_amount, context_hash } as PaymentPublic };
 }
 
-export const verificationKey = () => JSON.parse(readFileSync(VKEY, 'utf8')) as object;
+let vkey: object | null = null;
+/** Read and parsed once per process: every paid call verifies against it. */
+export const verificationKey = () => (vkey ??= JSON.parse(readFileSync(VKEY, 'utf8')) as object);
 export const verifyOffChain = (publicSignals: string[], proof: object) => snarkjs.groth16.verify(verificationKey(), publicSignals, proof);
 
 /**

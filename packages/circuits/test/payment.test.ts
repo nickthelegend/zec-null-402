@@ -1,6 +1,6 @@
 // Real Groth16 proofs with this repo's own Payment(20) setup; no chain involved.
 import { describe, expect, it } from 'vitest';
-import { commitmentOf, contextHash, depositCommitment, leafFromItem, leafOf, newNote, nullifierOf, provePayment, R, secretHash, Tree, verifyOffChain } from '../src/index.js';
+import { commitmentOf, contextHash, depositCommitment, leafFromItem, leafOf, newNote, nullifierOf, provePayment, R, secretHash, Tree, verificationKey, verifyOffChain } from '../src/index.js';
 
 describe('Payment(20)', () => {
   it('a note in the tree pays: the proof verifies and exposes only nullifier, root, payTo, amount, context', async () => {
@@ -39,6 +39,16 @@ describe('Payment(20)', () => {
     expect(commitmentOf(d.items.slice(1))).not.toBe(d.commitment);
     expect(await Promise.all(d.items.map(leafFromItem))).toEqual(await Promise.all(notes.map(leafOf)));
   });
+
+  it('the verification key is read once per process, and stays usable for every later check', async () => {
+    expect(verificationKey()).toBe(verificationKey());
+    const note = newNote(10n);
+    const tree = await Tree.build([await leafOf(note)]);
+    const { proof, publicSignals } = await provePayment(note, 0, tree, 5n, 10n, 6n);
+    for (let i = 0; i < 3; i++) expect(await verifyOffChain(publicSignals, proof)).toBe(true);
+    expect(await verifyOffChain([publicSignals[0], publicSignals[1], '6', publicSignals[3], publicSignals[4]], proof)).toBe(false);
+    expect(await verifyOffChain(publicSignals, proof)).toBe(true);
+  }, 60_000);
 
   it('context hashes differ per nonce and stay below the field modulus', () => {
     const a = contextHash('GET', '/api/quote', 25n, 1n, 'aa');

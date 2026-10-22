@@ -1,6 +1,6 @@
 // Real MCP client ↔ z402-mcp (stdio) ↔ a fresh gateway over HTTP that credited the real published
 // deposit (testnet) ↔ real proofs.
-import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -141,6 +141,23 @@ describe('z402-mcp', () => {
       await c.close();
     }
   }, 60_000);
+
+  it('the call log (Z402_MCP_LOG) is private (0600): it links deposit txids to the nullifiers of later calls', async () => {
+    const fresh = join(dir, 'calls.log');
+    const old = join(dir, 'calls-old.log');
+    writeFileSync(old, '', { mode: 0o644 });
+    chmodSync(old, 0o644);
+    for (const log of [fresh, old]) {
+      const c = await connect({ Z402_GATEWAY_URL: base, Z402_NOTES_FILE: join(dir, 'notes.json'), Z402_MCP_LOG: log, ...anchorEnv });
+      try {
+        expect((await call('status', {}, c)).isError).toBeFalsy();
+      } finally {
+        await c.close();
+      }
+      expect(statSync(log).mode & 0o777, log).toBe(0o600);
+      expect(readFileSync(log, 'utf8')).toContain('"tool":"status"');
+    }
+  });
 
   it('a malformed cap or wait setting is Setup required, never NaN (no endless wait, no unchecked cap)', async () => {
     const dirW = mkdtempSync(join(tmpdir(), 'z402-mcp-nowallet-'));

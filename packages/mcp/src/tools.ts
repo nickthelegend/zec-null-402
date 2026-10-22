@@ -4,7 +4,7 @@
 //   Z402_WALLET        the agent's zingo data dir (deposit only)
 //   Z402_MAX_DEPOSIT_ZAT  cap on one deposit (default 300000)
 //   Z402_MAX_TOTAL_DEPOSIT_ZAT  optional cap on all deposits this notes file has sent, together
-//   Z402_MCP_LOG       one JSON line per call
+//   Z402_MCP_LOG       one JSON line per call (0600: it links deposits to calls)
 //   Z402_ANCHOR_UIVK   the anchor address's published viewing key (pay proves only against a root read
 //                      on-chain with it); Z402_MAX_ANCHOR_AGE_BLOCKS (default 2880); Z402_LWD_URL;
 //                      Z402_ANCHOR_WAIT_SEC (default 900): how long pay waits for the next anchor,
@@ -14,7 +14,7 @@
 //                         pay then needs anchors signed by it and ignores other memos on the anchor address
 //   Z402_REPLAY_AT_HEIGHT replays a published run as the chain stood at this height (fixed scan range);
 //                         blank for a live gateway
-import { appendFileSync } from 'node:fs';
+import { closeSync, fchmodSync, openSync, writeSync } from 'node:fs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { intEnv, quicksend, SetupRequiredError, zingoConfig } from '@z402/gateway';
@@ -30,9 +30,20 @@ const client = () => {
   return cached.c;
 };
 
+/**
+ * The call log ties each deposit (plan, txid) to the nullifiers and times of later calls: exactly the
+ * linkage the protocol hides from the gateway. It is created 0600, and an existing log is made 0600.
+ */
 function log(tool: string, args: unknown, isError: boolean, result: unknown) {
   const f = process.env.Z402_MCP_LOG;
-  if (f) appendFileSync(f, JSON.stringify({ at: new Date().toISOString(), tool, args, isError, result }) + '\n');
+  if (!f) return;
+  const fd = openSync(f, 'a', 0o600);
+  try {
+    fchmodSync(fd, 0o600);
+    writeSync(fd, JSON.stringify({ at: new Date().toISOString(), tool, args, isError, result }) + '\n');
+  } finally {
+    closeSync(fd);
+  }
 }
 async function run(tool: string, args: unknown, fn: () => Promise<unknown>) {
   try {

@@ -280,3 +280,61 @@ mod tests {
         assert!(check(&report(vec![(100, None)], 2, true), &e).ok);
     }
 }
+
+// ---------- range scan: every output to the key in a block range ----------
+// Adapted from zec-unlinkable-swaps' copy of zpay-verify (same author, MIT), with Sapling added.
+
+/// A note found in a compact block by the key.
+#[derive(Debug, Clone, Serialize)]
+pub struct Hit {
+    pub height: u64,
+    pub txid: String,
+    pub pool: &'static str,
+    pub value: u64,
+}
+
+fn compact_hits<V: DomainVersion>(pool: &'static str, height: u64, txid: &str, actions: &[zcash_client_backend::proto::compact_formats::CompactOrchardAction], ivk: &orchard::keys::PreparedIncomingViewingKey, out: &mut Vec<Hit>) {
+    for a in actions {
+        let Ok(ca) = orchard::note_encryption::CompactAction::try_from(a) else { continue };
+        let d = NoteEncryptionDomain::<V>::for_compact_action(&ca);
+        if let Some((note, _)) = zcash_note_encryption::try_compact_note_decryption(&d, ivk, &ca) {
+            out.push(Hit { height, txid: txid.to_string(), pool, value: note.value().inner() });
+        }
+    }
+}
+
+/// Streams compact blocks `from..=to` from lightwalletd and trial-decrypts every Sapling, Orchard and
+/// Ironwood output with the key. Finds every transaction that paid the key in the range without
+/// knowing its txid (for example every anchor sent to an anchor address).
+pub async fn scan_range(c: &mut lwd::Client, uivk: &UnifiedIncomingViewingKey, from: u64, to: u64) -> Result<(Vec<Hit>, u64), VerifyError> {
+    use zcash_client_backend::proto::service::{BlockId, BlockRange};
+    let orchard_ivk = uivk.orchard().as_ref().map(orchard::keys::PreparedIncomingViewingKey::new);
+    let sapling_ivk = uivk.sapling().as_ref().map(|k| k.prepare());
+    let range = BlockRange { start: Some(BlockId { height: from, hash: vec![] }), end: Some(BlockId { height: to, hash: vec![] }), pool_types: vec![] };
+    let mut stream = c.get_block_range(range).await.map_err(|s| VerifyError::Lwd(lwd::LwdError::Rpc(s)))?.into_inner();
+    let mut hits = Vec::new();
+    let mut blocks = 0u64;
+    while let Some(block) = stream.message().await.map_err(|s| VerifyError::Lwd(lwd::LwdError::Rpc(s)))? {
+        blocks += 1;
+        let h = u32::try_from(block.height).map(BlockHeight::from_u32).map_err(|_| VerifyError::Unparseable(format!("block height {}", block.height)))?;
+        for tx in &block.vtx {
+            let mut id = tx.txid.clone();
+            id.reverse();
+            let txid = id.iter().map(|b| format!("{b:02x}")).collect::<String>();
+            if let Some(ivk) = &sapling_ivk {
+                let d = SaplingDomain::new(zip212_enforcement(&NETWORK, h));
+                for o in &tx.outputs {
+                    let Ok(co) = sapling::note_encryption::CompactOutputDescription::try_from(o) else { continue };
+                    if let Some((note, _)) = zcash_note_encryption::try_compact_note_decryption(&d, ivk, &co) {
+                        hits.push(Hit { height: block.height, txid: txid.clone(), pool: "Sapling", value: note.value().inner() });
+                    }
+                }
+            }
+            if let Some(ivk) = &orchard_ivk {
+                compact_hits::<OrchardVersion>("Orchard", block.height, &txid, &tx.actions, ivk, &mut hits);
+                compact_hits::<IronwoodVersion>("Ironwood", block.height, &txid, &tx.ironwood_actions, ivk, &mut hits);
+            }
+        }
+    }
+    Ok((hits, blocks))
+}

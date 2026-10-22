@@ -32,7 +32,11 @@ describe('pickAnchor', () => {
     const a = await anchor(mine, 4, 100, signer, 'a'.repeat(64));
     const b = await anchor(theirs, 4, 101, signer, 'b'.repeat(64));
     expect(await code(pickAnchor({ named: a, window: [a, b], leaves: mine, anchorPubkey: signer.publicKey }))).toBe('ANCHOR_COMPETING');
-    expect(await code(pickAnchor({ named: a, window: [b, a], leaves: mine }))).toBe('ANCHOR_COMPETING');
+    expect(await code(pickAnchor({ named: b, window: [b, a], leaves: mine, anchorPubkey: signer.publicKey }))).toBe('ANCHOR_COMPETING');
+    // an unsigned deployment, read by a client with no key: two unsigned roots for 4 leaves
+    const ua = await anchor(mine, 4, 100, null, 'c'.repeat(64));
+    const ub = await anchor(theirs, 4, 101, null, 'd'.repeat(64));
+    expect(await code(pickAnchor({ named: ua, window: [ua, ub], leaves: mine }))).toBe('ANCHOR_COMPETING');
   });
 
   it('an anchor for more leaves than the gateway serves: ANCHOR_COMPETING', async () => {
@@ -42,13 +46,18 @@ describe('pickAnchor', () => {
     expect(await code(pickAnchor({ named: a, window: [a, b], leaves: l.slice(0, 5), anchorPubkey: signer.publicKey }))).toBe('ANCHOR_COMPETING');
   });
 
-  it('with a pinned key, memos anyone else sent to the published anchor address are ignored; without one they count', async () => {
+  it('with a pinned key, memos anyone else sent to the published anchor address are ignored; without one, unsigned memos count and signed ones belong to a gateway whose key the client did not pin', async () => {
     const l = await leavesOf(3);
     const a = await anchor(l, 3, 100, signer, 'a'.repeat(64));
     const junk = await anchor(await leavesOf(3, 'q'), 3, 105, other, 'c'.repeat(64));
     const unsigned = await anchor(await leavesOf(3, 'r'), 3, 106, null, 'd'.repeat(64));
     expect(await pickAnchor({ named: a, window: [a, junk, unsigned], leaves: l, anchorPubkey: signer.publicKey })).toMatchObject({ txid: a.txid });
-    expect(await code(pickAnchor({ named: a, window: [a, junk, unsigned], leaves: l }))).toBe('ANCHOR_COMPETING');
+    // no key pinned: an unsigned deployment (like the Oct 20 one)
+    const u = await anchor(l, 3, 100, null, 'e'.repeat(64));
+    expect(await pickAnchor({ named: u, window: [u, junk], leaves: l })).toMatchObject({ txid: u.txid });
+    expect(await code(pickAnchor({ named: u, window: [u, junk, unsigned], leaves: l }))).toBe('ANCHOR_COMPETING');
+    // a signed anchor named to a client that pinned no key: Setup required, never accepted unchecked
+    await expect(pickAnchor({ named: a, window: [a], leaves: l })).rejects.toThrow(/^Setup required: Z402_ANCHOR_PUBKEY/);
   });
 
   it('with a pinned key the named anchor must be signed by it: ANCHOR_BAD_SIGNATURE', async () => {

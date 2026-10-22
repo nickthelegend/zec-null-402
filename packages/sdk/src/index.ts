@@ -51,7 +51,8 @@ export interface ClientOptions {
   /**
    * the gateway's anchor signing key (64 hex Ed25519 public key; default: Z402_ANCHOR_PUBKEY), pinned from
    * the deployment record, never taken from the gateway. With it, an anchor must carry its signature and
-   * memos anyone else sends to the anchor address are ignored; without it, every anchor memo there counts.
+   * memos anyone else sends to the anchor address are ignored. Without it the deployment is taken to be
+   * unsigned: a signed anchor is Setup required, and only unsigned memos on the address count.
    */
   anchorPubkey?: string;
 }
@@ -101,7 +102,10 @@ const shortId = (s: string) => (s.length > 16 ? `${s.slice(0, 12)}…` : s);
  * Judges the anchors found on the anchor address in the client's window, given the anchor the gateway
  * named (already read on-chain, mined and recent) and the leaves the gateway serves:
  * - with a pinned key, the named anchor must be signed by it (ANCHOR_BAD_SIGNATURE), and only anchors
- *   signed by it count; without one, every anchor memo in the window counts;
+ *   signed by it count. Without one the deployment is taken to be unsigned (the Oct 20 one is): a signed
+ *   named anchor is Setup required (pin the gateway's key), and only unsigned memos count, which anyone
+ *   can send to the public anchor address, so an unpinned client can be made to refuse but cannot tell
+ *   who anchored what;
  * - every counted anchor must be the root of a prefix of the served leaves (ANCHOR_COMPETING otherwise:
  *   the gateway has put a root on-chain that is not on the history it shows this client);
  * - the newest counted anchor (by height, then leaf count) is the one to prove against, whichever the
@@ -111,7 +115,9 @@ export async function pickAnchor(x: { named: ScannedAnchor; window: ScannedAncho
   const { named, leaves, anchorPubkey } = x;
   if (anchorPubkey && !verifyAnchorSignature(anchorPubkey, named))
     throw new AnchorRefusedError('ANCHOR_BAD_SIGNATURE', `anchor ${shortId(named.txid)} is ${named.signature ? 'not signed by' : 'unsigned; this client needs a signature from'} the gateway's anchor key ${shortId(anchorPubkey)}`);
-  const counted = [named, ...x.window.filter((a) => !(a.txid === named.txid && a.root === named.root && a.leaves === named.leaves))].filter((a) => !anchorPubkey || verifyAnchorSignature(anchorPubkey, a));
+  if (!anchorPubkey && named.signature) throw new SetupRequiredError('Z402_ANCHOR_PUBKEY', `anchor ${shortId(named.txid)} is signed: pin the gateway's anchor public key from its deployment record to check it and its other anchors`);
+  const ours = (a: ScannedAnchor) => (anchorPubkey ? verifyAnchorSignature(anchorPubkey, a) : !a.signature);
+  const counted = [named, ...x.window.filter((a) => !(a.txid === named.txid && a.root === named.root && a.leaves === named.leaves))].filter(ours);
   const roots = new Map<number, string>();
   const rootAt = async (n: number) => {
     if (!roots.has(n)) roots.set(n, (await Tree.build(leaves.slice(0, n).map(BigInt))).root.toString());

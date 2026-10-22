@@ -3,10 +3,10 @@
 // The client proves only against a root it has read itself in an on-chain anchor (lightwalletd + the
 // anchor address's published viewing key), so a gateway cannot tell clients apart by handing each its
 // own root.
-import { closeSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeSync } from 'node:fs';
+import { closeSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, writeSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
 import { depositCommitment, leafOf, newNote, nullifierOf, provePayment, Tree, type Note } from '@z402/circuits';
-import { intEnv, readAnchor, SetupRequiredError, wholeNumber } from '@z402/gateway';
+import { fileLock, intEnv, readAnchor, SetupRequiredError, wholeNumber } from '@z402/gateway';
 
 export interface StoredNote {
   noteSecret: string;
@@ -52,47 +52,6 @@ export const DEFAULT_MAX_ANCHOR_AGE_BLOCKS = 2880;
 /** a pay() that has held a note this long without finishing (a crashed process) no longer holds it */
 const PENDING_MS = 10 * 60_000;
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const alive = (pid: number) => {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (e) {
-    return (e as NodeJS.ErrnoException).code === 'EPERM';
-  }
-};
-
-/** Takes `<notes>.lock` with O_EXCL (other processes); a lock whose process has exited is taken over. */
-async function fileLock(lock: string): Promise<() => void> {
-  for (const deadline = Date.now() + 30_000; ; ) {
-    try {
-      const fd = openSync(lock, 'wx', 0o600);
-      writeSync(fd, String(process.pid));
-      closeSync(fd);
-      return () => unlinkSync(lock);
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
-      let owner = 0;
-      let age = 0;
-      try {
-        owner = Number(readFileSync(lock, 'utf8')) || 0;
-        age = Date.now() - statSync(lock).mtimeMs;
-      } catch {
-        continue; // released meanwhile
-      }
-      // a lock whose process exited, or one left empty by a process that died while taking it
-      if ((owner && owner !== process.pid && !alive(owner)) || (!owner && age > 5_000)) {
-        try {
-          unlinkSync(lock);
-        } catch {}
-        continue;
-      }
-      if (Date.now() > deadline) throw new Error(`the notes file is locked by process ${owner || 'unknown'} (${lock})`);
-      await sleep(20);
-    }
-  }
-}
-
 /** One read-change-write of a notes file at a time: in this process by a promise chain, across processes by the lockfile. */
 const chains = new Map<string, Promise<void>>();
 async function withNotesLock<T>(path: string, fn: () => T): Promise<T> {
@@ -103,7 +62,7 @@ async function withNotesLock<T>(path: string, fn: () => T): Promise<T> {
   chains.set(key, tail);
   await prev;
   try {
-    const unlock = await fileLock(`${key}.lock`);
+    const unlock = await fileLock(`${key}.lock`, 30_000, 'the notes file');
     try {
       return fn();
     } finally {

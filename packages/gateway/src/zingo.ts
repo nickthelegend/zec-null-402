@@ -4,6 +4,7 @@ import { execFile } from 'node:child_process';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
+import { fileLock } from './lock.js';
 
 const run = promisify(execFile);
 
@@ -41,6 +42,9 @@ async function zingo(cfg: ZingoConfig, walletDir: string, args: string[], timeou
 async function zingoOnce(cfg: ZingoConfig, walletDir: string, args: string[], timeoutMs: number): Promise<string> {
   if (args[0] === 'recovery_info') throw new Error('refusing recovery_info: it prints the seed');
   refuseTreasury(walletDir);
+  // One zingo-cli at a time per wallet directory, across processes: two at once on one --data-dir can
+  // both spend the same notes, and their mixnet proxies collide.
+  const unlock = await fileLock(join(walletDir, '.z402-zingo.lock'), timeoutMs, `wallet ${walletDir}`);
   try {
     const { stdout, stderr } = await run(cfg.bin, ['--chain', 'testnet', '--server', cfg.server, '--data-dir', walletDir, '--waitsync', ...args], {
       timeout: timeoutMs,
@@ -52,6 +56,8 @@ async function zingoOnce(cfg: ZingoConfig, walletDir: string, args: string[], ti
   } catch (e) {
     const err = e as { stdout?: string; stderr?: string; message: string };
     throw new Error(`zingo-cli ${args[0]} failed: ${(err.stderr || err.stdout || err.message).trim().split('\n').slice(-3).join(' | ')}`);
+  } finally {
+    unlock();
   }
 }
 

@@ -71,6 +71,8 @@ export interface GatewayOptions {
   adminToken?: string;
   /** outstanding unpaid challenges kept (default 10,000); the oldest is dropped first */
   maxChallenges?: number;
+  /** deposit scans (a scanner process and a lightwalletd connection each) run at once (default 4); more get 503 */
+  maxScans?: number;
 }
 
 export interface Challenge {
@@ -93,6 +95,8 @@ const ROOTS_KEPT = 64;
 const CHALLENGE_TTL_MS = 5 * 60_000;
 const MAX_BODY = 64 * 1024;
 const ANCHOR_REFRESH_MS = 20_000;
+/** proof checks one challenge buys: a bad proof keeps the challenge for another try, up to this many */
+const PROOF_TRIES = 3;
 const SIGNALS = ['nullifier', 'merkle_root', 'pay_to', 'required_amount', 'context_hash'] as const;
 /**
  * snarkjs parses "0123" and "0x7b" as the same field element as "123", so a proof verifies with any of
@@ -108,7 +112,7 @@ CREATE TABLE IF NOT EXISTS leaves (idx INTEGER PRIMARY KEY, leaf TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS roots (seq INTEGER PRIMARY KEY AUTOINCREMENT, root TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS deposits (txid TEXT PRIMARY KEY, commitment TEXT NOT NULL, first INTEGER NOT NULL, count INTEGER NOT NULL, zat INTEGER NOT NULL, height INTEGER);
 CREATE TABLE IF NOT EXISTS nullifiers (nullifier TEXT PRIMARY KEY, at TEXT NOT NULL, resource TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS challenges (nonce TEXT PRIMARY KEY, expires_at INTEGER NOT NULL, body TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS challenges (nonce TEXT PRIMARY KEY, expires_at INTEGER NOT NULL, body TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS anchors (seq INTEGER PRIMARY KEY AUTOINCREMENT, txid TEXT NOT NULL UNIQUE, leaves INTEGER NOT NULL, root TEXT NOT NULL, nullifiers INTEGER NOT NULL, nullifier_hash TEXT NOT NULL, at TEXT NOT NULL, height INTEGER);
 `;
 
@@ -122,6 +126,7 @@ export class Gateway {
   /** nullifiers and deposits being checked right now in this process: verification and scanning are async */
   private inflight = new Set<string>();
   private claiming = new Set<string>();
+  private scans = 0;
   private anchorRefresh: Promise<number> | null = null;
   private anchorRefreshedAt = 0;
   /** the anchor being sent, and at most one queued after it (which covers whatever changed meanwhile) */
@@ -139,6 +144,8 @@ export class Gateway {
     this.db = new DatabaseSync(o.statePath);
     this.db.exec('PRAGMA busy_timeout = 5000;');
     this.db.exec(SCHEMA);
+    // databases from before the proof-check limit
+    if (!(this.db.prepare("SELECT 1 FROM pragma_table_info('challenges') WHERE name = 'attempts'").get())) this.db.exec('ALTER TABLE challenges ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0');
     this.payTo = fieldOfSha256(`zec-null-402:payTo:${o.depositUa}`);
     if (o.legacyJsonState && existsSync(o.legacyJsonState)) this.importLegacy(o.legacyJsonState);
   }
@@ -161,8 +168,22 @@ export class Gateway {
     this.db.close();
   }
 
-  private count(table: 'leaves' | 'nullifiers' | 'challenges'): number {
+  private count(table: 'leaves' | 'nullifiers' | 'challenges' | 'deposits'): number {
     return Number((this.db.prepare(`SELECT count(*) AS n FROM ${table}`).get() as Row).n);
+  }
+
+  /** Counts for /api/info, without reading every row. */
+  counts(): { leaves: number; deposits: number; spent: number } {
+    return { leaves: this.count('leaves'), deposits: this.count('deposits'), spent: this.count('nullifiers') };
+  }
+
+  /** Every leaf in order, as decimal strings (GET /api/leaves). */
+  leafList(): string[] {
+    return (this.db.prepare('SELECT leaf FROM leaves ORDER BY idx').all() as Row[]).map((r) => String(r.leaf));
+  }
+
+  anchorList(): Anchor[] {
+    return (this.db.prepare('SELECT * FROM anchors ORDER BY seq').all() as Row[]).map(anchorOf);
   }
 
   /** Runs `fn` in one write transaction (BEGIN IMMEDIATE: other processes wait on busy_timeout). */
@@ -213,6 +234,9 @@ export class Gateway {
     for (const i of items) if (!/^\d{1,78}$/.test(i?.secretHash ?? '') || !/^[1-9]\d{0,9}$/.test(i?.value ?? '')) throw new GatewayError(400, 'each item needs a decimal secretHash and a positive whole value');
     if (this.db.prepare('SELECT 1 FROM deposits WHERE txid = ?').get(txid)) throw new GatewayError(409, `deposit ${txid} was already claimed`);
     if (this.claiming.has(txid)) throw new GatewayError(409, `deposit ${txid} is being claimed`);
+    // Each scan is a process and a lightwalletd connection: a few at a time, the rest asked to come back.
+    const maxScans = this.o.maxScans ?? 4;
+    if (this.scans >= maxScans) throw new GatewayError(503, `busy: ${this.scans} deposit checks are running; try again shortly`, { 'retry-after': '5' });
     this.claiming.add(txid);
     try {
       const r = await this.credit(txid, items);
@@ -226,7 +250,8 @@ export class Gateway {
   private async credit(txid: string, items: { secretHash: string; value: string }[]) {
     const commitment = commitmentOf(items);
     const units = items.reduce((t, i) => t + BigInt(i.value), 0n);
-    const r = await scan(this.o.depositUivk, txid, units * BigInt(this.o.unitZat), `z402:${commitment}`, this.o.minConf ?? 1);
+    this.scans++;
+    const r = await scan(this.o.depositUivk, txid, units * BigInt(this.o.unitZat), `z402:${commitment}`, this.o.minConf ?? 1).finally(() => this.scans--);
     if (!r.ok) throw new GatewayError(r.reasons.every((x) => x === 'NOT_CONFIRMED') ? 425 : 402, `deposit not credited: ${r.reasons.join(', ')}`);
     const leaves = await Promise.all(items.map(async (i) => (await leafFromItem(i)).toString()));
     // One transaction: another process claiming the same deposit gets the primary-key conflict.
@@ -274,7 +299,7 @@ export class Gateway {
       this.db.prepare('DELETE FROM challenges WHERE expires_at < ?').run(Date.now());
       const over = this.count('challenges') - max + 1;
       if (over > 0) this.db.prepare('DELETE FROM challenges WHERE nonce IN (SELECT nonce FROM challenges ORDER BY rowid LIMIT ?)').run(over);
-      this.db.prepare('INSERT INTO challenges VALUES (?, ?, ?)').run(nonce, c.expiresAt, JSON.stringify(c));
+      this.db.prepare('INSERT INTO challenges (nonce, expires_at, body) VALUES (?, ?, ?)').run(nonce, c.expiresAt, JSON.stringify(c));
     });
     return c;
   }
@@ -286,7 +311,7 @@ export class Gateway {
   /** Checks a payment for an issued challenge; on success burns the nullifier. Returns null or the refusal. */
   async redeem(path: string, payment: { nonce: string; proof: object; signals: PaymentPublic }): Promise<string | null> {
     const nonce = payment?.nonce;
-    const row = typeof nonce === 'string' ? (this.db.prepare('SELECT body FROM challenges WHERE nonce = ?').get(nonce) as Row | undefined) : undefined;
+    const row = typeof nonce === 'string' ? (this.db.prepare('SELECT body, attempts FROM challenges WHERE nonce = ?').get(nonce) as Row | undefined) : undefined;
     const c = row ? (JSON.parse(String(row.body)) as Challenge) : undefined;
     if (!c || c.resource !== path || c.expiresAt < Date.now()) return 'UNKNOWN_CHALLENGE';
     const s = payment.signals;
@@ -301,8 +326,9 @@ export class Gateway {
     try {
       const ok = await verifyOffChain([s.nullifier, s.merkle_root, s.pay_to, s.required_amount, s.context_hash], payment.proof).catch(() => false);
       if (!ok) {
-        // a bad proof does not use up the challenge
-        this.db.prepare('INSERT OR IGNORE INTO challenges VALUES (?, ?, ?)').run(c.nonce, c.expiresAt, JSON.stringify(c));
+        // A bad proof does not use up the challenge, but one challenge buys at most PROOF_TRIES pairing checks.
+        const tries = Number(row!.attempts) + 1;
+        if (tries < PROOF_TRIES) this.db.prepare('INSERT OR IGNORE INTO challenges (nonce, expires_at, body, attempts) VALUES (?, ?, ?, ?)').run(c.nonce, c.expiresAt, JSON.stringify(c), tries);
         return 'BAD_PROOF';
       }
       // The primary key decides between two processes that verified the same note at once.
@@ -479,10 +505,13 @@ export class Gateway {
 }
 
 export class GatewayError extends Error {
-  constructor(readonly status: number, message: string) {
+  constructor(readonly status: number, message: string, readonly headers: Record<string, string> = {}) {
     super(message);
   }
 }
+
+/** A JSON request: a web page can send text/plain cross-origin without a CORS preflight, not JSON. */
+const isJson = (req: IncomingMessage) => (req.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase() === 'application/json';
 
 function bearerMatches(header: string | undefined, token: string): boolean {
   const got = Buffer.from(header ?? '');
@@ -503,24 +532,27 @@ export function serveGateway(g: Gateway): Server {
   };
   async function handle(req: IncomingMessage, res: ServerResponse) {
     const url = new URL(req.url ?? '/', 'http://local');
-    const st = g.state;
-    if (url.pathname === '/api/info')
+    // Only counts here: a 402 or /api/info must not cost more as the tables grow.
+    if (url.pathname === '/api/info') {
+      const n = g.counts();
       return json(res, 200, {
         // not the deposit viewing key: with it anyone could read every deposit's amount and memo
         depositUa: g.o.depositUa,
         unitZat: g.o.unitZat,
         payTo: g.payTo.toString(),
         prices: Object.fromEntries(Object.entries(g.o.prices).map(([k, v]) => [k, v.toString()])),
-        leaves: st.leaves.length,
+        leaves: n.leaves,
         root: await g.root(),
-        deposits: Object.keys(st.deposits).length,
-        spent: Object.keys(st.nullifiers).length,
-        anchors: st.anchors,
+        deposits: n.deposits,
+        spent: n.spent,
+        anchors: g.anchorList(),
         latestAnchor: g.latestAnchor(),
         anchorUa: g.o.anchorUa ?? null,
       });
-    if (url.pathname === '/api/leaves') return json(res, 200, { leaves: st.leaves, root: await g.root() });
+    }
+    if (url.pathname === '/api/leaves') return json(res, 200, { leaves: g.leafList(), root: await g.root() });
     if (url.pathname === '/api/deposits' && req.method === 'POST') {
+      if (!isJson(req)) return json(res, 415, { error: 'a claim must be sent as content-type: application/json' });
       const b = await body(req);
       return json(res, 200, await g.claim(b.txid, b.items));
     }
@@ -528,6 +560,8 @@ export function serveGateway(g: Gateway): Server {
       // Anchoring spends from the gateway wallet; any web page could POST here, so it needs the token.
       if (!g.o.adminToken) return json(res, 503, { error: 'Setup required: Z402_ADMIN_TOKEN (anchoring over HTTP is off without it)' });
       if (!bearerMatches(req.headers.authorization, g.o.adminToken)) return json(res, 401, { error: 'anchoring needs Authorization: Bearer <Z402_ADMIN_TOKEN>' });
+      if (!g.o.sendAnchor) return json(res, 503, { error: 'Setup required: anchoring needs the gateway wallet' });
+      if (!isJson(req)) return json(res, 415, { error: 'an anchor request must be sent as content-type: application/json' });
       return json(res, 200, await g.anchor());
     }
     const price = g.o.prices[url.pathname];
@@ -546,6 +580,6 @@ export function serveGateway(g: Gateway): Server {
     return json(res, 200, { paid: receipt, data: g.o.content(url.pathname) }, { 'x-payment-response': Buffer.from(JSON.stringify(receipt)).toString('base64') });
   }
   return createServer((req, res) => {
-    handle(req, res).catch((e: Error) => json(res, e instanceof GatewayError ? e.status : e instanceof SyntaxError ? 400 : 502, { error: e.message }));
+    handle(req, res).catch((e: Error) => json(res, e instanceof GatewayError ? e.status : e instanceof SyntaxError ? 400 : 502, { error: e.message }, e instanceof GatewayError ? e.headers : {}));
   });
 }

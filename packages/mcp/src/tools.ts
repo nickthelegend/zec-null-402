@@ -9,6 +9,8 @@
 //                      Z402_ANCHOR_WAIT_SEC (default 900): how long pay waits for the next anchor,
 //                      asking again every Z402_ANCHOR_POLL_SEC (default 20)
 //   Z402_CLAIM_WAIT_SEC   how long claim waits for the deposit to be mined (default 900)
+//   Z402_ANCHOR_PUBKEY    the gateway's anchor signing key (64 hex), pinned from its deployment record:
+//                         pay then needs anchors signed by it and ignores other memos on the anchor address
 import { appendFileSync } from 'node:fs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
@@ -17,7 +19,13 @@ import { AnchorRefusedError, Z402Client } from '@z402/sdk';
 
 const WAIT_FOR_ANCHOR = new Set(['NOTE_NOT_ANCHORED', 'ANCHOR_TOO_OLD', 'ANCHOR_NOT_CONFIRMED']);
 const need = (k: string) => process.env[k] || (() => { throw new SetupRequiredError(k); })();
-const client = () => new Z402Client(process.env.Z402_GATEWAY_URL ?? 'http://127.0.0.1:8405', need('Z402_NOTES_FILE'));
+// One client per gateway and notes file, so its scan of the anchor address is reused between calls.
+let cached: { key: string; c: Z402Client } | null = null;
+const client = () => {
+  const key = `${process.env.Z402_GATEWAY_URL ?? 'http://127.0.0.1:8405'}\n${need('Z402_NOTES_FILE')}`;
+  if (cached?.key !== key) cached = { key, c: new Z402Client(process.env.Z402_GATEWAY_URL ?? 'http://127.0.0.1:8405', need('Z402_NOTES_FILE')) };
+  return cached.c;
+};
 
 function log(tool: string, args: unknown, isError: boolean, result: unknown) {
   const f = process.env.Z402_MCP_LOG;

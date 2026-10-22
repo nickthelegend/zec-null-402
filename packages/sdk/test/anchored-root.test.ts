@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { leafFromItem, nullifierOf, Tree } from '@z402/circuits';
-import { Gateway, readAnchor, serveGateway } from '@z402/gateway';
+import { anchorSigner, Gateway, newAnchorSeed, readAnchor, scanStats, serveGateway } from '@z402/gateway';
 import { AnchorRefusedError, DEFAULT_MAX_ANCHOR_AGE_BLOCKS, Z402Client, type ClientOptions } from '../src/index.js';
 
 const d = JSON.parse(readFileSync(resolve(__dirname, '../../../deployments/testnet.json'), 'utf8'));
@@ -151,6 +151,29 @@ describe('a gateway that serves this client its own root is detected and refused
     const r = await new Z402Client(proxy.base, await wallet(proxy.base), opts).pay(`${proxy.base}/api/quote`);
     expect(proxy.seen).toEqual([d.gateway.root]);
     expect(r.status).toBe(200);
+  }, 120_000);
+});
+
+describe('anchors are signed by a key the client pins, and read from the chain once per window', () => {
+  it('a client that pins the gateway\'s anchor key refuses an anchor that key did not sign (the Oct 20 anchor is unsigned): ANCHOR_BAD_SIGNATURE, no proof sent', async () => {
+    const g = await gateway(true);
+    const proxy = await dishonest(g.base, (l) => l, (c) => c);
+    const notes = await wallet(proxy.base);
+    const err = await new Z402Client(proxy.base, notes, { ...opts, anchorPubkey: anchorSigner(newAnchorSeed()).publicKey }).pay(`${proxy.base}/api/quote`).catch((e) => e);
+    expect(err).toBeInstanceOf(AnchorRefusedError);
+    expect(err.code).toBe('ANCHOR_BAD_SIGNATURE');
+    expect(proxy.seen).toEqual([]);
+    expect(unspent(notes)).toBe(2);
+    expect(() => new Z402Client(proxy.base, notes, { ...opts, anchorPubkey: 'zz' })).toThrow(/^Setup required: Z402_ANCHOR_PUBKEY/);
+  }, 120_000);
+
+  it('two payments against the same anchor read lightwalletd once (one window scan, kept for 30 s)', async () => {
+    const g = await gateway(true);
+    const c = new Z402Client(g.base, await wallet(g.base), opts);
+    const before = scanStats.spawns;
+    expect((await c.pay(`${g.base}/api/quote`)).status).toBe(200);
+    expect((await c.pay(`${g.base}/api/quote`)).status).toBe(200);
+    expect(scanStats.spawns - before).toBe(1);
   }, 120_000);
 });
 

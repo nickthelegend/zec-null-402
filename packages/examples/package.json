@@ -7,7 +7,8 @@
   "scripts": {
     "run-live": "tsx src/run.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "demo": "tsx src/demo.ts"
+    "demo": "tsx src/demo.ts",
+    "pass2": "tsx src/pass2.ts"
   },
   "dependencies": {
     "@z402/circuits": "workspace:*",

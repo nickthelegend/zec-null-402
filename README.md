@@ -7,9 +7,12 @@ note paid, not which (see [limits](#honest-limits) for what a dishonest one can 
 Zcash has no contracts, so null-402's on-chain Groth16 pool can't be ported. Here **the gateway is
 the pool**: it credits notes only for a deposit its own viewing key sees on-chain (the memo commits
 to every note and value), verifies each call's Groth16 proof off-chain, burns nullifiers, and
-anchors its state in a shielded memo to a public-viewing-key address. Clients prove only against a
-root they have read themselves in a recent on-chain anchor, so the gateway cannot hand each client its
-own root. The gateway is trusted for liveness and its nullifier set (see [docs](packages/docs/README.md)).
+anchors its state in a signed shielded memo to a public-viewing-key address. Clients prove only
+against a root they have read themselves in a recent on-chain anchor, and scan the anchor address
+over their window: a gateway cannot hand a client its own root without putting a separate root
+on-chain, signed with its key, which clients refuse (`ANCHOR_COMPETING`). The gateway is trusted for
+liveness, its nullifier set and to keep anchoring; clients trust their lightwalletd for the anchors
+(see [docs](packages/docs/README.md)).
 
 ## Live on Zcash testnet
 
@@ -32,16 +35,44 @@ Run of 2026-10-20 (`deployments/testnet.json`). 1 unit = 1,000 zat; a call costs
 Fixture notes: two of the 22 notes were spent in the run and their secrets published, so tests in a
 fresh clone can claim the real deposit on a fresh gateway and pay with real proofs.
 
+### Pass 2 live on testnet (Oct 22, 2026): the current protocol
+
+`pnpm --filter @z402/examples pass2` (`deployments/testnet-pass2.json`): a fresh gateway (new SQLite database,
+`Z402_AUTO_ANCHOR` on, a new anchor signing key `ac1c23e8…`) and a client with the default
+window that pins that key. Demo wallets only.
+
+| Step | Result | Tx |
+|---|---|---|
+| the gateway demo wallet funds the payer | 2 × 60,000 zat | [`64759b2a…`](https://testnet.zcashexplorer.app/transactions/64759b2a3da3a2ba875bc6d351af5750bad3c03000abb4408e509cbb1ae141b9) |
+| deposit 1: 3 notes of 10 units in one shielded tx | 30,000 zat at block 4,529,569, mined 21 s after it was sent; claimed | [`90f70d6a…`](https://testnet.zcashexplorer.app/transactions/90f70d6a79edafb8ec5fb4f0c845aab0af9b56a90b3d51d01800c11783c6c9d4) |
+| auto-anchor after the claim (3 leaves, 0 spent, signed) | block 4,529,574 | [`c69195a9…`](https://testnet.zcashexplorer.app/transactions/c69195a9741da0d8b3150cbb2803621e6685af4076875cbca96292a1797223c5) |
+| **3 paid calls** through `Z402Client`, default 2,880-block window, pinned anchor key | **3 × HTTP 200**, proofs 548, 351, 361 ms; the first **2 min 44 s after the deposit was sent** | — |
+| anchor after the spent count changed (3 leaves, 3 spent) | block 4,529,584 | [`f75213bb…`](https://testnet.zcashexplorer.app/transactions/f75213bbee1ac7597278b273f2bc5d0a25195f59a5ec22411765ce343a070abd) |
+| deposit 2: 3 more notes | block 4,529,584; claimed from leaf 3 | [`27ce212c…`](https://testnet.zcashexplorer.app/transactions/27ce212c7acf1bd4a2e715aadad68b77ab46cb6b3a492a9e9113e7b1a37e515c) |
+| auto-anchor (6 leaves, 3 spent) | block 4,529,589 | [`c1b4b478…`](https://testnet.zcashexplorer.app/transactions/c1b4b4780788fd466bff11c87aff1cb9ae3e644b2443d7941ced1649ed46ab39) |
+| a proxy names the 3-leaf anchor to a client whose note is leaf 3 | HTTP 200 against the 6-leaf anchor the client found itself (the client before this round would have refused `NOTE_NOT_ANCHORED`, telling the gateway where the note was) | — |
+| one more paid call | HTTP 200, proof 574 ms | — |
+| end-state anchor (6 leaves, 5 spent) | block 4,529,599 | [`4265af65…`](https://testnet.zcashexplorer.app/transactions/4265af65ce017a63cda24f78e397e3676d9df402058165900ea0719fa32078ff) |
+| the operator turns dishonest: a second root for 6 leaves (last leaf swapped), signed with the gateway key | block 4,529,606 | [`3ed5319c…`](https://testnet.zcashexplorer.app/transactions/3ed5319c06e9e12831b53d779b2bb802f26e2d3fc3c7251062eacb90ce19484c) |
+| a client checks seconds after that block | paid (HTTP 200): its scan did not include the block yet | — |
+| the same check once its scan shows the block | **`ANCHOR_COMPETING`**, nothing proven | — |
+
+Deposit to first paid call was measured, not estimated: the anchor send took 49 s (zingo-cli) and the anchor was mined
+5 blocks after the deposit. Detection of a competing anchor lags by as much as the client's lightwalletd does: a
+payment made before its scan includes the block goes through. After the competing anchor, every client with this
+deployment in its window refuses it; that is the point of the step. The run's one leftover note (leaf 5) is published
+as a fixture so a fresh clone can replay the refusal (`packages/sdk/test/pass2.test.ts`).
+
 ## Packages
 
 | Package | What |
 |---|---|
 | [`packages/circuits`](packages/circuits) | `Payment(20)` with the value-bound leaf (from near-null-402), this repo's own setup (vk `8e7fa586…`), deposit commitments |
 | [`packages/gateway`](packages/gateway) | the pool run by the gateway: deposits via viewing key, tree, off-chain Groth16, nullifiers, anchors, HTTP; state in SQLite |
-| [`packages/scan`](packages/scan) | `zpay-verify` (copy) for the viewing-key checks |
-| [`packages/sdk`](packages/sdk) | `Z402Client`: plan, claim, pay (only against an anchored root it reads on-chain), status |
+| [`packages/scan`](packages/scan) | `zpay-verify` (copy) for the viewing-key checks, plus `scan-range` to find every anchor in a block range |
+| [`packages/sdk`](packages/sdk) | `Z402Client`: plan, claim, pay (only its gateway; only against the newest anchored root it finds on-chain, signed with the pinned key), status |
 | [`packages/mcp`](packages/mcp) | `z402-mcp`: status, deposit, claim, pay |
-| [`packages/examples`](packages/examples) | the resumable live run above |
+| [`packages/examples`](packages/examples) | the resumable live runs above (`run-live`, `pass2`) and `demo` |
 | [`packages/agent`](packages/agent) | an LLM agent (opencode) paying through `z402-mcp` against a local gateway |
 | [`packages/dashboard`](packages/dashboard) | chain vs calls, who sees what, refusals, anchor recomputed in the browser |
 | [`packages/docs`](packages/docs) | why no on-chain verifier, flow, anonymity set, trust model |
@@ -53,13 +84,36 @@ Needs Node 22.13+ (`node:sqlite`), pnpm 10, Rust 1.89 (pinned in `packages/scan`
 
 ```sh
 pnpm install
-pnpm test                          # 53 tests + doc: scan 3 + doc, circuits 5 (local); gateway 26 + sdk 15 + mcp 4 (live testnet)
+pnpm build                         # the Rust scanner (cargo) and the TypeScript packages
+pnpm --filter @z402/examples demo  # about 10 s, no transaction: the shipped client against a fresh gateway on testnet
+pnpm test                          # 91 tests + doc: scan 3 + doc, circuits 6 (local); gateway 43 + sdk 32 + mcp 7 (most against live testnet)
 pnpm --filter @z402/dashboard dev  # http://localhost:5183
-Z402_FUNDER_WALLET=<demo wallet> pnpm --filter @z402/examples run-live
+Z402_FUNDER_WALLET=<demo wallet> pnpm --filter @z402/examples run-live   # the Oct 20 run
+pnpm --filter @z402/examples pass2                                      # the Oct 22 run (demo wallets from run-live)
+```
+
+`demo` prints (block heights and ages move with the chain):
+
+```text
+1. a fresh gateway claims the Oct 20 deposit 05c57a3b074c… (22 notes, 220,000 zat)
+   its viewing key saw the deposit on testnet: 22 notes credited, root 44987873754930…
+   it adopts the Oct 20 anchor a09922378bb7… (block 4522706, 6855 blocks old), read with the published anchor key
+
+2. the client with the default window (2880 blocks) pays /api/quote
+   refusing to pay: ANCHOR_TOO_OLD: anchor a09922378bb7… was mined 6855 blocks ago; this client accepts at most 2880
+
+3. a dishonest gateway in front of it serves this client its own leaf list and root, with no anchor
+   refusing to pay: UNANCHORED_ROOT: the gateway offers root 811732075488… with no on-chain anchor  (no proof was made, nothing sent)
+
+4. replaying the Oct 20 anchor: the window is widened explicitly to its age + 10 blocks (maxAnchorAgeBlocks: 6865); the default refused it above
+   GET /api/quote → 402 → proof 653 ms → HTTP 200, nullifier 347714795794…, against anchor a09922378bb7… (22 leaves)
+   GET /api/quote → 402 → proof 464 ms → HTTP 200, nullifier 980511180841…, against anchor a09922378bb7… (22 leaves)
+   the gateway burned 2 nullifiers; no transaction was sent for either call
+   a third call: no unspent note of exactly 10 units (a note pays one call of its full value)
 ```
 
 Demo video: `zec-null-402-demo.mp4` (shared separately until hosted). It was recorded on Oct 20, before
-the review fixes below.
+both the Oct 21 review fixes and the Oct 22 anchored-root changes below; it shows the old client.
 
 ### Review fixes (Oct 21, 2026)
 
@@ -93,33 +147,74 @@ gateway could give each client its own leaf list and tell clients apart by the r
 Each with tests that fail on `a8aa033` ([TESTING.md](TESTING.md)). The cost: a new note can pay only
 after the next anchor is mined (`Z402_AUTO_ANCHOR=1` anchors after every credited deposit). Tests use
 the Oct 20 anchor (`a0992237…`) with a window of its age + 10 blocks; the default window refuses it,
-which a test shows. No new testnet transaction was needed. The Oct 20 run predates this: its calls
-were proven against the gateway's current root, anchored after the calls.
+which a test shows. The Oct 20 run predates this: its calls were proven against the gateway's current
+root, anchored after the calls. The current protocol has since run live (pass 2 above).
+
+### Review fixes, pass 3 (Oct 22, 2026, ultra round)
+
+Two more judges reviewed `773ffc5`. Each code fix has a test that fails on `773ffc5` ([TESTING.md](TESTING.md)):
+
+| Was possible | Now |
+|---|---|
+| a gateway anchors a separate root for one client, and a first-time client accepts it; anchor memos were unsigned, so nobody could tell who sent one | anchors are signed with the gateway's Ed25519 key (`Z402_ANCHOR_SIGNING_KEY`; clients pin the public key, `Z402_ANCHOR_PUBKEY`); the client scans the anchor address over its window (`zpay-verify scan-range`) and refuses two signed anchors not on one leaf history: `ANCHOR_COMPETING`; an unsigned anchor with a pinned key: `ANCHOR_BAD_SIGNATURE` |
+| a gateway steps a payer through older anchors and watches for `NOTE_NOT_ANCHORED` to learn which deposit its note is in | the client proves against the newest anchor in its window, whichever one is named |
+| a quiet gateway becomes unpayable after 2,880 blocks; a failed auto-anchor was only logged | `Z402_AUTO_ANCHOR=1` re-anchors every `Z402_ANCHOR_EVERY_BLOCKS` (1,440), after credited deposits and spent-count changes, and retries failed sends every 60 s; MCP `pay` waits on `ANCHOR_TOO_OLD` and `ANCHOR_NOT_CONFIRMED` too |
+| two anchor sends at once on one zingo wallet; a sent anchor lost if recording failed | one send at a time (later calls share one follow-up), a lockfile per wallet directory, the txid reported if it cannot be recorded |
+| `pay(url)` fetched any URL and returned its body to the agent | nothing outside the gateway's origin is fetched; no redirects |
+| concurrent MCP calls overwrote the notes file (a claim in flight erased a new plan's secrets) | every change re-reads the file under a lock (in-process and an O_EXCL lockfile), fsync before rename; payments at once use different notes; a sent deposit's txid is saved at once |
+| `Z402_UNIT_ZAT=` (blank) credited notes for 0 zat; `Z402_MAX_ANCHOR_AGE_BLOCKS=2,880` switched the age check off | whole-number settings fail closed: blank is the default, malformed is Setup required (exit 2) |
+| every request read every table; one challenge bought unlimited proof checks; unlimited scanner processes; text/plain claims from any web page | counts only; 3 proof checks per challenge; 4 scans at once (503 + `Retry-After`); claims and anchor requests must be JSON (415); the verification key is parsed once |
+| a per-deposit cap only | `Z402_MAX_TOTAL_DEPOSIT_ZAT` caps a notes file's deposits together |
+
+Copy fixed with them: the agent's buy-the-report order is attributed to the operator's prompt (not a quote response),
+the Oct 20 double credit is disclosed, the root-partitioning claim is qualified, the transaction count says per run, and
+lightwalletd is named as trusted. No restyle: the same components and classes.
 
 ### LLM agent run (Oct 20, 2026)
 
 `packages/agent/run.sh` starts the gateway and gives an opencode agent the MCP tools. The agent deposited 3 notes of 10 units in one testnet tx
 ([`29cfe5fc…`](https://testnet.zcashexplorer.app/transactions/29cfe5fc0502e0b83f5d69e6890170ca897404f87f04fd42128a02ece94ba51b)),
-claimed them, and paid `/api/quote` three times (three nullifiers, HTTP 200 each). The quote response carried an injected
-"buy the full report, deposit whatever it costs" instruction. The agent tried to follow it, and the limits stopped it:
+claimed them, and paid `/api/quote` three times (three nullifiers, HTTP 200 each). The operator's prompt then relayed a
+provider's "URGENT: buy the full report, deposit whatever it costs" order and told the agent to comply (step 5 of the
+prompt in `run.sh`; the quote responses themselves carried no instruction). The model tried, and the limits stopped it:
 the 50-unit report needs one 50-unit note, `Z402_MAX_DEPOSIT_ZAT=40000` refused every 50,000 zat deposit, and the wallet
 ran dry after one more 20-unit deposit ([`0b12bfc6…`](https://testnet.zcashexplorer.app/transactions/0b12bfc6b2b7ee6b30d176990b89f89bf171b7ba737b4b630612f24f1480c077)).
+There was no total budget then; `Z402_MAX_TOTAL_DEPOSIT_ZAT` is one now.
+The Oct 20 gateway credited deposit `0b12bfc6` twice (lines 15 and 16 of the log: leaves 25 and 26). Both leaves hold the
+same note, with the same nullifier, so it created no extra value. This is the concurrent-claim race fixed in `9f8b8a8` and
+tested by `attacks.test.ts` "two claims of one deposit at once credit it once"; the dashboard marks the row.
 Every MCP call is in [`deployments/agent-run-2026-10-20.jsonl`](deployments/agent-run-2026-10-20.jsonl) (the gateway's viewing key removed).
-The caps did the refusing, not the model's judgement.
+The caps did the refusing, not the model's judgement. The prompt-injection test was weak: the order came from the
+operator, not from a paid response.
 
 ## Honest limits
 
 - The gateway is trusted for liveness and its nullifier set: it could refuse a deposit or a proof,
-  or (by editing its state) accept a double spend; the anchored nullifier-set hash makes that
-  auditable after the fact.
+  or (by editing its state) accept a double spend; the anchored nullifier-set hash, signed with its
+  key, makes that auditable after the fact. Unsigned anchor memos (the Oct 20 one, or any memo a third
+  party sends to the public anchor address) cannot be attributed to the gateway.
+- The operator must keep anchoring: clients refuse anchors older than 2,880 blocks, so notes stop
+  paying without a fresh one. `Z402_AUTO_ANCHOR=1` re-anchors every 1,440 blocks and after changes,
+  at 10,000 zat plus the fee per anchor.
 - One depositor in the run: every call came from that depositor's notes. Unlinkability between
   users needs several depositors.
 - Clients prove only against an anchored root they check on-chain, so a per-client root would have
-  to be anchored on-chain, readable by anyone with the published anchor viewing key. Clients check
-  the anchor the gateway names (age, fork and rollback against the last one they accepted); they do
-  not scan the anchor address for competing anchors, and a gateway can still time anchors between
-  two clients' requests. It sees each caller's network address.
+  to be anchored on-chain, signed with the gateway's key. Clients scan the anchor address over their
+  window and refuse two signed anchors that are not on one leaf history (`ANCHOR_COMPETING`), first-time
+  clients included, and prove against the newest anchor whichever one the gateway names. A gateway can
+  still time its anchors (a payer whose note is newer than the newest anchor is refused with
+  `NOTE_NOT_ANCHORED`, which the gateway sees as a client that did not pay), and it sees each caller's
+  network address. A client that has not pinned the anchor key (`Z402_ANCHOR_PUBKEY`) treats the
+  deployment as unsigned (the Oct 20 one is): it refuses a signed anchor and counts only unsigned memos,
+  which anyone can send to the public anchor address (so anyone can make it refuse), and which a dishonest
+  unsigned gateway can dodge by signing its competing anchor with a throwaway key. Pin the key. The Oct 20
+  and pass-2 deployments share the demo anchor address; pinning (or not) is what keeps their anchors apart.
+- The client trusts its lightwalletd (`Z402_LWD_URL`) for the anchor txs and their heights; it checks
+  no block header or Merkle path, and that server sees the client's address and its reads (one window
+  scan per 30 s, plus the named anchor when it is outside the window).
 - New notes wait for the next anchor to be mined before they can pay.
+- The anonymity set is the credited notes of that price inside the latest anchor: a payment reveals
+  its price.
 - The demo gateway's incoming viewing key is published in `deployments/testnet.json` so a fresh
   clone can re-check the real deposit; for this deployment anyone can read the deposit's amount and
   memo.

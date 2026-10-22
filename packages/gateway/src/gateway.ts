@@ -11,7 +11,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { commitmentOf, contextHash, fieldOfSha256, leafFromItem, R, Tree, verifyOffChain, type PaymentPublic } from '@z402/circuits';
-import { readAnchor, scan, SetupRequiredError } from './scan.js';
+import { chainTip, readAnchor, scan, SetupRequiredError } from './scan.js';
 
 export interface Anchor {
   txid: string;
@@ -51,8 +51,22 @@ export interface GatewayOptions {
   anchorUa?: string;
   /** the anchor address's (published) incoming viewing key: confirms the gateway's anchors and adopts existing ones */
   anchorUivk?: string;
-  /** anchor after every credited deposit, so new notes become spendable once that anchor is mined */
+  /**
+   * anchor after every credited deposit, so new notes become spendable once that anchor is mined; with
+   * startAnchoring(), also whenever an anchor is due (anchorDue): clients pay only against a recent one
+   */
   autoAnchor?: boolean;
+  /** re-anchor once the newest anchor is this many blocks old (default 1,440: half the client's 2,880-block window) */
+  anchorEveryBlocks?: number;
+  /** how often startAnchoring() checks whether an anchor is due (default 10 minutes) */
+  anchorCheckMs?: number;
+  /** a failed anchor send is retried after this long (default 60 s), up to anchorRetries times (default 10) */
+  anchorRetryMs?: number;
+  anchorRetries?: number;
+  /** an anchor not seen mined after this long is sent again (default 30 minutes) */
+  anchorPendingMs?: number;
+  /** the chain tip (default: lightwalletd through the scan binary) */
+  chainTip?: () => Promise<number>;
   /** bearer token for POST /api/anchor, which spends from the gateway wallet */
   adminToken?: string;
   /** outstanding unpaid challenges kept (default 10,000); the oldest is dropped first */
@@ -110,6 +124,12 @@ export class Gateway {
   private claiming = new Set<string>();
   private anchorRefresh: Promise<number> | null = null;
   private anchorRefreshedAt = 0;
+  /** the anchor being sent, and at most one queued after it (which covers whatever changed meanwhile) */
+  private anchorInFlight: Promise<Anchor> | null = null;
+  private anchorQueued: Promise<Anchor> | null = null;
+  private retrying = false;
+  private ticking = false;
+  private timer: NodeJS.Timeout | null = null;
 
   constructor(readonly o: GatewayOptions) {
     if (!Number.isSafeInteger(o.unitZat) || o.unitZat < 1) throw new RangeError(`gateway: unitZat must be a whole number of zatoshi, at least 1, got ${o.unitZat}`);
@@ -137,6 +157,7 @@ export class Gateway {
   }
 
   close() {
+    this.stopAnchoring();
     this.db.close();
   }
 
@@ -195,7 +216,7 @@ export class Gateway {
     this.claiming.add(txid);
     try {
       const r = await this.credit(txid, items);
-      if (this.o.autoAnchor && this.o.sendAnchor) this.anchor().catch((e: Error) => console.error(`auto-anchor failed: ${e.message}`));
+      if (this.o.autoAnchor && this.o.sendAnchor) this.anchorWithRetry(`deposit ${txid.slice(0, 12)}… credited`);
       return r;
     } finally {
       this.claiming.delete(txid);
@@ -292,16 +313,124 @@ export class Gateway {
     }
   }
 
-  async anchor(): Promise<Anchor> {
-    if (!this.o.sendAnchor) throw new GatewayError(503, 'Setup required: anchoring needs the gateway wallet');
+  /**
+   * Anchors the current state. One send at a time: a call while one is in flight waits for it and then
+   * shares a single follow-up anchor, which is skipped if nothing changed meanwhile.
+   */
+  anchor(): Promise<Anchor> {
+    if (!this.o.sendAnchor) return Promise.reject(new GatewayError(503, 'Setup required: anchoring needs the gateway wallet'));
+    if (this.anchorQueued) return this.anchorQueued;
+    if (!this.anchorInFlight) return (this.anchorInFlight = this.sendOneAnchor(false).finally(() => (this.anchorInFlight = null)));
+    return (this.anchorQueued = this.anchorInFlight
+      .catch(() => undefined)
+      .then(() => {
+        this.anchorQueued = null;
+        return (this.anchorInFlight = this.sendOneAnchor(true).finally(() => (this.anchorInFlight = null)));
+      }));
+  }
+
+  /** The newest anchor recorded: one still waiting to be mined first, else the highest mined one. */
+  newestAnchor(): Anchor | null {
+    const r = this.db.prepare('SELECT * FROM anchors ORDER BY height IS NULL DESC, height DESC, seq DESC LIMIT 1').get() as Row | undefined;
+    return r ? anchorOf(r) : null;
+  }
+
+  private async sendOneAnchor(skipIfUnchanged: boolean): Promise<Anchor> {
     const ns = (this.db.prepare('SELECT nullifier FROM nullifiers').all() as Row[]).map((r) => String(r.nullifier));
     const leaves = this.count('leaves');
-    const root = await this.rootAt(leaves);
     const nh = nullifierSetHash(ns);
-    const txid = await this.o.sendAnchor(anchorMemo(leaves, root, ns.length, nh));
+    const last = this.newestAnchor();
+    if (skipIfUnchanged && last && last.leaves === leaves && last.nullifierHash === nh) return last;
+    const root = await this.rootAt(leaves);
+    const txid = await this.o.sendAnchor!(anchorMemo(leaves, root, ns.length, nh));
     const a: Anchor = { txid, leaves, root, nullifiers: ns.length, nullifierHash: nh, at: new Date().toISOString(), height: null };
-    this.db.prepare('INSERT INTO anchors (txid, leaves, root, nullifiers, nullifier_hash, at, height) VALUES (?, ?, ?, ?, ?, ?, NULL)').run(a.txid, a.leaves, a.root, a.nullifiers, a.nullifierHash, a.at);
+    // The tx is out: record it, and if that fails say which tx it was, so it can be adopted once mined.
+    const insert = () => this.db.prepare('INSERT INTO anchors (txid, leaves, root, nullifiers, nullifier_hash, at, height) VALUES (?, ?, ?, ?, ?, ?, NULL)').run(a.txid, a.leaves, a.root, a.nullifiers, a.nullifierHash, a.at);
+    try {
+      insert();
+    } catch {
+      try {
+        insert();
+      } catch (e) {
+        const msg = `anchor tx ${txid} was sent but not recorded (${(e as Error).message}); record it with adoptAnchor('${txid}') once it is mined`;
+        console.error(msg);
+        throw new GatewayError(500, msg);
+      }
+    }
     return a;
+  }
+
+  /** Anchors now; a failed send is retried every anchorRetryMs, up to anchorRetries times. One retry chain at a time. */
+  anchorWithRetry(reason: string): void {
+    if (this.retrying) return;
+    this.retrying = true;
+    const every = this.o.anchorRetryMs ?? 60_000;
+    const max = this.o.anchorRetries ?? 10;
+    const attempt = (n: number) => {
+      this.anchor().then(
+        (a) => {
+          this.retrying = false;
+          console.log(`anchored (${reason}): ${a.txid} with ${a.leaves} leaves, ${a.nullifiers} spent`);
+        },
+        (e: Error) => {
+          if (n >= max) {
+            this.retrying = false;
+            console.error(`anchor failed (${reason}) ${n + 1} times, giving up until the next check: ${e.message}`);
+            return;
+          }
+          console.error(`anchor failed (${reason}): ${e.message}; retry ${n + 1} of ${max} in ${Math.round(every / 1000)} s`);
+          setTimeout(() => attempt(n + 1), every).unref();
+        },
+      );
+    };
+    attempt(0);
+  }
+
+  /**
+   * Why an anchor is due, or null: notes credited since the newest anchor, a changed spent count, an
+   * anchor that was never seen mined, or a mined one at least anchorEveryBlocks old (clients refuse old ones).
+   */
+  async anchorDue(): Promise<string | null> {
+    const leaves = this.count('leaves');
+    if (leaves === 0) return null;
+    const last = this.newestAnchor();
+    if (!last) return 'no anchor yet';
+    if (last.leaves < leaves) return `${leaves - last.leaves} credited notes are newer than the newest anchor`;
+    const spent = this.count('nullifiers');
+    if (last.nullifiers !== spent) return `spent count changed since the newest anchor (${last.nullifiers} → ${spent})`;
+    if (last.height === null) {
+      const wait = this.o.anchorPendingMs ?? 30 * 60_000;
+      return Date.now() - Date.parse(last.at) > wait ? `anchor ${last.txid.slice(0, 12)}… was not seen mined within ${Math.round(wait / 60_000)} min` : null;
+    }
+    const age = (await (this.o.chainTip ?? chainTip)()) - last.height;
+    const every = this.o.anchorEveryBlocks ?? 1440;
+    return age >= every ? `the newest anchor is ${age} blocks old (re-anchoring every ${every})` : null;
+  }
+
+  /** With autoAnchor and a wallet: checks every anchorCheckMs (and now) whether an anchor is due, and sends it. */
+  startAnchoring(): void {
+    if (!this.o.autoAnchor || !this.o.sendAnchor || this.timer) return;
+    const tick = async () => {
+      if (this.ticking || this.retrying) return;
+      this.ticking = true;
+      try {
+        if (this.o.anchorUivk) await this.confirmAnchors().catch((e: Error) => console.error(`anchor check failed: ${e.message}`));
+        const reason = await this.anchorDue();
+        if (reason) this.anchorWithRetry(reason);
+      } catch (e) {
+        console.error(`anchor check failed: ${(e as Error).message}`);
+      } finally {
+        this.ticking = false;
+      }
+    };
+    this.timer = setInterval(tick, this.o.anchorCheckMs ?? 10 * 60_000);
+    this.timer.unref();
+    void tick();
+  }
+
+  stopAnchoring(): void {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
   }
 
   private needAnchorKey(): string {

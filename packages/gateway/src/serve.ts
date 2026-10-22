@@ -3,7 +3,9 @@
 // Z402_DEPOSIT_UA, Z402_DEPOSIT_UIVK, Z402_UNIT_ZAT (default 1000), Z402_PRICE_UNITS (default 10),
 // Z402_PORT (default 8405). Anchoring: Z402_WALLET (the gateway's zingo data dir), Z402_ANCHOR_UA and
 // Z402_ANCHOR_UIVK (to see its anchors mined; clients only pay against mined anchors); Z402_AUTO_ANCHOR=1
-// anchors after every credited deposit; POST /api/anchor also needs Z402_ADMIN_TOKEN as a bearer token.
+// anchors after every credited deposit, when the spent count changed, and once the newest anchor is
+// Z402_ANCHOR_EVERY_BLOCKS old (default 1440), retrying failed sends; POST /api/anchor also needs
+// Z402_ADMIN_TOKEN as a bearer token.
 import { intEnv } from './env.js';
 import { Gateway, serveGateway } from './gateway.js';
 import { SetupRequiredError } from './scan.js';
@@ -25,11 +27,14 @@ try {
     anchorUa,
     anchorUivk: process.env.Z402_ANCHOR_UIVK || undefined,
     autoAnchor: process.env.Z402_AUTO_ANCHOR === '1',
+    anchorEveryBlocks: intEnv('Z402_ANCHOR_EVERY_BLOCKS', 1440, { min: 1 }),
     adminToken: process.env.Z402_ADMIN_TOKEN || undefined,
     sendAnchor: wallet && anchorUa ? async (memo) => (await quicksend(zingoConfig(), wallet, [{ address: anchorUa, amount: 10_000n, memo }]))[0] : undefined,
   });
   const port = intEnv('Z402_PORT', 8405, { min: 1, max: 65535 });
   serveGateway(g).listen(port, '127.0.0.1', () => console.log(`zec-null-402 gateway on http://127.0.0.1:${port}`));
+  // Z402_AUTO_ANCHOR=1: keep anchoring (new notes, spent count, and every Z402_ANCHOR_EVERY_BLOCKS), retrying failed sends.
+  g.startAnchoring();
 } catch (e) {
   console.error((e as Error).message);
   process.exit(e instanceof SetupRequiredError ? 2 : 1);

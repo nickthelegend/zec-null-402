@@ -39,7 +39,7 @@ describe('gateway settings from the environment', () => {
   }, 120_000);
 
   it('a zero, negative, fractional or malformed number stops the gateway: exit 2, Setup required', () => {
-    for (const [k, v] of [['Z402_UNIT_ZAT', '0'], ['Z402_UNIT_ZAT', '-5'], ['Z402_UNIT_ZAT', '1e3'], ['Z402_PRICE_UNITS', 'abc'], ['Z402_PRICE_UNITS', '0'], ['Z402_PORT', '84O5']]) {
+    for (const [k, v] of [['Z402_UNIT_ZAT', '0'], ['Z402_UNIT_ZAT', '-5'], ['Z402_UNIT_ZAT', '1e3'], ['Z402_PRICE_UNITS', 'abc'], ['Z402_PRICE_UNITS', '0'], ['Z402_PORT', '84O5'], ['Z402_ANCHOR_EVERY_BLOCKS', '2,880'], ['Z402_ANCHOR_EVERY_BLOCKS', '0']]) {
       const r = exitOf({ [k]: v });
       expect(r.status, `${k}=${v}: ${r.stderr}`).toBe(2);
       expect(r.stderr.trim(), `${k}=${v}`).toMatch(new RegExp(`^Setup required: ${k} \\(`));

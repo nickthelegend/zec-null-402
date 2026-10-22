@@ -112,6 +112,8 @@ export class Gateway {
   private anchorRefreshedAt = 0;
 
   constructor(readonly o: GatewayOptions) {
+    if (!Number.isSafeInteger(o.unitZat) || o.unitZat < 1) throw new RangeError(`gateway: unitZat must be a whole number of zatoshi, at least 1, got ${o.unitZat}`);
+    for (const [path, p] of Object.entries(o.prices)) if (typeof p !== 'bigint' || p < 1n) throw new RangeError(`gateway: the price of ${path} must be at least 1 unit, got ${p}`);
     if (existsSync(o.statePath) && readFileSync(o.statePath).subarray(0, 1).toString() === '{')
       throw new SetupRequiredError('Z402_STATE', `${o.statePath} is a JSON state file; the gateway now keeps SQLite: point statePath at a new .db file and pass the JSON as legacyJsonState (Z402_LEGACY_STATE)`);
     this.db = new DatabaseSync(o.statePath);

@@ -10,7 +10,7 @@
 import { appendFileSync } from 'node:fs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { quicksend, SetupRequiredError, zingoConfig } from '@z402/gateway';
+import { intEnv, quicksend, SetupRequiredError, zingoConfig } from '@z402/gateway';
 import { AnchorRefusedError, Z402Client } from '@z402/sdk';
 
 const need = (k: string) => process.env[k] || (() => { throw new SetupRequiredError(k); })();
@@ -54,7 +54,7 @@ export function createServer(): McpServer {
         const wallet = need('Z402_WALLET');
         const c = client();
         const info = await c.info();
-        const max = BigInt(process.env.Z402_MAX_DEPOSIT_ZAT ?? 300_000);
+        const max = BigInt(intEnv('Z402_MAX_DEPOSIT_ZAT', 300_000, { min: 1 }));
         const total = BigInt(a.count) * BigInt(a.units) * BigInt(info.unitZat);
         if (total > max) throw new Error(`refused: deposit of ${total} zat is above Z402_MAX_DEPOSIT_ZAT (${max})`);
         const p = await c.plan(a.count, BigInt(a.units));
@@ -72,7 +72,7 @@ export function createServer(): McpServer {
     },
     (a) =>
       run('claim', a, async () => {
-        const deadline = Date.now() + Number(process.env.Z402_CLAIM_WAIT_SEC ?? 900) * 1000;
+        const deadline = Date.now() + intEnv('Z402_CLAIM_WAIT_SEC', 900) * 1000;
         for (;;) {
           try {
             return await client().claim(a.plan, a.txid);
@@ -90,7 +90,7 @@ export function createServer(): McpServer {
     { title: 'Fetch a paid URL', description: 'GETs `url`; on a zec-null-402 402 it pays with a zero-knowledge proof of one unspent note of the price. No transaction per call. Talks only to Z402_GATEWAY_URL: a URL on any other origin is never fetched (no request is sent there and no redirect is followed), and only a challenge for the path requested is paid. Proves only against a root it has read itself in a recent on-chain anchor; if every note of the price was credited after the latest anchor, waits for the next one (up to Z402_ANCHOR_WAIT_SEC, default 900 s).', inputSchema: { url: z.string().url() } },
     (a) =>
       run('pay', a, async () => {
-        const deadline = Date.now() + Number(process.env.Z402_ANCHOR_WAIT_SEC ?? 900) * 1000;
+        const deadline = Date.now() + intEnv('Z402_ANCHOR_WAIT_SEC', 900) * 1000;
         let r;
         for (;;) {
           try {

@@ -5,7 +5,7 @@
 // own root.
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { depositCommitment, leafOf, newNote, nullifierOf, provePayment, Tree, type Note } from '@z402/circuits';
-import { readAnchor, SetupRequiredError } from '@z402/gateway';
+import { intEnv, readAnchor, SetupRequiredError, wholeNumber } from '@z402/gateway';
 
 export interface StoredNote {
   noteSecret: string;
@@ -82,8 +82,9 @@ export class Z402Client {
 
   constructor(readonly gateway: string, readonly notesPath: string, o: ClientOptions = {}) {
     this.anchorUivk = o.anchorUivk ?? (process.env.Z402_ANCHOR_UIVK || undefined);
-    this.maxAnchorAgeBlocks = o.maxAnchorAgeBlocks ?? Number(process.env.Z402_MAX_ANCHOR_AGE_BLOCKS || DEFAULT_MAX_ANCHOR_AGE_BLOCKS);
-    this.minAnchorConf = o.minAnchorConf ?? 1;
+    // fails closed: a malformed window would be NaN, and `age > NaN` never refuses
+    this.maxAnchorAgeBlocks = wholeNumber('maxAnchorAgeBlocks', o.maxAnchorAgeBlocks ?? intEnv('Z402_MAX_ANCHOR_AGE_BLOCKS', DEFAULT_MAX_ANCHOR_AGE_BLOCKS));
+    this.minAnchorConf = wholeNumber('minAnchorConf', o.minAnchorConf ?? 1);
     this.lwdUrl = o.lwdUrl ?? (process.env.Z402_LWD_URL || undefined);
   }
 

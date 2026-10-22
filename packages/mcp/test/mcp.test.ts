@@ -88,4 +88,16 @@ describe('z402-mcp', () => {
     const r = await call('deposit', { count: 2, units: 10 });
     expect(r).toMatchObject({ isError: true, text: 'Setup required: Z402_WALLET' });
   });
+
+  it('a malformed cap or wait setting is Setup required, never NaN (no endless wait, no unchecked cap)', async () => {
+    const dirW = mkdtempSync(join(tmpdir(), 'z402-mcp-nowallet-'));
+    const c = await connect({ Z402_GATEWAY_URL: base, Z402_NOTES_FILE: join(dir, 'cfg-notes.json'), Z402_WALLET: dirW, Z402_MAX_DEPOSIT_ZAT: '40,000', Z402_CLAIM_WAIT_SEC: 'soon', Z402_ANCHOR_WAIT_SEC: '-1', ...anchorEnv });
+    try {
+      expect(await call('deposit', { count: 1, units: 10 }, c)).toMatchObject({ isError: true, text: expect.stringMatching(/^Setup required: Z402_MAX_DEPOSIT_ZAT/) });
+      expect(await call('claim', { plan: 'a'.repeat(64), txid: 'b'.repeat(64) }, c)).toMatchObject({ isError: true, text: expect.stringMatching(/^Setup required: Z402_CLAIM_WAIT_SEC/) });
+      expect(await call('pay', { url: `${base}/api/quote` }, c)).toMatchObject({ isError: true, text: expect.stringMatching(/^Setup required: Z402_ANCHOR_WAIT_SEC/) });
+    } finally {
+      await c.close();
+    }
+  });
 });

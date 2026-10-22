@@ -1,0 +1,34 @@
+# pnpm test on every push and pull request: the Rust scanner (built and tested), the circuits, and the
+# gateway, SDK and MCP suites against Zcash testnet through a public lightwalletd. The tests read only
+# what deployments/testnet.json publishes on purpose (demo viewing keys, the fixture notes); no secret is
+# needed or used, and nothing is sent on-chain.
+name: ci
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.29.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13'
+          cache: pnpm
+      - name: protoc (lightwalletd client)
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - name: Rust 1.89 (pinned in packages/scan/rust-toolchain.toml)
+        run: rustup toolchain install 1.89.0 --profile minimal
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/scan
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+        env:
+          CARGO_BUILD_JOBS: '2'

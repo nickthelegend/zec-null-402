@@ -49,8 +49,12 @@ function lwdEnv(uivk: string, lwdUrl?: string): Record<string, string> {
   return env;
 }
 
+/** How many scanner processes this process has started (lightwalletd reads), for tests and logs. */
+export const scanStats = { spawns: 0 };
+
 /** Runs the scan binary; exit 0 and 1 are verdicts, anything else is a failure to check. */
 async function runScan(args: string[], env: Record<string, string>): Promise<string> {
+  scanStats.spawns++;
   const { code, out, err } = await new Promise<{ code: number | null; out: string; err: string }>((res, rej) => {
     const p = spawn(scanBinary(), args, { env });
     let out = '';
@@ -73,16 +77,22 @@ export async function scan(uivk: string, txid: string, amountZat: bigint | numbe
   return { ok: j.verdict.ok, reasons: j.verdict.reasons, paidZat: j.verdict.paid_zat, txid: j.report.txid, found: j.report.found, height: j.report.height, confirmations: j.report.confirmations, tip: j.report.tip, outputs: j.report.outputs, transparent: j.report.pools.transparent };
 }
 
-/** One anchor memo: `z402:anchor:<leaves>:<root>:<spent>:<sha256 of the sorted nullifier set>`. */
+/**
+ * One anchor memo: `z402:anchor:<leaves>:<root>:<spent>:<sha256 of the sorted nullifier set>`, optionally
+ * followed by `:<Ed25519 signature, 128 hex>` from the gateway's anchor key (see anchorsig.ts).
+ */
 export interface AnchorMemo {
   leaves: number;
   root: string;
   nullifiers: number;
   nullifierHash: string;
+  /** present on signed anchors */
+  signature?: string;
 }
 export function parseAnchorMemo(memo: string | null | undefined): AnchorMemo | null {
-  const m = /^z402:anchor:(0|[1-9]\d{0,9}):(0|[1-9]\d{0,76}):(0|[1-9]\d{0,9}):([0-9a-f]{64})$/.exec(memo ?? '');
-  return m ? { leaves: Number(m[1]), root: m[2], nullifiers: Number(m[3]), nullifierHash: m[4] } : null;
+  const m = /^z402:anchor:(0|[1-9]\d{0,9}):(0|[1-9]\d{0,76}):(0|[1-9]\d{0,9}):([0-9a-f]{64})(?::([0-9a-f]{128}))?$/.exec(memo ?? '');
+  if (!m) return null;
+  return { leaves: Number(m[1]), root: m[2], nullifiers: Number(m[3]), nullifierHash: m[4], ...(m[5] ? { signature: m[5] } : {}) };
 }
 
 export interface OnChainAnchor {
@@ -103,6 +113,28 @@ export async function readAnchor(anchorUivk: string, txid: string, lwdUrl?: stri
   if (!/^[0-9a-f]{64}$/.test(txid)) throw new Error(`anchor txid must be 64 hex, got ${JSON.stringify(String(txid).slice(0, 80))}`);
   const r = JSON.parse(await runScan(['inspect', txid], lwdEnv(anchorUivk, lwdUrl))) as { txid: string; found: boolean; height: number | null; confirmations: number; tip: number; outputs: ScanOutput[] };
   return { txid: r.txid, found: r.found, height: r.height, confirmations: r.confirmations, tip: r.tip, anchors: r.outputs.map((o) => parseAnchorMemo(o.memo)).filter((a): a is AnchorMemo => a !== null) };
+}
+
+/** An anchor memo found on-chain, with the tx and block that carry it. */
+export interface ScannedAnchor extends AnchorMemo {
+  txid: string;
+  height: number;
+}
+
+/**
+ * Every anchor memo sent to the anchor address in a block range, found without knowing any txid: the scan
+ * binary trial-decrypts compact blocks from lightwalletd with the anchor viewing key and re-reads each hit.
+ * `{ last: n }` is the n blocks ending at the tip; `to` defaults to the tip.
+ */
+export async function scanAnchors(anchorUivk: string, range: { from: number; to?: number } | { last: number }, lwdUrl?: string): Promise<{ tip: number; from: number; to: number; blocks: number; anchors: ScannedAnchor[] }> {
+  const h = (n: number) => {
+    if (!Number.isSafeInteger(n) || n < 0) throw new Error(`block height must be a whole number, got ${n}`);
+    return String(n);
+  };
+  const args = 'last' in range ? ['scan-range', '--last', h(range.last)] : ['scan-range', h(range.from), ...(range.to !== undefined ? [h(range.to)] : [])];
+  const r = JSON.parse(await runScan(args, lwdEnv(anchorUivk, lwdUrl))) as { tip: number; from: number; to: number; blocks: number; txs: { txid: string; height: number | null; outputs: ScanOutput[] }[] };
+  const anchors = r.txs.flatMap((t) => (t.height === null ? [] : t.outputs.map((o) => parseAnchorMemo(o.memo)).filter((a): a is AnchorMemo => a !== null).map((a) => ({ txid: t.txid, height: t.height!, ...a }))));
+  return { tip: r.tip, from: r.from, to: r.to, blocks: r.blocks, anchors };
 }
 
 /** UFVK → UIVK with the scan binary (env only). */

@@ -2,8 +2,9 @@
 // for a real shielded deposit it sees with its own incoming viewing key (memo z402:<commitment>),
 // keeps the Poseidon tree of credited notes, verifies each per-call Groth16 proof off-chain, and
 // burns nullifiers. It anchors (leaf count, root, nullifier-set hash) in a shielded memo to a
-// public-viewing-key address; clients prove only against an anchored root they have read on-chain
-// themselves, so the gateway cannot hand each client its own root.
+// public-viewing-key address, signed with its anchor key; clients prove only against an anchored root they
+// have read on-chain themselves, so handing each client its own root means putting a separate signed root
+// on-chain per client, which clients scanning the anchor address refuse (ANCHOR_COMPETING).
 // State (leaves, deposits, nullifiers, outstanding challenges, anchors) lives in SQLite, so a restart
 // keeps it and two gateway processes on one database cannot both accept one nullifier or one challenge.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
@@ -11,6 +12,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { commitmentOf, contextHash, fieldOfSha256, leafFromItem, R, Tree, verifyOffChain, type PaymentPublic } from '@z402/circuits';
+import { anchorSigner } from './anchorsig.js';
 import { chainTip, readAnchor, scan, SetupRequiredError } from './scan.js';
 
 export interface Anchor {
@@ -51,6 +53,8 @@ export interface GatewayOptions {
   anchorUa?: string;
   /** the anchor address's (published) incoming viewing key: confirms the gateway's anchors and adopts existing ones */
   anchorUivk?: string;
+  /** Ed25519 seed (64 hex, Z402_ANCHOR_SIGNING_KEY): every anchor memo is signed; clients pin the public key */
+  anchorSigningKey?: string;
   /**
    * anchor after every credited deposit, so new notes become spendable once that anchor is mined; with
    * startAnchoring(), also whenever an anchor is due (anchorDue): clients pay only against a recent one
@@ -105,7 +109,7 @@ const SIGNALS = ['nullifier', 'merkle_root', 'pay_to', 'required_amount', 'conte
  */
 export const isCanonicalField = (v: unknown): v is string => typeof v === 'string' && /^(0|[1-9]\d{0,76})$/.test(v) && BigInt(v) < R;
 export const nullifierSetHash = (ns: string[]) => createHash('sha256').update(`zec-null-402:v1:nullifiers:${[...ns].sort().join(',')}`).digest('hex');
-export const anchorMemo = (leaves: number, root: string, nullifiers: number, nh: string) => `z402:anchor:${leaves}:${root}:${nullifiers}:${nh}`;
+export const anchorMemo = (leaves: number, root: string, nullifiers: number, nh: string, signature?: string) => `z402:anchor:${leaves}:${root}:${nullifiers}:${nh}${signature ? `:${signature}` : ''}`;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS leaves (idx INTEGER PRIMARY KEY, leaf TEXT NOT NULL);
@@ -122,6 +126,8 @@ const anchorOf = (r: Row): Anchor => ({ txid: String(r.txid), leaves: Number(r.l
 export class Gateway {
   readonly payTo: bigint;
   readonly db: DatabaseSync;
+  /** signs anchor memos; its public key is served on /api/info for clients to pin out of band */
+  readonly signer: ReturnType<typeof anchorSigner> | null;
   private tree: Tree | null = null;
   /** nullifiers and deposits being checked right now in this process: verification and scanning are async */
   private inflight = new Set<string>();
@@ -147,6 +153,7 @@ export class Gateway {
     // databases from before the proof-check limit
     if (!(this.db.prepare("SELECT 1 FROM pragma_table_info('challenges') WHERE name = 'attempts'").get())) this.db.exec('ALTER TABLE challenges ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0');
     this.payTo = fieldOfSha256(`zec-null-402:payTo:${o.depositUa}`);
+    this.signer = o.anchorSigningKey ? anchorSigner(o.anchorSigningKey) : null;
     if (o.legacyJsonState && existsSync(o.legacyJsonState)) this.importLegacy(o.legacyJsonState);
   }
 
@@ -368,7 +375,8 @@ export class Gateway {
     const last = this.newestAnchor();
     if (skipIfUnchanged && last && last.leaves === leaves && last.nullifierHash === nh) return last;
     const root = await this.rootAt(leaves);
-    const txid = await this.o.sendAnchor!(anchorMemo(leaves, root, ns.length, nh));
+    const signature = this.signer?.sign({ leaves, root, nullifiers: ns.length, nullifierHash: nh });
+    const txid = await this.o.sendAnchor!(anchorMemo(leaves, root, ns.length, nh, signature));
     const a: Anchor = { txid, leaves, root, nullifiers: ns.length, nullifierHash: nh, at: new Date().toISOString(), height: null };
     // The tx is out: record it, and if that fails say which tx it was, so it can be adopted once mined.
     const insert = () => this.db.prepare('INSERT INTO anchors (txid, leaves, root, nullifiers, nullifier_hash, at, height) VALUES (?, ?, ?, ?, ?, ?, NULL)').run(a.txid, a.leaves, a.root, a.nullifiers, a.nullifierHash, a.at);
@@ -548,6 +556,8 @@ export function serveGateway(g: Gateway): Server {
         anchors: g.anchorList(),
         latestAnchor: g.latestAnchor(),
         anchorUa: g.o.anchorUa ?? null,
+        // the public key anchors are signed with; clients pin it from the deployment record, not from here
+        anchorPubkey: g.signer?.publicKey ?? null,
       });
     }
     if (url.pathname === '/api/leaves') return json(res, 200, { leaves: g.leafList(), root: await g.root() });

@@ -6,7 +6,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { Gateway, parseAnchorMemo, readAnchor, serveGateway, type GatewayOptions } from '../src/index.js';
+import { anchorMemo, anchorSigner, Gateway, newAnchorSeed, parseAnchorMemo, readAnchor, scanAnchors, scanStats, serveGateway, verifyAnchorSignature, type GatewayOptions } from '../src/index.js';
 
 const d = JSON.parse(readFileSync(resolve(__dirname, '../../../deployments/testnet.json'), 'utf8'));
 const items = d.deposit.items as { secretHash: string; value: string }[];
@@ -38,6 +38,52 @@ describe('anchor memos', () => {
     expect((await readAnchor(d.wallets.anchor.uivk, d.deposit.txid)).anchors).toEqual([]);
     await expect(readAnchor(d.wallets.anchor.uivk, '--memo')).rejects.toThrow(/64 hex/);
   });
+});
+
+describe('signed anchors', () => {
+  it('an anchor memo can carry an Ed25519 signature over its fields; only the signer\'s key verifies it, and no field can change', () => {
+    const s = anchorSigner(newAnchorSeed());
+    const m = { leaves: 22, root: d.gateway.root, nullifiers: 22, nullifierHash: d.anchor.nullifierHash };
+    const memo = anchorMemo(m.leaves, m.root, m.nullifiers, m.nullifierHash, s.sign(m));
+    expect(memo.length).toBeLessThanOrEqual(512);
+    const parsed = parseAnchorMemo(memo)!;
+    expect(parsed).toEqual({ ...m, signature: expect.stringMatching(/^[0-9a-f]{128}$/) });
+    expect(verifyAnchorSignature(s.publicKey, parsed)).toBe(true);
+    expect(verifyAnchorSignature(anchorSigner(newAnchorSeed()).publicKey, parsed)).toBe(false);
+    for (const k of ['leaves', 'root', 'nullifiers', 'nullifierHash'] as const) {
+      const bad = { ...parsed, [k]: k === 'nullifierHash' ? 'f'.repeat(64) : k === 'root' ? '7' : 23 };
+      expect(verifyAnchorSignature(s.publicKey, bad), k).toBe(false);
+    }
+    // the Oct 20 anchor is unsigned
+    expect(verifyAnchorSignature(s.publicKey, parseAnchorMemo(d.anchor.memo)!)).toBe(false);
+    expect(() => anchorSigner('not a seed')).toThrow(/^Setup required: Z402_ANCHOR_SIGNING_KEY/);
+  });
+
+  it('a gateway with a signing key signs every anchor it sends, and publishes the public key on /api/info', async () => {
+    const seed = newAnchorSeed();
+    const memos: string[] = [];
+    const g = await fresh({ anchorSigningKey: seed, sendAnchor: async (memo) => (memos.push(memo), 'a'.repeat(64)) });
+    await g.gw.anchor();
+    const info = (await (await fetch(`${g.base}/api/info`)).json()) as { anchorPubkey: string };
+    expect(info.anchorPubkey).toBe(anchorSigner(seed).publicKey);
+    expect(JSON.stringify(info)).not.toContain(seed);
+    expect(verifyAnchorSignature(info.anchorPubkey, parseAnchorMemo(memos[0])!)).toBe(true);
+    expect(parseAnchorMemo(memos[0])).toMatchObject({ leaves: 22, root: d.gateway.root, nullifiers: 0 });
+  }, 120_000);
+});
+
+describe('every anchor sent to the anchor address in a block range', () => {
+  it('scanAnchors finds the published anchor by scanning compact blocks with the published anchor key, and nothing in the blocks before it', async () => {
+    const a = await readAnchor(d.wallets.anchor.uivk, d.anchor.txid);
+    const around = await scanAnchors(d.wallets.anchor.uivk, { from: a.height! - 20, to: a.height! + 20 });
+    expect(around.anchors).toEqual([{ txid: d.anchor.txid, height: a.height, leaves: 22, root: d.gateway.root, nullifiers: 22, nullifierHash: d.anchor.nullifierHash }]);
+    expect(around.blocks).toBe(41);
+    expect((await scanAnchors(d.wallets.anchor.uivk, { from: a.height! - 200, to: a.height! - 1 })).anchors).toEqual([]);
+    const last = await scanAnchors(d.wallets.anchor.uivk, { last: a.tip - a.height! + 5 });
+    expect(last.anchors.map((x) => x.txid)).toContain(d.anchor.txid);
+    expect(last.to).toBeGreaterThanOrEqual(a.tip);
+    expect(scanStats.spawns).toBeGreaterThan(0);
+  }, 120_000);
 });
 
 describe('challenges name the anchor to prove against', () => {

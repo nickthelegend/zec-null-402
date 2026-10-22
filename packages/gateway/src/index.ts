@@ -1,3 +1,4 @@
+export * from './anchorsig.js';
 export * from './env.js';
 export * from './gateway.js';
 export * from './lock.js';

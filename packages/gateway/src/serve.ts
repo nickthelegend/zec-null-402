@@ -5,7 +5,8 @@
 // Z402_ANCHOR_UIVK (to see its anchors mined; clients only pay against mined anchors); Z402_AUTO_ANCHOR=1
 // anchors after every credited deposit, when the spent count changed, and once the newest anchor is
 // Z402_ANCHOR_EVERY_BLOCKS old (default 1440), retrying failed sends; POST /api/anchor also needs
-// Z402_ADMIN_TOKEN as a bearer token.
+// Z402_ADMIN_TOKEN as a bearer token. Z402_ANCHOR_SIGNING_KEY (an Ed25519 seed, 64 hex, in a gitignored
+// .env) signs every anchor; publish its public key (/api/info anchorPubkey) for clients to pin.
 import { intEnv } from './env.js';
 import { Gateway, serveGateway } from './gateway.js';
 import { SetupRequiredError } from './scan.js';
@@ -26,6 +27,7 @@ try {
     content: (path) => ({ path, servedAt: new Date().toISOString(), note: 'paid with a zero-knowledge proof of a prepaid shielded note' }),
     anchorUa,
     anchorUivk: process.env.Z402_ANCHOR_UIVK || undefined,
+    anchorSigningKey: process.env.Z402_ANCHOR_SIGNING_KEY || undefined,
     autoAnchor: process.env.Z402_AUTO_ANCHOR === '1',
     anchorEveryBlocks: intEnv('Z402_ANCHOR_EVERY_BLOCKS', 1440, { min: 1 }),
     adminToken: process.env.Z402_ADMIN_TOKEN || undefined,

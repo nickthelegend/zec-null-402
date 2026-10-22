@@ -249,6 +249,7 @@
         <ul>
           <li><a href="#rail">The tickets</a></li>
           <li><a href="#how">How it works</a></li>
+          <li><a href="#live">Pass 2</a></li>
           <li><a href="#void">Voided</a></li>
           <li><a href="#terms">Conditions</a></li>
           <li><a class="btn btn-line btn-sm" href="https://github.com/nickthelegend/zec-null-402">GitHub</a></li>
@@ -261,7 +262,7 @@
         <div class="wrap">
           <span class="chip"><span>ZCASH</span>Prepaid ZK tickets for APIs</span>
           <h1 id="hero-h">One deposit. <em>A ticket per call.</em></h1>
-          <p class="lead">Pay once with a shielded Zcash deposit, then pay each API call with a zero-knowledge proof of one prepaid note. No transaction and no block wait per call, and a gateway that follows the protocol learns that some note paid, not which.</p>
+          <p class="lead">Pay once with a shielded Zcash deposit, then pay each API call with a zero-knowledge proof of one prepaid note. No transaction and no block wait per call, and a gateway that follows the protocol learns that one prepaid note of that price paid, not which one. Both testnet runs had a single depositor, so there it knew whose notes paid.</p>
           <div class="cta">
             <a class="btn btn-teal" href="#rail">See the 22 tickets <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3.5 8.5 8 13l4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></a>
             <a class="btn btn-line" href="#terms">Read the conditions</a>
@@ -271,7 +272,7 @@
             <div class="pass-admit"><span class="k">Admit</span><span class="n">22</span><span class="k">notes · 10 units</span></div>
             <div class="tear" aria-hidden="true"></div>
             <div class="pass-body">
-              <span class="k">One shielded deposit · seen by the gateway's viewing key</span>
+              <span class="k">Oct 20 run · one shielded deposit · seen by the gateway's viewing key</span>
               <h2>220,000 zat bought 22 tickets</h2>
               <dl class="pass-meta">
                 <div><dt>Block</dt><dd>4,522,696</dd></div>
@@ -294,7 +295,7 @@
           <div class="rail-head">
             <div>
               <h2 class="sr" id="rail-h">The 22 tickets spent</h2>
-              <p><b>Torn from that one deposit:</b> 20 paid calls to <code>/api/quote</code>, then 2 fixture notes. Each ticket is a Groth16 proof the gateway checked off-chain. Shown by nullifier only; nothing ties it to a note.</p>
+              <p><b>Torn from that one deposit (Oct 20, pre-anchored-root protocol):</b> 20 paid calls to <code>/api/quote</code>, then 2 fixture notes. Each ticket is a Groth16 proof the gateway checked off-chain. Shown by nullifier only; nothing ties it to a note.</p>
             </div>
             <div class="rail-ctl">
               <button type="button" data-dir="-1" aria-label="Scroll tickets left"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
@@ -314,10 +315,36 @@
         <div class="wrap">
           <h2 class="sr" id="nums-h">The run in numbers</h2>
           <div class="nums">
-            <div class="num"><b>2</b><p>transactions per run: the deposit and the anchor (plus one funding tx)</p></div>
+            <div class="num"><b>2</b><p>transactions in the Oct 20 run: the deposit and its anchor (plus funding). Auto-anchoring now adds one per deposit and periodic ones</p></div>
             <div class="num"><b>20</b><p>paid calls with no transaction of their own</p></div>
-            <div class="num"><b>569<small>ms</small></b><p>slowest client proof in the run (fastest 346 ms)</p></div>
+            <div class="num"><b>569<small>ms</small></b><p>slowest client proof in the Oct 20 run (fastest 346 ms)</p></div>
             <div class="num"><b>91</b><p>tests plus a doc example, most against live testnet</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec" id="live" aria-labelledby="live-h">
+        <div class="wrap">
+          <div class="sec-head">
+            <div><span class="label">The current protocol, live on Oct 22</span><h2 class="big" id="live-h">Signed anchors, the default window, four paid calls.</h2></div>
+            <p>The tickets above (Oct 20) predate anchored roots. Pass 2 ran the protocol described below on testnet: a fresh gateway with auto-anchoring and an anchor signing key, and clients with the default 2,880-block window and that key pinned. Every transaction is in <code>deployments/testnet-pass2.json</code>.</p>
+          </div>
+          <div class="agent">
+            <div>
+              <ol>
+                <li><span>Deposit 3 notes of 10 units (<a class="txlink" href="https://testnet.zcashexplorer.app/transactions/90f70d6a79edafb8ec5fb4f0c845aab0af9b56a90b3d51d01800c11783c6c9d4">90f70d6a…</a>), mined in 21 s</span><span class="tag">deposited</span></li>
+                <li><span>Signed anchor <a class="txlink" href="https://testnet.zcashexplorer.app/transactions/c69195a9741da0d8b3150cbb2803621e6685af4076875cbca96292a1797223c5">c69195a9…</a>: 3 leaves, block 4,529,574</span><span class="tag">signed</span></li>
+                <li><span>Three calls to <code>/api/quote</code> against it, proofs 548, 351 and 361 ms. The first paid 2 min 44 s after the deposit was sent</span><span class="tag">3 × 200</span></li>
+                <li><span>Signed anchor <a class="txlink" href="https://testnet.zcashexplorer.app/transactions/f75213bbee1ac7597278b273f2bc5d0a25195f59a5ec22411765ce343a070abd">f75213bb…</a> because the spent count changed (block 4,529,584)</span><span class="tag">signed</span></li>
+                <li><span>Second deposit <a class="txlink" href="https://testnet.zcashexplorer.app/transactions/27ce212c7acf1bd4a2e715aadad68b77ab46cb6b3a492a9e9113e7b1a37e515c">27ce212c…</a>, then signed anchor <a class="txlink" href="https://testnet.zcashexplorer.app/transactions/c1b4b4780788fd466bff11c87aff1cb9ae3e644b2443d7941ced1649ed46ab39">c1b4b478…</a>: 6 leaves, block 4,529,589</span><span class="tag">signed</span></li>
+                <li><span>A call with a note from the second deposit, proof 574 ms</span><span class="tag">200</span></li>
+                <li><span>A probe that named the older anchor c69195a9…: the client proved against the newest, c1b4b478…, and paid</span><span class="tag">200</span></li>
+                <li><span>Signed anchor <a class="txlink" href="https://testnet.zcashexplorer.app/transactions/4265af65ce017a63cda24f78e397e3676d9df402058165900ea0719fa32078ff">4265af65…</a>: 6 leaves, 5 spent (block 4,529,599)</span><span class="tag">signed</span></li>
+                <li><span>The operator turned dishonest on purpose: a competing signed root <a class="txlink" href="https://testnet.zcashexplorer.app/transactions/3ed5319c06e9e12831b53d779b2bb802f26e2d3fc3c7251062eacb90ce19484c">3ed5319c…</a> (block 4,529,606). Once a client's scan held that block it refused with <code>ANCHOR_COMPETING</code>; a check seconds earlier still paid</span><span class="tag no">void</span></li>
+              </ol>
+            </div>
+            <div class="tear" aria-hidden="true"></div>
+            <div class="agent-side"><span class="label">Paid under the default window</span><b>4 + 1</b><p>calls plus the probe, against signed anchors. From a clone, <code>pnpm --filter @z402/examples demo</code> replays this run at a pinned block; no live gateway of this protocol is running.</p></div>
           </div>
         </div>
       </section>
@@ -340,8 +367,8 @@
       <section class="sec" id="void" aria-labelledby="void-h">
         <div class="wrap">
           <div class="sec-head">
-            <div><span class="label">Voided in the live run</span><h2 class="big" id="void-h">Seven tickets the gateway would not honour.</h2></div>
-            <p>Each was tried against the testnet run of Oct 20. The code is the gateway's own answer.</p>
+            <div><span class="label">Voided in the live runs</span><h2 class="big" id="void-h">Eight tickets that were not honoured.</h2></div>
+            <p>The first seven were tried against the testnet run of Oct 20, and the code is the gateway's own answer. The last is the client's refusal in pass 2 on Oct 22.</p>
           </div>
           <ul class="voids">
             <li class="void"><span class="stamp">VOID</span><code>NULLIFIER_SPENT</code><p>A paid proof sent again for a new request.</p></li>
@@ -351,6 +378,7 @@
             <li class="void"><span class="stamp">VOID</span><code>BAD_PROOF</code><p>The nullifier changed, claiming a different note.</p></li>
             <li class="void"><span class="stamp">VOID</span><code>409 already claimed</code><p>The same deposit claimed a second time.</p></li>
             <li class="void"><span class="stamp">VOID</span><code>MEMO_MISMATCH</code><p>A claim with one note's value altered, on a fresh gateway.</p></li>
+            <li class="void"><span class="stamp">VOID</span><code>ANCHOR_COMPETING</code><p>A second signed root for the same 6 leaves on the anchor address (pass 2).</p></li>
           </ul>
           <div class="fixed">
             <div><span class="label">Fixed on Oct 21</span><h3>A review found two ways to pay twice. Both are closed.</h3></div>
@@ -374,7 +402,7 @@
                 <li>A per-client root passed off as the real anchor: <code>ANCHOR_MISMATCH</code>.</li>
                 <li>An anchor older than 2,880 blocks: <code>ANCHOR_TOO_OLD</code>.</li>
                 <li>A second root signed with the gateway's key on the anchor address: <code>ANCHOR_COMPETING</code>.</li>
-                <li>A restart keeps challenges and spent nullifiers; two gateway processes on one database pay a note once.</li>
+                <li>A restart keeps spent nullifiers and outstanding challenges; two gateway processes on one database pay a note once.</li>
               </ul>
               <p style="margin:16px 0 0;font-size:14px;color:rgba(226,245,238,.75)">The client scans the anchor address over its window with the published anchor key, through the lightwalletd it trusts, before it proves. Tested against dishonest gateways in front of a real one, with real proofs.</p>
             </div>
@@ -412,9 +440,10 @@
           <ol class="terms">
             <li><b>The gateway is trusted</b> for liveness and its nullifier set, and must keep anchoring: one 10,000 zat + fee transaction per anchor, or notes stop paying once the newest anchor is 2,880 blocks old. Clients check its anchored root before every proof; its spent set is checkable only after the fact.</li>
             <li><b>Roots are anchored, addresses are not.</b> A gateway would have to put a per-client root on-chain, signed with its key; clients that pin that key scan the anchor address over their window and refuse a second signed root, and prove against the newest anchor whichever one is named. It can still time anchors, and it sees each caller's network address. The Oct 20 anchor is unsigned.</li>
+            <li><b>Anchors count paid calls.</b> The anchor key is public, and an auto-anchoring gateway re-anchors whenever the spent count changed (checked every 10 minutes), so anyone can see how many calls were paid between two anchors. At low traffic that times single calls to within about 10 minutes.</li>
             <li><b>Lightwalletd is trusted for anchors.</b> The client reads anchor transactions and their heights from its lightwalletd (<code>Z402_LWD_URL</code>) and checks no block header or Merkle path; that server sees the client's address and its reads.</li>
             <li><b>New notes wait for an anchor.</b> A deposit pays once the gateway's next anchor is mined. In the Oct 22 live run the first call paid 2 min 44 s after the deposit was sent: the deposit was mined in 21 s, the auto-anchor took 49 s to send and was mined five blocks after the deposit.</li>
-            <li><b>The anonymity set is the credited notes of that price inside the latest anchor.</b> A payment reveals its price. In the run there was one depositor, so every call came from that depositor's notes.</li>
+            <li><b>The anonymity set is the credited notes of that price inside the latest anchor.</b> A payment reveals its price. Both testnet runs had one depositor, so every call came from that depositor's notes; the gateway did not learn which of them.</li>
             <li><b>No change.</b> A note pays one call of its full value; a dearer endpoint needs a note of its own price.</li>
             <li><b>The demo viewing key is public.</b> It is published so a fresh clone can re-check the real deposit; for this deployment anyone can read the deposit's amount and memo.</li>
             <li><b>Single-party Groth16 setup.</b> Whoever ran it could forge proofs; a real deployment needs a ceremony.</li>
@@ -425,7 +454,7 @@
 
       <div class="wrap">
         <section class="print" aria-labelledby="print-h">
-          <div><h2 id="print-h">Print your own tickets.</h2><p>Circuits, the gateway, an SDK and an MCP server. Tests use real Groth16 proofs and real Zcash testnet; nothing is mocked.</p><a class="btn btn-tangerine" href="https://github.com/nickthelegend/zec-null-402">Get the code</a></div>
+          <div><h2 id="print-h">Print your own tickets.</h2><p>Circuits, the gateway, an SDK and an MCP server. Chain-touching tests read real Zcash testnet with real Groth16 proofs; tests that would send an anchor record the memo instead.</p><a class="btn btn-tangerine" href="https://github.com/nickthelegend/zec-null-402">Get the code</a></div>
           <div class="tear" aria-hidden="true"></div>
           <div><pre><code><span>$</span> pnpm install
 <span>$</span> pnpm test        <span># 91 tests + doc</span>

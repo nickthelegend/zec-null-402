@@ -1,6 +1,10 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { agentLog, EXPLORER, expect, expectInViewport, expectNoHorizontalScroll, isMobile, logButtons, REPO, REPO_ROOT, repoPathOf, run, test, URLS } from './fixtures';
 
+const pass2 = JSON.parse(readFileSync(resolve(REPO_ROOT, 'deployments/testnet-pass2.json'), 'utf8'));
+const pass2Tx: string[] = [pass2.txs.deposit1, pass2.txs.deposit2, ...pass2.anchors.map((a: { txid: string }) => a.txid), pass2.competing.txid];
 const tracked = new Set(execFileSync('git', ['ls-files'], { cwd: REPO_ROOT }).toString().split('\n'));
 type Call = { n: number; status: number; nullifier: string; proveMs: number };
 const calls: Call[] = run.calls;
@@ -112,7 +116,7 @@ test.describe('dashboard', () => {
   test('section nav, brand and skip link land on their sections', async ({ page }, info) => {
     await page.goto(URLS.dashboard + '/');
     const nav = page.getByRole('navigation', { name: 'Sections' });
-    const sections = ['Deposit:#pass', 'Tickets:#tickets', 'Who sees what:#who', 'Voided:#void', 'Agent:#agent', 'Anchor:#anchor'].map((s) => s.split(':'));
+    const sections = ['Deposit:#pass', 'Tickets:#tickets', 'Pass 2:#pass2', 'Who sees what:#who', 'Voided:#void', 'Agent:#agent', 'Anchor:#anchor'].map((s) => s.split(':'));
     if (isMobile(info.project.name)) {
       await expect(nav).toBeHidden(); // hidden on phones by design; the page is one column
     } else {
@@ -143,15 +147,16 @@ test.describe('dashboard', () => {
     await expect(who).toHaveCount(4);
     await expect(who.locator('h3')).toHaveText(['The chain', 'The gateway', 'Anyone with the anchor key', 'Anyone with the gateway key']);
     for (const li of await who.all()) await expect(li.locator('.not')).toHaveText(/^Not /);
-    await expect(who.nth(2)).toContainText(`Leaf count ${run.anchor.leaves}`);
-    await expect(who.nth(2)).toContainText(`spent count ${run.anchor.nullifiers}`);
+    await expect(who.nth(2)).toContainText(`here ${run.anchor.leaves}, ${run.anchor.nullifiers} spent`);
+    await expect(who.nth(2)).toContainText('how many calls were paid between two anchors');
+    await expect(who.nth(2).locator('.not')).toHaveText('Not which note paid which call.');
   });
 
-  test('refused attempts: the seven voided tickets with the gateway codes', async ({ page }, info) => {
+  test('refused attempts: the seven voided tickets with the gateway codes, and the pass-2 client refusal', async ({ page }, info) => {
     await page.goto(URLS.dashboard + '/#void');
-    await expect(page.locator('#void .count')).toHaveText('7 refused');
+    await expect(page.locator('#void .count')).toHaveText('8 refused');
     const voids = page.locator('ul.voids > li');
-    await expect(voids).toHaveCount(7);
+    await expect(voids).toHaveCount(8);
     await expect(voids.locator('code')).toHaveText([
       String(run.attacks.replayWithNewContext),
       String(run.attacks.replayOfSecondNote),
@@ -160,7 +165,10 @@ test.describe('dashboard', () => {
       String(run.attacks.tamperedNullifier),
       '409 already claimed',
       'MEMO_MISMATCH, AMOUNT_TOO_LOW',
+      pass2.competingRefusal.code,
     ]);
+    expect(pass2.competingRefusal.code).toBe('ANCHOR_COMPETING');
+    await expect(voids.nth(7)).toContainText('pass 2, Oct 22');
     await expect(voids.nth(5)).toContainText('Second claim of the deposit.');
     const review = page.getByRole('link', { name: 'Read the review' });
     expect(tracked.has(repoPathOf((await review.getAttribute('href'))!)!)).toBe(true);
@@ -186,7 +194,7 @@ test.describe('dashboard', () => {
     await expect(page.locator('#agent .lede')).toContainText('+1 double credit, the pre-fix race closed on Oct 21');
     await expect(page.locator('#agent .lede')).toContainText("The operator's prompt relayed a provider's");
     await expect(page.locator('#agent .lede')).not.toContainText('quote response carried');
-    const rows = page.locator('ol.roll > li');
+    const rows = page.locator('#agent ol.roll > li');
     await expect(rows).toHaveCount(agentLog.length);
     for (let i = 0; i < agentLog.length; i++) {
       const c = agentLog[i];
@@ -269,7 +277,7 @@ test.describe('dashboard', () => {
 
   test('every link: explorer links name the run txids, repo links name tracked files, external ones open in a new tab', async ({ page }) => {
     await page.goto(URLS.dashboard + '/');
-    const runTx = new Set([run.txs.fund, run.txs.deposit, run.txs.anchor]);
+    const runTx = new Set([run.txs.fund, run.txs.deposit, run.txs.anchor, ...pass2Tx]);
     const links = await page.locator('a[href]').evaluateAll((as) => as.map((a) => ({ href: a.getAttribute('href')!, target: a.getAttribute('target'), rel: a.getAttribute('rel') })));
     for (const l of links) {
       if (l.href.startsWith('#')) {
@@ -288,13 +296,40 @@ test.describe('dashboard', () => {
   test('no overclaims: the corrected wording is shown and the old claims are gone', async ({ page }) => {
     await page.goto(URLS.dashboard + '/');
     const text = await page.locator('body').innerText();
-    for (const gone of [/transactions in the run/, /quote response carried an injected/i, /can't hand one client its own root \(/, /Clients now read this memo/]) expect(text, String(gone)).not.toMatch(gone);
-    await expect(page.locator('.stats')).toContainText('transactions per run: the deposit and the anchor (plus the demo funding tx)');
-    await expect(page.locator('#who')).toContainText('Two shielded transactions per run: the deposit and the anchor (plus one funding tx).');
+    for (const gone of [/transactions in the run/, /quote response carried an injected/i, /can't hand one client its own root \(/, /Clients now read this memo/, /transactions per run/, /Not individual payments/, /One depositor in this run/]) expect(text, String(gone)).not.toMatch(gone);
+    await expect(page.locator('.stats')).toContainText('transactions in the Oct 20 run: the deposit and its anchor (plus the demo funding tx). Auto-anchoring now adds one per deposit and periodic ones');
+    await expect(page.locator('#who')).toContainText('In the Oct 20 run, two shielded transactions: the deposit and the anchor (plus one funding tx). Auto-anchoring now adds an anchor per deposit and periodic ones.');
+    await expect(page.locator('#who')).toContainText('at low traffic times single calls');
+    await expect(page.locator('#who .note')).toContainText('One depositor in each testnet run (Oct 20 and pass 2)');
+    await expect(page.locator('#pass')).toContainText('pre-anchored-root protocol');
+    await expect(page.locator('#tickets')).toContainText('Oct 20 run, pre-anchored-root protocol.');
     await expect(page.locator('#void .fixed')).toContainText("can't hand one client its own root without putting it on-chain");
     await expect(page.locator('#void .fixed')).toContainText('ANCHOR_COMPETING');
     await expect(page.locator('#void .fixed')).toContainText('trusts its lightwalletd');
     await expect(page.locator('#anchor')).toContainText('This Oct 20 anchor is unsigned');
+  });
+
+  test('pass 2: the current protocol live, every row from deployments/testnet-pass2.json', async ({ page }, info) => {
+    await page.goto(URLS.dashboard + '/#pass2');
+    const sec = page.locator('#pass2');
+    await expect(sec.locator('h2')).toHaveText('Pass 2: the current protocol, live');
+    await expect(sec.locator('.count')).toHaveText(`Oct 22 · ${pass2.calls.length} calls + 1 probe paid`);
+    expect(pass2.protocol.clientWindowBlocks).toBe(2880);
+    const rows = sec.locator('ol.roll > li');
+    await expect(rows).toHaveCount(10);
+    // every transaction of the run is linked, in order
+    const hrefs = await sec.locator('a.tx').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+    expect(hrefs).toEqual([pass2.txs.deposit1, pass2.anchors[0].txid, pass2.anchors[1].txid, pass2.txs.deposit2, pass2.anchors[2].txid, pass2.anchors[3].txid, pass2.competing.txid].map((t) => EXPLORER + t));
+    await expect(rows.nth(2)).toContainText(`proofs ${pass2.calls.slice(0, 3).map((c: { proveMs: number }) => c.proveMs).join(', ')} ms`);
+    await expect(rows.nth(2).locator('.tag')).toHaveText('3 × 200');
+    await expect(rows.nth(6)).toContainText(`proof ${pass2.calls[3].proveMs} ms`);
+    await expect(rows.nth(7)).toContainText(`named ${pass2.probe.named.txid.slice(0, 8)}…, the client proved against the newest, ${pass2.probe.used.txid.slice(0, 8)}…`);
+    expect(pass2.probe.status).toBe(200);
+    await expect(rows.nth(9).locator('.tag')).toHaveText('void');
+    await expect(rows.nth(9)).toContainText(`ANCHOR_COMPETING once a client's scan held that block`);
+    for (const a of pass2.anchors as { height: number }[]) await expect(sec).toContainText(`block ${a.height.toLocaleString('en-US')}`);
+    await expectNoHorizontalScroll(page);
+    await sec.screenshot({ path: info.outputPath(`dash-pass2-${info.project.name}.png`) });
   });
 
   test('reduced motion: smooth scrolling and ticket hover lift are off', async ({ page }) => {

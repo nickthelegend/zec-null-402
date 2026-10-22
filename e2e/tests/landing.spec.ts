@@ -20,6 +20,8 @@ async function expectFadeOnlyBeforeTheEnd(rail: import('@playwright/test').Locat
 
 const tickets: string[] = [...run.calls.map((c: { nullifier: string }) => c.nullifier), ...run.fixtureNullifiers];
 const pass2 = JSON.parse(readFileSync(resolve(REPO_ROOT, 'deployments/testnet-pass2.json'), 'utf8'));
+const pass2Tx: string[] = [pass2.txs.deposit1, pass2.txs.deposit2, ...pass2.anchors.map((a: { txid: string }) => a.txid), pass2.competing.txid];
+const agentSec = 'section[aria-labelledby="agent-h"]';
 
 test.describe('landing', () => {
   test('loads: the pass, the strip and the hero, no horizontal scroll', async ({ page }, info) => {
@@ -142,34 +144,42 @@ test.describe('landing', () => {
   test('voided tickets and the agent section match the published run record', async ({ page }) => {
     await page.goto(URLS.landing + '/');
     const voids = page.locator('#void ul.voids > li');
-    await expect(voids).toHaveCount(7);
+    await expect(voids).toHaveCount(8);
     const codes = await voids.locator('code').allTextContents();
     const expected = ['replayWithNewContext', 'replayOfSecondNote', 'tamperedAmount', 'proofForAnotherRequest', 'tamperedNullifier'].map((k) => String(run.attacks[k]));
     expect(codes.slice(0, 5)).toEqual(expected);
     expect(codes[5]).toBe('409 already claimed');
     expect(run.refusals['second claim of the deposit']).toMatch(/409.*already claimed/);
     expect(run.refusals['claim with an altered note value (fresh gateway)']).toContain(codes[6]);
+    expect(codes[7]).toBe(pass2.competingRefusal.code);
     for (const li of await voids.all()) await expect(li.locator('.stamp')).toHaveText('VOID');
     const refused = agentLog.filter((c) => c.isError).length;
-    await expect(page.locator('.agent-side')).toContainText(`${refused} / ${agentLog.length}`);
-    await expect(page.locator('.agent-side')).toContainText('+1 double credit (pre-fix)');
-    await expect(page.locator('.agent')).toContainText('credited it twice (leaves 25 and 26');
+    await expect(page.locator(`${agentSec} .agent-side`)).toContainText(`${refused} / ${agentLog.length}`);
+    await expect(page.locator(`${agentSec} .agent-side`)).toContainText('+1 double credit (pre-fix)');
+    await expect(page.locator(`${agentSec} .agent`)).toContainText('credited it twice (leaves 25 and 26');
     // The deposits the agent made are the txids in its own log.
     const agentTx = agentLog.filter((c) => c.tool === 'deposit' && !c.isError).map((c) => String((c.result as { txid: string }).txid));
-    const shown = await page.locator('.agent a.txlink').evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
+    const shown = await page.locator(`${agentSec} .agent a.txlink`).evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
     expect(shown).toEqual(agentTx.map((t) => EXPLORER + t));
   });
 
   test('no overclaims: the corrected wording is shown and the old claims are gone', async ({ page }) => {
     await page.goto(URLS.landing + '/');
     const text = await page.locator('main').innerText();
-    for (const gone of [/everyone proves against the same one/, /The cap held/, /carried an injected/, /about a block with auto-anchoring/, /transactions on-chain: the deposit and the anchor/, /no longer hand each client its own root/, /don't yet scan for competing anchors/, /reads the named anchor on-chain itself/]) expect(text, String(gone)).not.toMatch(gone);
+    for (const gone of [/everyone proves against the same one/, /The cap held/, /carried an injected/, /about a block with auto-anchoring/, /transactions on-chain: the deposit and the anchor/, /no longer hand each client its own root/, /don't yet scan for competing anchors/, /reads the named anchor on-chain itself/, /nothing is mocked/, /learns that some note paid, not which/, /transactions per run/, /In the run there was one depositor/, /Seven tickets the gateway would not honour/]) expect(text, String(gone)).not.toMatch(gone);
+    await expect(page.locator('.lead')).toContainText('Both testnet runs had a single depositor, so there it knew whose notes paid.');
+    await expect(page.locator('#rail')).toContainText('(Oct 20, pre-anchored-root protocol)');
+    await expect(page.locator('#terms')).toContainText('Anchors count paid calls.');
+    await expect(page.locator('#terms')).toContainText('At low traffic that times single calls to within about 10 minutes.');
+    await expect(page.locator('#terms')).toContainText('Both testnet runs had one depositor');
+    await expect(page.locator('.print')).toContainText('Chain-touching tests read real Zcash testnet with real Groth16 proofs; tests that would send an anchor record the memo instead.');
+    await expect(page.locator('.nums')).toContainText('transactions in the Oct 20 run: the deposit and its anchor (plus funding). Auto-anchoring now adds one per deposit and periodic ones');
     await expect(page.locator('#how')).toContainText('clients that see the same anchor prove against the same root');
     await expect(page.locator('#how')).toContainText('through its own lightwalletd');
     await expect(page.locator('#void')).toContainText('without putting it on-chain');
     await expect(page.locator('#void')).toContainText('ANCHOR_COMPETING');
     await expect(page.locator('#agent-h')).toHaveText('The per-deposit cap blocked the 50-unit note. The wallet still ran dry.');
-    await expect(page.locator('.agent').locator('..')).toContainText("The operator's prompt relayed a provider's");
+    await expect(page.locator(`${agentSec} .agent`).locator('..')).toContainText("The operator's prompt relayed a provider's");
     await expect(page.locator('#terms')).toContainText('Lightwalletd is trusted for anchors.');
     await expect(page.locator('#terms')).toContainText('credited notes of that price inside the latest anchor');
     await expect(page.locator('#terms')).toContainText('must keep anchoring');
@@ -179,11 +189,34 @@ test.describe('landing', () => {
     await expect(page.locator('#terms')).toContainText(`the first call paid ${Math.floor(s / 60)} min ${s % 60} s after the deposit was sent: the deposit was mined in ${Math.round(pass2.latency.depositSentToMinedMs / 1000)} s`);
   });
 
+  test('pass 2: the current protocol live, every row from deployments/testnet-pass2.json', async ({ page }, info) => {
+    await page.goto(URLS.landing + '/#live');
+    const sec = page.locator('#live');
+    await expect(sec.locator('h2')).toHaveText('Signed anchors, the default window, four paid calls.');
+    expect(pass2.calls).toHaveLength(4);
+    expect(pass2.protocol.clientWindowBlocks).toBe(2880);
+    const rows = sec.locator('.agent ol > li');
+    await expect(rows).toHaveCount(9);
+    const hrefs = await sec.locator('a.txlink').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+    expect(hrefs).toEqual([pass2.txs.deposit1, pass2.anchors[0].txid, pass2.anchors[1].txid, pass2.txs.deposit2, pass2.anchors[2].txid, pass2.anchors[3].txid, pass2.competing.txid].map((t) => EXPLORER + t));
+    const ms = pass2.calls.map((c: { proveMs: number }) => c.proveMs);
+    await expect(rows.nth(2)).toContainText(`proofs ${ms[0]}, ${ms[1]} and ${ms[2]} ms`);
+    await expect(rows.nth(2).locator('.tag')).toHaveText('3 × 200');
+    await expect(rows.nth(5)).toContainText(`proof ${ms[3]} ms`);
+    await expect(rows.nth(6)).toContainText(`named the older anchor ${pass2.probe.named.txid.slice(0, 8)}…: the client proved against the newest, ${pass2.probe.used.txid.slice(0, 8)}…`);
+    await expect(rows.nth(8)).toContainText('ANCHOR_COMPETING');
+    await expect(rows.nth(8).locator('.tag')).toHaveText('void');
+    for (const a of pass2.anchors as { height: number }[]) await expect(sec).toContainText(`block ${a.height.toLocaleString('en-US')}`);
+    await expect(sec.locator('.agent-side')).toContainText('4 + 1');
+    await expectNoHorizontalScroll(page);
+    await sec.screenshot({ path: info.outputPath(`landing-pass2-${info.project.name}.png`) });
+  });
+
   test('no button labelled "log" exists; the agent call log is in the run record', async ({ page }) => {
     await page.goto(URLS.landing + '/');
     expect(await logButtons(page)).toHaveLength(0);
     expect(await page.getByRole('link', { name: /\blog\b/i }).count()).toBe(0);
-    await expect(page.locator('.agent-side')).toContainText('deployments/agent-run-2026-10-20.jsonl');
+    await expect(page.locator(`${agentSec} .agent-side`)).toContainText('deployments/agent-run-2026-10-20.jsonl');
     expect(tracked.has('deployments/agent-run-2026-10-20.jsonl')).toBe(true);
   });
 
@@ -191,7 +224,7 @@ test.describe('landing', () => {
     await page.goto(URLS.landing + '/');
     const hrefs = await page.locator('a[href]').evaluateAll((as) => as.map((a) => a.getAttribute('href')!));
     expect(hrefs.length).toBeGreaterThan(15);
-    const runTx = new Set([run.txs.fund, run.txs.deposit, run.txs.anchor, ...agentLog.filter((c) => c.tool === 'deposit' && !c.isError).map((c) => String((c.result as { txid: string }).txid))]);
+    const runTx = new Set([run.txs.fund, run.txs.deposit, run.txs.anchor, ...pass2Tx, ...agentLog.filter((c) => c.tool === 'deposit' && !c.isError).map((c) => String((c.result as { txid: string }).txid))]);
     for (const h of hrefs) {
       if (h.startsWith('#')) {
         expect(await page.locator(h).count(), `anchor ${h}`).toBe(1);

@@ -34,7 +34,9 @@ test.describe('gateway (live testnet viewing-key checks)', () => {
     expect(res!.status()).toBe(402);
     const c = JSON.parse(await page.locator('body').innerText()).accepts[0];
     expect(c).toMatchObject({ scheme: 'zec-null-402', network: 'zcash-testnet', requiredAmount: run.priceUnits, resource: '/api/quote', anchor: null });
-    expect(c.nonce).toMatch(/^[0-9a-f]{32}$/);
+    // a stateless challenge: v1.<random>.<expiresAt>.<MAC>, the expiry the one the challenge states
+    expect(c.nonce).toMatch(/^v1\.[0-9a-f]{32}\.\d{13}\.[0-9a-f]{32}$/);
+    expect(Number(c.nonce.split('.')[2])).toBe(c.expiresAt);
     await page.screenshot({ path: info.outputPath('gateway-quote-402.png') });
     const nf = await page.request.get(`${G}/api/nothing`);
     expect(nf.status()).toBe(404);

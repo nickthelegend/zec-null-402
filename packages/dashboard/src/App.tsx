@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import run from '@deployments/testnet.json';
+import pass2 from '@deployments/testnet-pass2.json';
 import agentLog from '@deployments/agent-run-2026-10-20.jsonl?raw';
 
 type Call = { n: number; status: number; nullifier: string; proveMs: number };
@@ -16,6 +17,16 @@ const r = run as unknown as {
   fixtureNullifiers: string[];
   gateway: { leaves: number; root: string; spent: number; verificationKeySha256: string };
   anchor: { txid: string; leaves: number; root: string; nullifiers: number; nullifierHash: string; memo: string; memoSeen: boolean; matchesGatewayState: boolean };
+};
+/** The Oct 22 pass-2 run: the current protocol (anchored roots, signed anchors, the default window) live on testnet. */
+const p2 = pass2 as unknown as {
+  txs: { deposit1: string; deposit2: string };
+  anchors: { txid: string; leaves: number; nullifiers: number; height: number }[];
+  calls: { status: number; proveMs: number; anchor: { txid: string } }[];
+  probe: { named: { txid: string }; used: { txid: string }; status: number };
+  competing: { txid: string; height: number };
+  competingRefusal: { code: string };
+  latency: { depositSentToMinedMs: number; depositSentToFirstPaidCallMs: number };
 };
 const EXPLORER = 'https://testnet.zcashexplorer.app/transactions/';
 const REPO = 'https://github.com/nickthelegend/zec-null-402';
@@ -198,7 +209,7 @@ function Rail() {
   return (
     <>
       <div className="rail-bar">
-        <p className="muted">Pick a ticket to read its stub. Each one is a nullifier the gateway burned; none of them says which of the {r.gateway.leaves} notes it was.</p>
+        <p className="muted">Oct 20 run, pre-anchored-root protocol. Pick a ticket to read its stub. Each one is a nullifier the gateway burned; none of them says which of the {r.gateway.leaves} notes it was.</p>
         <div className="rail-ctl">
           <button type="button" onClick={() => scroll(-1)} aria-label="Scroll tickets left">
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -273,6 +284,7 @@ function Rail() {
 const NAV = [
   ['pass', 'Deposit'],
   ['tickets', 'Tickets'],
+  ['pass2', 'Pass 2'],
   ['who', 'Who sees what'],
   ['void', 'Voided'],
   ['agent', 'Agent'],
@@ -288,6 +300,21 @@ export function App() {
       .filter(([k]) => r.attacks[k] !== undefined)
       .map(([k, what]) => ({ code: String(r.attacks[k]), what })),
     ...Object.entries(r.refusals).map(([k, v]) => ({ code: /already claimed/.test(v) ? '409 already claimed' : v.replace(/^.*not credited: /, ''), what: k.charAt(0).toUpperCase() + k.slice(1) + '.' })),
+    { code: p2.competingRefusal.code, what: 'A second signed root on the anchor address, refused by the client (pass 2, Oct 22).' },
+  ];
+  const a2 = (i: number) => p2.anchors[i];
+  const secs = (ms: number) => `${Math.floor(Math.round(ms / 1000) / 60)} min ${Math.round(ms / 1000) % 60} s`;
+  const pass2Rows: { what: ReactNode; tag: string; no?: boolean; detail: string }[] = [
+    { what: <>deposit 1 <Tx id={p2.txs.deposit1} /></>, tag: 'deposited', detail: `3 notes of 10 units, mined in ${Math.round(p2.latency.depositSentToMinedMs / 1000)} s` },
+    { what: <>signed anchor <Tx id={a2(0).txid} /></>, tag: 'signed', detail: `${a2(0).leaves} leaves, block ${a2(0).height.toLocaleString('en-US')}` },
+    { what: 'pay /api/quote × 3', tag: '3 × 200', detail: `proofs ${p2.calls.slice(0, 3).map((c) => c.proveMs).join(', ')} ms; the first paid ${secs(p2.latency.depositSentToFirstPaidCallMs)} after the deposit was sent` },
+    { what: <>signed anchor <Tx id={a2(1).txid} /></>, tag: 'signed', detail: `the spent count changed (${a2(1).nullifiers} spent), block ${a2(1).height.toLocaleString('en-US')}` },
+    { what: <>deposit 2 <Tx id={p2.txs.deposit2} /></>, tag: 'deposited', detail: '3 more notes of 10 units' },
+    { what: <>signed anchor <Tx id={a2(2).txid} /></>, tag: 'signed', detail: `${a2(2).leaves} leaves, block ${a2(2).height.toLocaleString('en-US')}` },
+    { what: 'pay /api/quote', tag: '200', detail: `a note from deposit 2, proof ${p2.calls[3].proveMs} ms` },
+    { what: 'probe: an older anchor named', tag: '200', detail: `named ${p2.probe.named.txid.slice(0, 8)}…, the client proved against the newest, ${p2.probe.used.txid.slice(0, 8)}…` },
+    { what: <>signed anchor <Tx id={a2(3).txid} /></>, tag: 'signed', detail: `${a2(3).leaves} leaves, ${a2(3).nullifiers} spent, block ${a2(3).height.toLocaleString('en-US')}` },
+    { what: <>competing root <Tx id={p2.competing.txid} /></>, tag: 'void', no: true, detail: `the operator, dishonest on purpose (block ${p2.competing.height.toLocaleString('en-US')}): ${p2.competingRefusal.code} once a client's scan held that block; a check seconds earlier still paid` },
   ];
   return (
     <>
@@ -318,7 +345,7 @@ export function App() {
       <main id="main" className="wrap">
         <section id="pass" className="intro" aria-labelledby="intro-h">
           <p className="eyebrow">
-            <span className="net">Zcash testnet</span> run of {ranAt} UTC
+            <span className="net">Zcash testnet</span> run of {ranAt} UTC · pre-anchored-root protocol
           </p>
           <h1 id="intro-h">
             {r.calls.length} paid calls. <em>{r.calls.length > 0 ? 'No transaction per call.' : ''}</em>
@@ -376,7 +403,7 @@ export function App() {
             <div>
               <span className="label">On-chain</span>
               <b>2</b>
-              <p>transactions per run: the deposit and the anchor (plus the demo funding tx)</p>
+              <p>transactions in the Oct 20 run: the deposit and its anchor (plus the demo funding tx). Auto-anchoring now adds one per deposit and periodic ones</p>
             </div>
             <div>
               <span className="label">Off-chain</span>
@@ -408,6 +435,26 @@ export function App() {
           <Rail />
         </section>
 
+        <section id="pass2" aria-labelledby="pass2-h">
+          <div className="head">
+            <h2 id="pass2-h">Pass 2: the current protocol, live</h2>
+            <span className="count">Oct 22 · {p2.calls.length} calls + 1 probe paid</span>
+          </div>
+          <p className="muted lede">
+            The tickets above predate anchored roots. On Oct 22 a fresh gateway with auto-anchoring and an anchor signing key ran on testnet, and clients with the default 2,880-block window and that key pinned paid against its signed anchors. Every transaction is in <code>deployments/testnet-pass2.json</code>; <code>pnpm --filter @z402/examples demo</code> replays it at a pinned block. No live gateway of this protocol is running.
+          </p>
+          <ol className="roll">
+            {pass2Rows.map((x, i) => (
+              <li key={i}>
+                <span className="roll-n">{pad(i + 1)}</span>
+                <span className="roll-what">{x.what}</span>
+                <span className={`tag${x.no ? ' no' : ''}`}>{x.tag}</span>
+                <code className="roll-detail">{x.detail}</code>
+              </li>
+            ))}
+          </ol>
+        </section>
+
         <section id="who" aria-labelledby="who-h">
           <div className="head">
             <h2 id="who-h">Who sees what</h2>
@@ -415,7 +462,7 @@ export function App() {
           <ul className="who">
             <li>
               <h3>The chain</h3>
-              <p>Two shielded transactions per run: the deposit and the anchor (plus one funding tx).</p>
+              <p>In the Oct 20 run, two shielded transactions: the deposit and the anchor (plus one funding tx). Auto-anchoring now adds an anchor per deposit and periodic ones.</p>
               <p className="not">Not amounts, memos, who paid or how many calls.</p>
             </li>
             <li>
@@ -428,9 +475,9 @@ export function App() {
             <li>
               <h3>Anyone with the anchor key</h3>
               <p>
-                Leaf count {r.anchor.leaves}, the root, spent count {r.anchor.nullifiers} and the nullifier-set hash.
+                Each anchor's leaf count, root, spent count and nullifier-set hash (here {r.anchor.leaves}, {r.anchor.nullifiers} spent), so how many calls were paid between two anchors. An auto-anchoring gateway re-anchors when the spent count changed (checked every 10 minutes), which at low traffic times single calls.
               </p>
-              <p className="not">Not individual payments.</p>
+              <p className="not">Not which note paid which call.</p>
             </li>
             <li>
               <h3>Anyone with the gateway key</h3>
@@ -438,12 +485,12 @@ export function App() {
               <p className="not">Not which notes were spent for what.</p>
             </li>
           </ul>
-          <p className="note">One depositor in this run, so every call came from that depositor's notes. Unlinkability between users needs several.</p>
+          <p className="note">One depositor in each testnet run (Oct 20 and pass 2), so every call came from that depositor's notes; the gateway did not learn which of them. Unlinkability between users needs several.</p>
         </section>
 
         <section id="void" aria-labelledby="void-h">
           <div className="head">
-            <h2 id="void-h">Voided in the live run</h2>
+            <h2 id="void-h">Voided in the live runs</h2>
             <span className="count">{voids.length} refused</span>
           </div>
           <ul className="voids">

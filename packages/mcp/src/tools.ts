@@ -6,13 +6,16 @@
 //   Z402_MCP_LOG       one JSON line per call
 //   Z402_ANCHOR_UIVK   the anchor address's published viewing key (pay proves only against a root read
 //                      on-chain with it); Z402_MAX_ANCHOR_AGE_BLOCKS (default 2880); Z402_LWD_URL;
-//                      Z402_ANCHOR_WAIT_SEC (default 900): how long pay waits for the next anchor
+//                      Z402_ANCHOR_WAIT_SEC (default 900): how long pay waits for the next anchor,
+//                      asking again every Z402_ANCHOR_POLL_SEC (default 20)
+//   Z402_CLAIM_WAIT_SEC   how long claim waits for the deposit to be mined (default 900)
 import { appendFileSync } from 'node:fs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { intEnv, quicksend, SetupRequiredError, zingoConfig } from '@z402/gateway';
 import { AnchorRefusedError, Z402Client } from '@z402/sdk';
 
+const WAIT_FOR_ANCHOR = new Set(['NOTE_NOT_ANCHORED', 'ANCHOR_TOO_OLD', 'ANCHOR_NOT_CONFIRMED']);
 const need = (k: string) => process.env[k] || (() => { throw new SetupRequiredError(k); })();
 const client = () => new Z402Client(process.env.Z402_GATEWAY_URL ?? 'http://127.0.0.1:8405', need('Z402_NOTES_FILE'));
 
@@ -96,19 +99,21 @@ export function createServer(): McpServer {
 
   server.registerTool(
     'pay',
-    { title: 'Fetch a paid URL', description: 'GETs `url`; on a zec-null-402 402 it pays with a zero-knowledge proof of one unspent note of the price. No transaction per call. Talks only to Z402_GATEWAY_URL: a URL on any other origin is never fetched (no request is sent there and no redirect is followed), and only a challenge for the path requested is paid. Proves only against a root it has read itself in a recent on-chain anchor; if every note of the price was credited after the latest anchor, waits for the next one (up to Z402_ANCHOR_WAIT_SEC, default 900 s).', inputSchema: { url: z.string().url() } },
+    { title: 'Fetch a paid URL', description: 'GETs `url`; on a zec-null-402 402 it pays with a zero-knowledge proof of one unspent note of the price. No transaction per call. Talks only to Z402_GATEWAY_URL: a URL on any other origin is never fetched (no request is sent there and no redirect is followed), and only a challenge for the path requested is paid. Proves only against a root it has read itself in a recent on-chain anchor; if every note of the price was credited after the latest anchor, or the anchor is too old or not yet confirmed, waits for the gateway’s next one (up to Z402_ANCHOR_WAIT_SEC, default 900 s).', inputSchema: { url: z.string().url() } },
     (a) =>
       run('pay', a, async () => {
         const deadline = Date.now() + intEnv('Z402_ANCHOR_WAIT_SEC', 900) * 1000;
+        const poll = intEnv('Z402_ANCHOR_POLL_SEC', 20, { min: 1 }) * 1000;
         let r;
         for (;;) {
           try {
             r = await client().pay(a.url);
             break;
           } catch (e) {
-            // Only "your notes are newer than the latest anchor" is worth waiting for; nothing was proven.
-            if (!(e instanceof AnchorRefusedError && e.code === 'NOTE_NOT_ANCHORED') || Date.now() > deadline) throw e;
-            await new Promise((res) => setTimeout(res, 20_000));
+            // Worth waiting for, because the gateway's next anchor fixes them (nothing was proven): notes newer
+            // than the latest anchor, an anchor too old for the window, or one not yet confirmed.
+            if (!(e instanceof AnchorRefusedError && WAIT_FOR_ANCHOR.has(e.code)) || Date.now() + poll > deadline) throw e;
+            await new Promise((res) => setTimeout(res, poll));
           }
         }
         if (r.status !== 200) throw new Error(`payment refused (HTTP ${r.status}): ${JSON.stringify(r.body)}`);

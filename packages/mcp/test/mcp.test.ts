@@ -84,6 +84,23 @@ describe('z402-mcp', () => {
     for (const n of d.fixtureNotes) expect(s.text).not.toContain(n.noteSecret);
   });
 
+  it('pay waits for a fresh anchor when the newest one is too old for the window (ANCHOR_TOO_OLD), then reports it', async () => {
+    // the default 2,880-block window refuses the Oct 20 anchor; pay keeps asking until Z402_ANCHOR_WAIT_SEC runs out
+    const challenges = () => Number((gw.db.prepare('SELECT count(*) AS n FROM challenges').get() as { n: number }).n);
+    const before = challenges();
+    const c = await connect({ Z402_GATEWAY_URL: base, Z402_NOTES_FILE: join(dir, 'notes.json'), Z402_ANCHOR_UIVK: d.wallets.anchor.uivk, Z402_ANCHOR_WAIT_SEC: '3', Z402_ANCHOR_POLL_SEC: '1' });
+    try {
+      const t0 = Date.now();
+      const r = await call('pay', { url: `${base}/api/quote` }, c);
+      expect(r).toMatchObject({ isError: true, text: expect.stringMatching(/ANCHOR_TOO_OLD/) });
+      expect(Date.now() - t0).toBeGreaterThanOrEqual(1000); // at least one poll of 1 s; it never sleeps past the 3 s deadline
+      expect(challenges() - before).toBeGreaterThanOrEqual(2); // asked again (the old tool gave up after one)
+    } finally {
+      await c.close();
+    }
+    expect(Object.keys(gw.state.nullifiers)).toHaveLength(1);
+  });
+
   it('deposit without a wallet: Setup required', async () => {
     const r = await call('deposit', { count: 2, units: 10 });
     expect(r).toMatchObject({ isError: true, text: 'Setup required: Z402_WALLET' });

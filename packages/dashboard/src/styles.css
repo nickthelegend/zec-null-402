@@ -107,7 +107,7 @@ section { padding-top: 76px; }
 .rail-ctl { display: flex; gap: 8px; flex: none; }
 .rail-ctl button { width: 38px; height: 38px; border-radius: 10px; border: 0; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); color: var(--teal); cursor: pointer; display: grid; place-items: center; }
 .rail-ctl svg { width: 17px; height: 17px; }
-.rail { list-style: none; display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x proximity; padding: 12px 24px 18px; margin: 0 -24px; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+.rail { list-style: none; display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-inline: 24px; padding: 12px 24px 18px; margin: 0 -24px; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
       .rail { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 64px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 64px), transparent); }
 .rail li { flex: none; scroll-snap-align: start; }
 .tix { --hole: var(--mint); display: block; width: 150px; padding: 0; border: 0; text-align: left; font: inherit; color: inherit; background: var(--paper); border-radius: 14px; cursor: pointer; box-shadow: 0 1px 0 var(--line); transition: transform 0.18s ease, box-shadow 0.18s ease; }
@@ -205,7 +205,7 @@ section { padding-top: 76px; }
 }
 @media (max-width: 560px) {
   .wrap { padding: 0 16px; }
-  .rail { padding: 12px 16px 18px; margin: 0 -16px; }
+  .rail { padding: 12px 16px 18px; margin: 0 -16px; scroll-padding-inline: 16px; }
   .brand-sub { display: none; }
   .intro { padding-top: 28px; }
   .pass > :not(.tear), .stub > :not(.tear), .receipt > :not(.tear) { padding: 20px 18px; }

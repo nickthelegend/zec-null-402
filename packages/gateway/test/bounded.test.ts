@@ -48,6 +48,25 @@ describe('bounded work per request', () => {
     expect(full.info, `/api/info: ${empty.info.toFixed(1)} ms empty, ${full.info.toFixed(1)} ms full`).toBeLessThan(empty.info + 25);
   }, 180_000);
 
+  it('/api/info stays the same size and cost with 50,000 anchor rows: the count and the last 16 anchors, not every row', async () => {
+    const { gw, base } = await fresh();
+    const empty = await timed(`${base}/api/info`);
+    const emptySize = (await (await fetch(`${base}/api/info`)).text()).length;
+    const ins = gw.db.prepare('INSERT INTO anchors (txid, leaves, root, nullifiers, nullifier_hash, at, height) VALUES (?, 22, ?, 0, ?, ?, ?)');
+    gw.db.exec('BEGIN');
+    for (let i = 0; i < 50_000; i++) ins.run(randomBytes(32).toString('hex'), d.gateway.root, '0'.repeat(64), '2026-10-22T00:00:00.000Z', 4_500_000 + i);
+    gw.db.exec('COMMIT');
+    const full = await timed(`${base}/api/info`);
+    const body = await (await fetch(`${base}/api/info`)).text();
+    const info = JSON.parse(body) as { anchorCount: number; anchors: { height: number }[]; latestAnchor: { height: number } };
+    expect(info.anchorCount).toBe(50_000);
+    expect(info.anchors).toHaveLength(16);
+    expect(info.anchors.at(-1)!.height).toBe(4_549_999);
+    expect(info.latestAnchor.height).toBe(4_549_999);
+    expect(body.length, `${emptySize} bytes empty, ${body.length} bytes with 50,000 anchors`).toBeLessThan(emptySize + 16 * 400);
+    expect(full, `/api/info: ${empty.toFixed(1)} ms empty, ${full.toFixed(1)} ms with 50,000 anchors`).toBeLessThan(empty + 25);
+  }, 180_000);
+
   it('one challenge buys at most three proof checks: then it is gone (UNKNOWN_CHALLENGE)', async () => {
     const { base } = await fresh();
     const c = ((await (await fetch(`${base}/api/quote`)).json()) as { accepts: { payTo: string; requiredAmount: string; contextHash: string; nonce: string }[] }).accepts[0];

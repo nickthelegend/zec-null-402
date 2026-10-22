@@ -99,6 +99,8 @@ const ROOTS_KEPT = 64;
 const CHALLENGE_TTL_MS = 5 * 60_000;
 const MAX_BODY = 64 * 1024;
 const ANCHOR_REFRESH_MS = 20_000;
+/** anchors listed on /api/info (the count is given too); anchors grow with every deposit and periodic re-anchor */
+const RECENT_ANCHORS = 16;
 /** proof checks one challenge buys: a bad proof keeps the challenge for another try, up to this many */
 const PROOF_TRIES = 3;
 const SIGNALS = ['nullifier', 'merkle_root', 'pay_to', 'required_amount', 'context_hash'] as const;
@@ -118,6 +120,7 @@ CREATE TABLE IF NOT EXISTS deposits (txid TEXT PRIMARY KEY, commitment TEXT NOT 
 CREATE TABLE IF NOT EXISTS nullifiers (nullifier TEXT PRIMARY KEY, at TEXT NOT NULL, resource TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS challenges (nonce TEXT PRIMARY KEY, expires_at INTEGER NOT NULL, body TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS anchors (seq INTEGER PRIMARY KEY AUTOINCREMENT, txid TEXT NOT NULL UNIQUE, leaves INTEGER NOT NULL, root TEXT NOT NULL, nullifiers INTEGER NOT NULL, nullifier_hash TEXT NOT NULL, at TEXT NOT NULL, height INTEGER);
+CREATE INDEX IF NOT EXISTS anchors_height ON anchors (height);
 `;
 
 type Row = Record<string, string | number | null>;
@@ -191,6 +194,13 @@ export class Gateway {
 
   anchorList(): Anchor[] {
     return (this.db.prepare('SELECT * FROM anchors ORDER BY seq').all() as Row[]).map(anchorOf);
+  }
+
+  /** The last `n` anchors recorded, oldest first, and how many there are (GET /api/info: bounded, not every row). */
+  recentAnchors(n = RECENT_ANCHORS): { count: number; anchors: Anchor[] } {
+    const count = Number((this.db.prepare('SELECT count(*) AS n FROM anchors').get() as Row).n);
+    const anchors = (this.db.prepare('SELECT * FROM (SELECT * FROM anchors ORDER BY seq DESC LIMIT ?) ORDER BY seq').all(n) as Row[]).map(anchorOf);
+    return { count, anchors };
   }
 
   /** Runs `fn` in one write transaction (BEGIN IMMEDIATE: other processes wait on busy_timeout). */
@@ -543,9 +553,10 @@ export function serveGateway(g: Gateway): Server {
   };
   async function handle(req: IncomingMessage, res: ServerResponse) {
     const url = new URL(req.url ?? '/', 'http://local');
-    // Only counts here: a 402 or /api/info must not cost more as the tables grow.
+    // Counts and the last few anchors only: a 402 or /api/info must not cost more as the tables grow.
     if (url.pathname === '/api/info') {
       const n = g.counts();
+      const recent = g.recentAnchors();
       return json(res, 200, {
         // not the deposit viewing key: with it anyone could read every deposit's amount and memo
         depositUa: g.o.depositUa,
@@ -556,7 +567,8 @@ export function serveGateway(g: Gateway): Server {
         root: await g.root(),
         deposits: n.deposits,
         spent: n.spent,
-        anchors: g.anchorList(),
+        anchorCount: recent.count,
+        anchors: recent.anchors,
         latestAnchor: g.latestAnchor(),
         anchorUa: g.o.anchorUa ?? null,
         // the public key anchors are signed with; clients pin it from the deployment record, not from here

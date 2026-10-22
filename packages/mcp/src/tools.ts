@@ -72,15 +72,16 @@ export function createServer(): McpServer {
         const max = BigInt(intEnv('Z402_MAX_DEPOSIT_ZAT', 300_000, { min: 1 }));
         const total = BigInt(a.count) * BigInt(a.units) * BigInt(info.unitZat);
         if (total > max) throw new Error(`refused: deposit of ${total} zat is above Z402_MAX_DEPOSIT_ZAT (${max})`);
-        // optional budget over every deposit this notes file has sent (0 or unset: none)
+        // optional budget over every deposit this notes file has sent or is sending (0 or unset: none). It is
+        // checked and reserved inside the plan's notes-file lock, so two deposits at once cannot both pass it.
         const budget = BigInt(intEnv('Z402_MAX_TOTAL_DEPOSIT_ZAT', 0));
-        const spent = c.depositedZat(info.unitZat);
-        if (budget > 0n && spent + total > budget) throw new Error(`refused: deposits from this notes file would total ${spent + total} zat, above Z402_MAX_TOTAL_DEPOSIT_ZAT (${budget}); ${spent} zat already deposited`);
-        const p = await c.plan(a.count, BigInt(a.units));
+        const p = await c.plan(a.count, BigInt(a.units), budget > 0n ? { maxTotalZat: budget, budgetName: 'Z402_MAX_TOTAL_DEPOSIT_ZAT' } : {});
         let txid: string;
         try {
           [txid] = await quicksend(zingoConfig(), wallet, [{ address: p.address, amount: p.amountZat, memo: p.memo }]);
         } catch (e) {
+          // Only a send the wallet refused for lack of funds certainly sent nothing; any other failure keeps
+          // the plan (and its share of the budget), since the transaction may have gone out.
           if (/Insufficient balance/.test((e as Error).message)) await c.dropPlan(p.plan);
           throw e;
         }

@@ -1,6 +1,6 @@
 // Real MCP client ↔ z402-mcp (stdio) ↔ a fresh gateway over HTTP that credited the real published
 // deposit (testnet) ↔ real proofs.
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -113,12 +113,34 @@ describe('z402-mcp', () => {
     const before = plans();
     const c = await connect({ Z402_GATEWAY_URL: base, Z402_NOTES_FILE: join(dir, 'notes.json'), Z402_WALLET: mkdtempSync(join(tmpdir(), 'z402-mcp-nowallet-')), Z402_ZINGO_CLI: join(dir, 'no-zingo-cli-here'), Z402_MAX_DEPOSIT_ZAT: '40000', Z402_MAX_TOTAL_DEPOSIT_ZAT: '230000', ...anchorEnv });
     try {
-      expect(await call('deposit', { count: 2, units: 10 }, c)).toEqual({ isError: true, text: 'refused: deposits from this notes file would total 240000 zat, above Z402_MAX_TOTAL_DEPOSIT_ZAT (230000); 220000 zat already deposited' });
+      expect(await call('deposit', { count: 2, units: 10 }, c)).toEqual({ isError: true, text: 'refused: deposits from this notes file would total 240000 zat, above Z402_MAX_TOTAL_DEPOSIT_ZAT (230000); 220000 zat already deposited or being sent' });
       expect(plans()).toBe(before);
     } finally {
       await c.close();
     }
   });
+
+  it('Z402_MAX_TOTAL_DEPOSIT_ZAT holds for two deposits at once: the budget is reserved with the plan, so only one is sent', async () => {
+    // a local stand-in for zingo-cli (not an external API): it records each send, takes 2 s, and prints a txids line
+    const sends = join(dir, 'sends.log');
+    const cli = join(dir, 'slow-zingo-cli.sh');
+    writeFileSync(cli, `#!/bin/sh\necho send >> '${sends}'\nsleep 2\necho '{"txids": ["'$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \\n')'"]}'\n`);
+    chmodSync(cli, 0o755);
+    const notes = join(dir, 'budget-notes.json');
+    const c = await connect({ Z402_GATEWAY_URL: base, Z402_NOTES_FILE: notes, Z402_WALLET: mkdtempSync(join(tmpdir(), 'z402-mcp-slowwallet-')), Z402_ZINGO_CLI: cli, Z402_MAX_DEPOSIT_ZAT: '40000', Z402_MAX_TOTAL_DEPOSIT_ZAT: '20000', ...anchorEnv });
+    try {
+      const [a, b] = await Promise.all([call('deposit', { count: 2, units: 10 }, c), call('deposit', { count: 2, units: 10 }, c)]);
+      const ok = [a, b].filter((r) => !r.isError);
+      const refused = [a, b].filter((r) => r.isError);
+      expect(ok, JSON.stringify([a, b])).toHaveLength(1);
+      expect(JSON.parse(ok[0].text)).toMatchObject({ amount_zat: '20000', txid: expect.stringMatching(/^[0-9a-f]{64}$/) });
+      expect(refused[0].text).toMatch(/^refused: deposits from this notes file would total 40000 zat, above Z402_MAX_TOTAL_DEPOSIT_ZAT \(20000\)/);
+      expect(readFileSync(sends, 'utf8').trim().split('\n')).toHaveLength(1);
+      expect(Object.keys(JSON.parse(readFileSync(notes, 'utf8')).plans)).toHaveLength(1);
+    } finally {
+      await c.close();
+    }
+  }, 60_000);
 
   it('a malformed cap or wait setting is Setup required, never NaN (no endless wait, no unchecked cap)', async () => {
     const dirW = mkdtempSync(join(tmpdir(), 'z402-mcp-nowallet-'));

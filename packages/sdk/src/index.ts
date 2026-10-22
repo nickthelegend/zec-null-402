@@ -105,6 +105,9 @@ export class AnchorRefusedError extends Error {
   }
 }
 
+/** Every plan's amount (sent or not), in zatoshi. */
+const committedZat = (f: NotesFile, unitZat: number) => Object.values(f.plans).reduce((t, p) => t + (p.amountZat !== undefined ? BigInt(p.amountZat) : BigInt(p.units) * BigInt(unitZat)), 0n);
+
 const shortId = (s: string) => (s.length > 16 ? `${s.slice(0, 12)}…` : s);
 
 /**
@@ -258,14 +261,24 @@ export class Z402Client {
     return this.get<{ depositUa: string; unitZat: number; payTo: string; prices: Record<string, string>; leaves: number; root: string; spent: number; anchors: unknown[]; latestAnchor: { txid: string; leaves: number; root: string; height: number | null } | null }>('/api/info');
   }
 
-  /** Creates `count` notes of `value` units and returns what to send: address, zatoshi and memo. */
-  async plan(count: number, value: bigint): Promise<{ plan: string; address: string; amountZat: bigint; memo: string }> {
+  /**
+   * Creates `count` notes of `value` units and returns what to send: address, zatoshi and memo. With
+   * `maxTotalZat`, the plan is refused unless every plan in the notes file (sent or about to be sent) plus
+   * this one stays within it; the check and the insert happen under one lock, so two deposits at once cannot
+   * both pass it.
+   */
+  async plan(count: number, value: bigint, o: { maxTotalZat?: bigint; budgetName?: string } = {}): Promise<{ plan: string; address: string; amountZat: bigint; memo: string }> {
     const info = await this.info();
     const notes: Note[] = Array.from({ length: count }, () => newNote(value));
     const d = await depositCommitment(notes);
     const stored: StoredNote[] = await Promise.all(notes.map(async (n) => ({ noteSecret: n.noteSecret.toString(), nullifierSecret: n.nullifierSecret.toString(), value: n.value.toString(), index: null, deposit: d.commitment, nullifier: (await nullifierOf(n)).toString(), spent: false })));
     const amountZat = value * BigInt(count) * BigInt(info.unitZat);
     await this.update((f) => {
+      if (o.maxTotalZat !== undefined) {
+        const committed = committedZat(f, info.unitZat);
+        if (committed + amountZat > o.maxTotalZat)
+          throw new Error(`refused: deposits from this notes file would total ${committed + amountZat} zat, above ${o.budgetName ?? 'maxTotalZat'} (${o.maxTotalZat}); ${committed} zat already deposited or being sent`);
+      }
       f.plans[d.commitment] = { commitment: d.commitment, units: String(value * BigInt(count)), items: d.items, txid: null, amountZat: amountZat.toString() };
       f.notes.push(...stored);
     });
@@ -301,11 +314,12 @@ export class Z402Client {
     return r;
   }
 
-  /** Zatoshi this notes file has sent in deposits (plans with a txid), for a total budget. */
+  /**
+   * Zatoshi this notes file has deposited or is sending: every plan, with a txid or not (a plan whose send
+   * failed may still have gone out; dropPlan removes one the wallet refused), for a total budget.
+   */
   depositedZat(unitZat: number): bigint {
-    return Object.values(this.read().plans)
-      .filter((p) => p.txid)
-      .reduce((t, p) => t + (p.amountZat !== undefined ? BigInt(p.amountZat) : BigInt(p.units) * BigInt(unitZat)), 0n);
+    return committedZat(this.read(), unitZat);
   }
 
   status() {

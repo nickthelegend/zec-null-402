@@ -153,6 +153,17 @@ function describeCall(c: AgentCall): { what: string; detail: string } {
 function Rail() {
   const [sel, setSel] = useState(0);
   const railRef = useRef<HTMLOListElement>(null);
+  // The right-edge fade says "more to scroll"; at the end of the rail it would only hide the last ticket.
+  const [atEnd, setAtEnd] = useState(false);
+  const edge = useCallback(() => {
+    const el = railRef.current;
+    if (el) setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 2);
+  }, []);
+  useEffect(() => {
+    edge();
+    addEventListener('resize', edge);
+    return () => removeEventListener('resize', edge);
+  }, [edge]);
   if (tickets.length === 0)
     return (
       <div className="empty">
@@ -179,7 +190,7 @@ function Rail() {
           </button>
         </div>
       </div>
-      <ol className="rail" ref={railRef} aria-label="Spent tickets">
+      <ol className={`rail${atEnd ? ' at-end' : ''}`} ref={railRef} onScroll={edge} aria-label="Spent tickets">
         {tickets.map((x, i) => (
           <li key={x.key}>
             <button type="button" className={`tix${x.fixture ? ' fixture' : ''}`} aria-pressed={i === sel} onClick={() => setSel(i)}>

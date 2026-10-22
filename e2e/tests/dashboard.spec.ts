@@ -168,21 +168,39 @@ test.describe('dashboard', () => {
     await page.locator('#void').screenshot({ path: info.outputPath(`dash-voided-${info.project.name}.png`) });
   });
 
-  test('agent calls: every MCP call of the recorded run, refused ones marked; no "log" button exists', async ({ page }, info) => {
+  test('agent calls: every MCP call of the recorded run, refused ones marked, the pre-fix double credit marked; no "log" button exists', async ({ page }, info) => {
     await page.goto(URLS.dashboard + '/#agent');
     const refused = agentLog.filter((c) => c.isError).length;
+    // a successful claim of a plan that was already credited: the Oct 20 concurrent-claim race (fixed in 9f8b8a8)
+    const seen = new Set<string>();
+    const doubles = agentLog.map((c) => {
+      if (c.tool !== 'claim' || c.isError) return false;
+      const plan = String(c.args.plan);
+      return seen.has(plan) || (seen.add(plan), false);
+    });
+    expect(doubles.filter(Boolean)).toHaveLength(1);
+    expect(doubles.indexOf(true)).toBe(15); // row 16: deposit 0b12bfc6 credited again at leaf 26
+    expect((agentLog[15].args as { txid: string }).txid).toMatch(/^0b12bfc6/);
     await expect(page.locator('#agent .count')).toHaveText(`${refused} of ${agentLog.length} calls refused`);
+    await expect(page.locator('#agent .lede')).toContainText('credited deposit 0b12bfc6 twice (row 16, leaves 25 and 26');
+    await expect(page.locator('#agent .lede')).toContainText('+1 double credit, the pre-fix race closed on Oct 21');
+    await expect(page.locator('#agent .lede')).toContainText("The operator's prompt relayed a provider's");
+    await expect(page.locator('#agent .lede')).not.toContainText('quote response carried');
     const rows = page.locator('ol.roll > li');
     await expect(rows).toHaveCount(agentLog.length);
     for (let i = 0; i < agentLog.length; i++) {
       const c = agentLog[i];
       await expect(rows.nth(i).locator('.roll-n')).toHaveText(pad(i + 1));
-      await expect(rows.nth(i).locator('.tag')).toHaveText(c.isError ? 'refused' : 'ok');
+      await expect(rows.nth(i).locator('.tag')).toHaveText(c.isError ? 'refused' : doubles[i] ? 'double' : 'ok');
       await expect(rows.nth(i).locator('.roll-what')).toContainText(c.tool === 'claim' ? 'claim' : c.tool);
       if (c.isError) await expect(rows.nth(i).locator('.roll-detail')).toHaveText(String(c.result));
       if (c.tool === 'pay' && !c.isError) await expect(rows.nth(i).locator('.roll-detail')).toHaveText(`HTTP ${(c.result as { status: number }).status}, proof ${(c.result as { prove_ms: number }).prove_ms} ms`);
+      if (c.tool === 'claim' && !c.isError) await expect(rows.nth(i).locator('.roll-detail')).toHaveText(doubles[i] ? `credited again from leaf ${(c.result as { first: number }).first} (pre-fix race, fixed in 9f8b8a8, now 409)` : `credited ${(c.result as { count: number }).count} notes from leaf ${(c.result as { first: number }).first}`);
     }
-    await expect(rows.locator('.tag.no')).toHaveCount(refused);
+    await expect(rows.locator('.tag.no')).toHaveCount(refused + 1);
+    // the tag stays inside its column, clear of the detail text
+    const [tagRight, detailLeft] = await Promise.all([rows.nth(15).locator('.tag').evaluate((e) => e.getBoundingClientRect().right), rows.nth(15).locator('.roll-detail').evaluate((e) => e.getBoundingClientRect().left)]);
+    if (!isMobile(info.project.name)) expect(tagRight).toBeLessThanOrEqual(detailLeft);
     // Nick's "log" button: there is no button whose label contains "log" on the dashboard.
     expect(await logButtons(page)).toHaveLength(0);
     await expect(page.locator('#agent')).toContainText('deployments/agent-run-2026-10-20.jsonl');
@@ -265,6 +283,18 @@ test.describe('dashboard', () => {
     }
     // Deposit, fund and anchor transactions are all linked.
     for (const t of runTx) await expect(page.locator(`a[href="${EXPLORER + t}"]`).first()).toBeAttached();
+  });
+
+  test('no overclaims: the corrected wording is shown and the old claims are gone', async ({ page }) => {
+    await page.goto(URLS.dashboard + '/');
+    const text = await page.locator('body').innerText();
+    for (const gone of [/transactions in the run/, /quote response carried an injected/i, /can't hand one client its own root \(/, /Clients now read this memo/]) expect(text, String(gone)).not.toMatch(gone);
+    await expect(page.locator('.stats')).toContainText('transactions per run: the deposit and the anchor (plus the demo funding tx)');
+    await expect(page.locator('#who')).toContainText('Two shielded transactions per run: the deposit and the anchor (plus one funding tx).');
+    await expect(page.locator('#void .fixed')).toContainText("can't hand one client its own root without putting it on-chain");
+    await expect(page.locator('#void .fixed')).toContainText('ANCHOR_COMPETING');
+    await expect(page.locator('#void .fixed')).toContainText('trusts its lightwalletd');
+    await expect(page.locator('#anchor')).toContainText('This Oct 20 anchor is unsigned');
   });
 
   test('reduced motion: smooth scrolling and ticket hover lift are off', async ({ page }) => {

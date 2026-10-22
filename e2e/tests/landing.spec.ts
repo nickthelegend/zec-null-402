@@ -1,4 +1,6 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { agentLog, EXPLORER, expect, expectInViewport, expectNoHorizontalScroll, isMobile, logButtons, REPO, REPO_ROOT, repoPathOf, run, test, URLS } from './fixtures';
 
 const tracked = new Set(execFileSync('git', ['ls-files'], { cwd: REPO_ROOT }).toString().split('\n'));
@@ -17,6 +19,7 @@ async function expectFadeOnlyBeforeTheEnd(rail: import('@playwright/test').Locat
 }
 
 const tickets: string[] = [...run.calls.map((c: { nullifier: string }) => c.nullifier), ...run.fixtureNullifiers];
+const pass2 = JSON.parse(readFileSync(resolve(REPO_ROOT, 'deployments/testnet-pass2.json'), 'utf8'));
 
 test.describe('landing', () => {
   test('loads: the pass, the strip and the hero, no horizontal scroll', async ({ page }, info) => {
@@ -149,10 +152,31 @@ test.describe('landing', () => {
     for (const li of await voids.all()) await expect(li.locator('.stamp')).toHaveText('VOID');
     const refused = agentLog.filter((c) => c.isError).length;
     await expect(page.locator('.agent-side')).toContainText(`${refused} / ${agentLog.length}`);
+    await expect(page.locator('.agent-side')).toContainText('+1 double credit (pre-fix)');
+    await expect(page.locator('.agent')).toContainText('credited it twice (leaves 25 and 26');
     // The deposits the agent made are the txids in its own log.
     const agentTx = agentLog.filter((c) => c.tool === 'deposit' && !c.isError).map((c) => String((c.result as { txid: string }).txid));
     const shown = await page.locator('.agent a.txlink').evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
     expect(shown).toEqual(agentTx.map((t) => EXPLORER + t));
+  });
+
+  test('no overclaims: the corrected wording is shown and the old claims are gone', async ({ page }) => {
+    await page.goto(URLS.landing + '/');
+    const text = await page.locator('main').innerText();
+    for (const gone of [/everyone proves against the same one/, /The cap held/, /carried an injected/, /about a block with auto-anchoring/, /transactions on-chain: the deposit and the anchor/, /no longer hand each client its own root/, /don't yet scan for competing anchors/, /reads the named anchor on-chain itself/]) expect(text, String(gone)).not.toMatch(gone);
+    await expect(page.locator('#how')).toContainText('clients that see the same anchor prove against the same root');
+    await expect(page.locator('#how')).toContainText('through its own lightwalletd');
+    await expect(page.locator('#void')).toContainText('without putting it on-chain');
+    await expect(page.locator('#void')).toContainText('ANCHOR_COMPETING');
+    await expect(page.locator('#agent-h')).toHaveText('The per-deposit cap blocked the 50-unit note. The wallet still ran dry.');
+    await expect(page.locator('.agent').locator('..')).toContainText("The operator's prompt relayed a provider's");
+    await expect(page.locator('#terms')).toContainText('Lightwalletd is trusted for anchors.');
+    await expect(page.locator('#terms')).toContainText('credited notes of that price inside the latest anchor');
+    await expect(page.locator('#terms')).toContainText('must keep anchoring');
+    // the latency is the measured one from the Oct 22 live run
+    const ms = pass2.latency.depositSentToFirstPaidCallMs as number;
+    const s = Math.round(ms / 1000);
+    await expect(page.locator('#terms')).toContainText(`the first call paid ${Math.floor(s / 60)} min ${s % 60} s after the deposit was sent: the deposit was mined in ${Math.round(pass2.latency.depositSentToMinedMs / 1000)} s`);
   });
 
   test('no button labelled "log" exists; the agent call log is in the run record', async ({ page }) => {

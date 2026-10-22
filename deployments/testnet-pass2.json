@@ -1,0 +1,269 @@
+{
+  "network": "zcash-testnet",
+  "ranAt": "2026-10-22T16:58:38.877Z",
+  "note": "Pass 2: the current protocol live (anchored roots, signed anchors, the default 2,880-block client window). Demo wallets as in testnet.json; no note secrets here. The competing anchor at the end is the operator turning dishonest on purpose: clients refuse this deployment while it is in their window.",
+  "protocol": {
+    "anchorPubkey": "ac1c23e8af09299151a5dd1086fa1ba67955bebfba3eb13c259ee9161ff976fd",
+    "clientWindowBlocks": 2880,
+    "autoAnchor": true,
+    "anchorCheckSec": 60
+  },
+  "wallets": {
+    "payer": {
+      "address": "utest1l7ahtgfz0j6twr8wh3xj0v56ru04hyntwlz7neh6yxxyw7e2glwx97zmw6rupftul0dw7g0xg4az7tka9cyfyfjtamzj64fazyckh94p"
+    },
+    "gateway": {
+      "address": "utest18v7q2kvdlsty35a3exga9xw2np0wupu5s4n0w8tta3ys8wjtrexkfeg2tr0vkvctd8npj0x5k62hqkr5nna24w99wyuzzka06qdjmu3q",
+      "uivk": "uivktest1mvej6lyq9y2p84hgndugjp0jusrkrmxtuzmyelcmyxqldsvl9ulzkad8nxrdhkvw7m8rg5k7laj4e8utf6we4r4x9y4fyl0e7dkky3j2xmnk7x4lqv0fz6fc0n656a44k0zz0lwesp82wypssmxzcp3utwxt88eh6ut9463v76etmku0g88a77aqn7scr86ha49crugdgy0zdky5lfwjldgszhm4m635pm3eajtck5p46gdcepq"
+    },
+    "anchor": {
+      "address": "utest1hzg24eygt8yd0gkzmfxqus6d2h24n24uqkzg5rlpprslqtmggnm5ufjhxjj7l6j0cuhqjfsweg4p3lqsuhl48we6mtgg39cqugwaslps",
+      "uivk": "uivktest10qnh947uql4w36xl2saz8fvkyv3e9pg62crhh8hns39d4506sjdn2yypfy7aywnxfjv4arhxtrgl69cratsglwz7mxagtcrl3jzgxc8jay5dgrwkhzxsud52hsee7g8ryl0pyzsfqzmvk2763hvn8ujl3m7s54kk32fda70vtf5medm6pceuuy0huf9nxcsy55ce6069yzu80nsm7ds8utkvtn3kehdtwrxathrdtcdls8u0jxg"
+    }
+  },
+  "txs": {
+    "fund": "64759b2a3da3a2ba875bc6d351af5750bad3c03000abb4408e509cbb1ae141b9",
+    "deposit1": "90f70d6a79edafb8ec5fb4f0c845aab0af9b56a90b3d51d01800c11783c6c9d4",
+    "deposit2": "27ce212c7acf1bd4a2e715aadad68b77ab46cb6b3a492a9e9113e7b1a37e515c",
+    "anchors": [
+      "c69195a9741da0d8b3150cbb2803621e6685af4076875cbca96292a1797223c5",
+      "f75213bbee1ac7597278b273f2bc5d0a25195f59a5ec22411765ce343a070abd",
+      "c1b4b4780788fd466bff11c87aff1cb9ae3e644b2443d7941ced1649ed46ab39",
+      "4265af65ce017a63cda24f78e397e3676d9df402058165900ea0719fa32078ff"
+    ],
+    "competing": "3ed5319c06e9e12831b53d779b2bb802f26e2d3fc3c7251062eacb90ce19484c"
+  },
+  "deposits": [
+    {
+      "txid": "90f70d6a79edafb8ec5fb4f0c845aab0af9b56a90b3d51d01800c11783c6c9d4",
+      "memo": "z402:cd7c7d29518d735eee0ca78ed6bf414bc9c108b005a17df9c7c18612bdbdd7f0",
+      "amountZat": "30000",
+      "height": 4529569,
+      "items": [
+        {
+          "secretHash": "14591301319446524493816563218823882334986009025751277808164356566642931918838",
+          "value": "10"
+        },
+        {
+          "secretHash": "7257646258018309655653837490743356695141556452874142134865860757969150398777",
+          "value": "10"
+        },
+        {
+          "secretHash": "3777343382825784573272495427696683251837752663455997256137432187177168341966",
+          "value": "10"
+        }
+      ],
+      "claimed": {
+        "first": 0,
+        "count": 3,
+        "root": "288006298991703299856663101480977629373423785845246167202489083263026899375"
+      }
+    },
+    {
+      "txid": "27ce212c7acf1bd4a2e715aadad68b77ab46cb6b3a492a9e9113e7b1a37e515c",
+      "memo": "z402:9b2d3332dec53eb8e00070e93f22d13a67bb26710239b5139f7848f8a34f1b90",
+      "amountZat": "30000",
+      "height": 4529584,
+      "items": [
+        {
+          "secretHash": "11898710529587014635316626438895554391594647061530150360728530723460299642950",
+          "value": "10"
+        },
+        {
+          "secretHash": "19865559398729528721309535050437471158866084731625225914070053085438824721363",
+          "value": "10"
+        },
+        {
+          "secretHash": "11018584704379751438847935527462325799613176087440911513981432414866265531513",
+          "value": "10"
+        }
+      ],
+      "claimed": {
+        "first": 3,
+        "count": 3,
+        "root": "14646893780085183387646493005743735144194071254249075220062726707956495902252"
+      }
+    }
+  ],
+  "anchors": [
+    {
+      "txid": "c69195a9741da0d8b3150cbb2803621e6685af4076875cbca96292a1797223c5",
+      "leaves": 3,
+      "root": "288006298991703299856663101480977629373423785845246167202489083263026899375",
+      "nullifiers": 0,
+      "nullifierHash": "bfa16d15b9e83125766869a3c8fdfd3a2d456aca98b13a1c363a0c0533e9b208",
+      "at": "2026-10-22T16:44:47.935Z",
+      "height": 4529574,
+      "memo": "z402:anchor:3:288006298991703299856663101480977629373423785845246167202489083263026899375:0:bfa16d15b9e83125766869a3c8fdfd3a2d456aca98b13a1c363a0c0533e9b208:ffe148a04851962d9141241213358244d1a2de8e9c40164bfa7bcebf447a1568900a29e17217750afa4cb6bd9fcd766f1ce5fbb910bdab6694c7a87e8b98970a"
+    },
+    {
+      "txid": "f75213bbee1ac7597278b273f2bc5d0a25195f59a5ec22411765ce343a070abd",
+      "leaves": 3,
+      "root": "288006298991703299856663101480977629373423785845246167202489083263026899375",
+      "nullifiers": 3,
+      "nullifierHash": "2011dbdc684e194c987e0f1f7d97468c02423025682a2fd85dc1e6cfa029d4d0",
+      "at": "2026-10-22T16:47:38.068Z",
+      "height": 4529584,
+      "memo": "z402:anchor:3:288006298991703299856663101480977629373423785845246167202489083263026899375:3:2011dbdc684e194c987e0f1f7d97468c02423025682a2fd85dc1e6cfa029d4d0:bf6392ec2beff113f16e6b400207a78cf34e6f12a17ed03d38aaccf91edaf73a32f0f289881e2b2e567c860d35a5e94baf5a7b5c673ad1f9ed4bc943cdf7f90a"
+    },
+    {
+      "txid": "c1b4b4780788fd466bff11c87aff1cb9ae3e644b2443d7941ced1649ed46ab39",
+      "leaves": 6,
+      "root": "14646893780085183387646493005743735144194071254249075220062726707956495902252",
+      "nullifiers": 3,
+      "nullifierHash": "2011dbdc684e194c987e0f1f7d97468c02423025682a2fd85dc1e6cfa029d4d0",
+      "at": "2026-10-22T16:48:24.740Z",
+      "height": 4529589,
+      "memo": "z402:anchor:6:14646893780085183387646493005743735144194071254249075220062726707956495902252:3:2011dbdc684e194c987e0f1f7d97468c02423025682a2fd85dc1e6cfa029d4d0:340eea294c243458183a815bfdeab83c49e27a778baa00ba9982db9e80743a7f739eb848b836961af14d5c2093f7b0b5cd0fd08b52dd8f0ab97ed3c0f578f30f"
+    },
+    {
+      "txid": "4265af65ce017a63cda24f78e397e3676d9df402058165900ea0719fa32078ff",
+      "leaves": 6,
+      "root": "14646893780085183387646493005743735144194071254249075220062726707956495902252",
+      "nullifiers": 5,
+      "nullifierHash": "fdd7964a94fcb89e0ab093055efc76349d46328f5e4a2c4881a5b405ee40c187",
+      "at": "2026-10-22T16:50:00.084Z",
+      "height": 4529599,
+      "memo": "z402:anchor:6:14646893780085183387646493005743735144194071254249075220062726707956495902252:5:fdd7964a94fcb89e0ab093055efc76349d46328f5e4a2c4881a5b405ee40c187:bc352f7c87e79f62873e39b05090084e85bcac20400033b8fa78e0ada4ff9a9dcb4aca487d3632349668943bab850360cc2ed52f7d647805b6a1d76cff8b9507"
+    }
+  ],
+  "anchorSends": [
+    {
+      "txid": "c69195a9741da0d8b3150cbb2803621e6685af4076875cbca96292a1797223c5",
+      "sentAt": "2026-10-22T16:43:58.895Z",
+      "sendMs": 49040
+    },
+    {
+      "txid": "f75213bbee1ac7597278b273f2bc5d0a25195f59a5ec22411765ce343a070abd",
+      "sentAt": "2026-10-22T16:47:10.805Z",
+      "sendMs": 27263
+    },
+    {
+      "txid": "c1b4b4780788fd466bff11c87aff1cb9ae3e644b2443d7941ced1649ed46ab39",
+      "sentAt": "2026-10-22T16:47:52.241Z",
+      "sendMs": 32498
+    },
+    {
+      "txid": "4265af65ce017a63cda24f78e397e3676d9df402058165900ea0719fa32078ff",
+      "sentAt": "2026-10-22T16:48:57.752Z",
+      "sendMs": 62332
+    }
+  ],
+  "calls": [
+    {
+      "n": 1,
+      "label": "call 1",
+      "status": 200,
+      "nullifier": "12747743914323473415278441806925472733927162359491665264419287066119337257866",
+      "proveMs": 548,
+      "anchor": {
+        "txid": "c69195a9741da0d8b3150cbb2803621e6685af4076875cbca96292a1797223c5",
+        "leaves": 3,
+        "root": "288006298991703299856663101480977629373423785845246167202489083263026899375",
+        "height": 4529574
+      },
+      "at": "2026-10-22T16:46:20.691Z"
+    },
+    {
+      "n": 2,
+      "label": "call 2",
+      "status": 200,
+      "nullifier": "8877891913308627416337276567494915863159554035159120259171179534134698167713",
+      "proveMs": 351,
+      "anchor": {
+        "txid": "c69195a9741da0d8b3150cbb2803621e6685af4076875cbca96292a1797223c5",
+        "leaves": 3,
+        "root": "288006298991703299856663101480977629373423785845246167202489083263026899375",
+        "height": 4529574
+      },
+      "at": "2026-10-22T16:46:21.073Z"
+    },
+    {
+      "n": 3,
+      "label": "call 3",
+      "status": 200,
+      "nullifier": "9320254933797203357686372778497131674581291472078598752576035744172902955860",
+      "proveMs": 361,
+      "anchor": {
+        "txid": "c69195a9741da0d8b3150cbb2803621e6685af4076875cbca96292a1797223c5",
+        "leaves": 3,
+        "root": "288006298991703299856663101480977629373423785845246167202489083263026899375",
+        "height": 4529574
+      },
+      "at": "2026-10-22T16:46:21.471Z"
+    },
+    {
+      "n": 4,
+      "label": "call after deposit 2",
+      "status": 200,
+      "nullifier": "4657769875521625451303050032377598684490381971252807382624811549072908792303",
+      "proveMs": 574,
+      "anchor": {
+        "txid": "c1b4b4780788fd466bff11c87aff1cb9ae3e644b2443d7941ced1649ed46ab39",
+        "leaves": 6,
+        "root": "14646893780085183387646493005743735144194071254249075220062726707956495902252",
+        "height": 4529589
+      },
+      "at": "2026-10-22T16:48:57.743Z"
+    }
+  ],
+  "probe": {
+    "named": {
+      "txid": "c69195a9741da0d8b3150cbb2803621e6685af4076875cbca96292a1797223c5",
+      "leaves": 3,
+      "height": 4529574
+    },
+    "used": {
+      "txid": "c1b4b4780788fd466bff11c87aff1cb9ae3e644b2443d7941ced1649ed46ab39",
+      "leaves": 6,
+      "root": "14646893780085183387646493005743735144194071254249075220062726707956495902252",
+      "height": 4529589
+    },
+    "status": 200,
+    "nullifier": "10355518948706891170268234083979695619824889562922382275554633590209101605805",
+    "noteIndex": 3
+  },
+  "competing": {
+    "leaves": 6,
+    "root": "16503932488327162133034772611456800336800693231231530278405960060966008541576",
+    "nullifiers": 0,
+    "nullifierHash": "bfa16d15b9e83125766869a3c8fdfd3a2d456aca98b13a1c363a0c0533e9b208",
+    "memo": "z402:anchor:6:16503932488327162133034772611456800336800693231231530278405960060966008541576:0:bfa16d15b9e83125766869a3c8fdfd3a2d456aca98b13a1c363a0c0533e9b208:31a2b1cb6d403e2ed606b2ab6be7ec152de613f72a6c2ac7ccadd6e4a08c95839af0fa76e1b083ef73b0eaa694c4defff606ce38cacb282bbd405db45bd7c109",
+    "txid": "3ed5319c06e9e12831b53d779b2bb802f26e2d3fc3c7251062eacb90ce19484c",
+    "height": 4529606
+  },
+  "competingFirstCheck": {
+    "code": "PAID",
+    "message": "HTTP 200",
+    "note": "checked seconds after the competing anchor was mined; the client scan did not include it yet"
+  },
+  "competingRefusal": {
+    "code": "ANCHOR_COMPETING",
+    "message": "refusing to pay: ANCHOR_COMPETING: anchor 3ed5319c06e9… at height 4529606 (6 leaves, root 165039324883…) is not on the leaf history this gateway serves (6 leaves): it has anchored conflicting roots, signed with its own key"
+  },
+  "fixtureNote": {
+    "noteSecret": "237444463457777572739221538875823975358297010602799307528135864123386568006",
+    "nullifierSecret": "145041325903291526913599057693407653142867236546606352773694784953598492622",
+    "value": "10",
+    "index": 5,
+    "nullifier": "9483293070166385704209292773476209355452636739640008202153793871819863039366"
+  },
+  "latency": {
+    "depositSentToMinedMs": 21236,
+    "depositSentToClaimedMs": 21914,
+    "depositSentToFirstPaidCallMs": 163685,
+    "claimedToFirstPaidCallMs": 141771,
+    "proofMs": [
+      548,
+      351,
+      361,
+      574
+    ]
+  },
+  "gateway": {
+    "leaves": 6,
+    "root": "14646893780085183387646493005743735144194071254249075220062726707956495902252",
+    "spent": 6
+  },
+  "tipAtEnd": 4529619
+}

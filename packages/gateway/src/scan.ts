@@ -52,19 +52,35 @@ function lwdEnv(uivk: string, lwdUrl?: string): Record<string, string> {
 /** How many scanner processes this process has started (lightwalletd reads), for tests and logs. */
 export const scanStats = { spawns: 0 };
 
-/** Runs the scan binary; exit 0 and 1 are verdicts, anything else is a failure to check. */
-async function runScan(args: string[], env: Record<string, string>): Promise<string> {
+/**
+ * Runs the scan binary without blocking the event loop; exit 0 and 1 are verdicts (only 0 with
+ * `exitZeroOnly`), anything else is a failure to check. With `timeoutMs` the child is killed after that long.
+ */
+async function runScan(args: string[], env: Record<string, string>, o: { timeoutMs?: number; exitZeroOnly?: boolean } = {}): Promise<string> {
   scanStats.spawns++;
-  const { code, out, err } = await new Promise<{ code: number | null; out: string; err: string }>((res, rej) => {
+  const { code, out, err, timedOut } = await new Promise<{ code: number | null; out: string; err: string; timedOut: boolean }>((res, rej) => {
     const p = spawn(scanBinary(), args, { env });
     let out = '';
     let err = '';
+    let timedOut = false;
+    // on timeout: kill it and answer at once (a grandchild holding the pipes must not keep the caller waiting)
+    const timer =
+      o.timeoutMs === undefined
+        ? null
+        : setTimeout(() => {
+            timedOut = true;
+            p.kill('SIGKILL');
+            p.stdout.destroy();
+            p.stderr.destroy();
+            res({ code: null, out, err, timedOut });
+          }, o.timeoutMs);
     p.stdout.on('data', (d) => (out += d));
     p.stderr.on('data', (d) => (err += d));
-    p.on('error', rej);
-    p.on('close', (c) => res({ code: c, out, err }));
+    p.on('error', (e) => (timer && clearTimeout(timer), rej(e)));
+    p.on('close', (c) => (timer && clearTimeout(timer), res({ code: c, out, err, timedOut })));
   });
-  if (code !== 0 && code !== 1) throw new Error(`scan failed: ${err.replace(/^error: /, '').trim()}`);
+  if (timedOut) throw new Error(`scan ${args[0]} timed out after ${o.timeoutMs} ms`);
+  if (code !== 0 && (code !== 1 || o.exitZeroOnly)) throw new Error(`scan failed: ${err.replace(/^error: /, '').trim() || `exit ${code}`}`);
   return out;
 }
 
@@ -137,16 +153,20 @@ export async function scanAnchors(anchorUivk: string, range: { from: number; to?
   return { tip: r.tip, from: r.from, to: r.to, blocks: r.blocks, anchors };
 }
 
-/** UFVK → UIVK with the scan binary (env only). */
-export async function uivkFromUfvk(ufvk: string): Promise<string> {
-  const { execFileSync } = await import('node:child_process');
-  return execFileSync(scanBinary(), ['derive'], { env: { PATH: process.env.PATH ?? '', ZPV_UFVK: ufvk } }).toString().trim();
+/** UFVK → UIVK with the scan binary (env only; the event loop keeps running). */
+export async function uivkFromUfvk(ufvk: string, timeoutMs = 30_000): Promise<string> {
+  return (await runScan(['derive'], { PATH: process.env.PATH ?? '', ZPV_UFVK: ufvk }, { timeoutMs, exitZeroOnly: true })).trim();
 }
 
-/** Current chain height from lightwalletd. */
-export async function chainTip(): Promise<number> {
-  const { execFileSync } = await import('node:child_process');
+/**
+ * Current chain height from lightwalletd, read without blocking the event loop and given up after
+ * `timeoutMs`. Anything but a whole block height is an error: NaN would make every age check false.
+ */
+export async function chainTip(timeoutMs = 30_000): Promise<number> {
   const env: Record<string, string> = { PATH: process.env.PATH ?? '' };
   if (process.env.Z402_LWD_URL) env.ZPV_LWD_URL = process.env.Z402_LWD_URL;
-  return Number(execFileSync(scanBinary(), ['tip'], { env }).toString().trim());
+  const out = (await runScan(['tip'], env, { timeoutMs, exitZeroOnly: true })).trim();
+  const n = /^\d{1,12}$/.test(out) ? Number(out) : Number.NaN;
+  if (!Number.isSafeInteger(n)) throw new Error(`scan tip did not print a block height: ${JSON.stringify(out.slice(0, 80))}`);
+  return n;
 }

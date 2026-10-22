@@ -436,7 +436,10 @@ export class Gateway {
       const wait = this.o.anchorPendingMs ?? 30 * 60_000;
       return Date.now() - Date.parse(last.at) > wait ? `anchor ${last.txid.slice(0, 12)}… was not seen mined within ${Math.round(wait / 60_000)} min` : null;
     }
-    const age = (await (this.o.chainTip ?? chainTip)()) - last.height;
+    const tip = await (this.o.chainTip ?? chainTip)();
+    // fails closed: a NaN tip would make `age >= every` false, which silently means "never re-anchor"
+    if (!Number.isSafeInteger(tip) || tip < 0) throw new Error(`the chain tip is not a block height: ${tip}`);
+    const age = tip - last.height;
     const every = this.o.anchorEveryBlocks ?? 1440;
     return age >= every ? `the newest anchor is ${age} blocks old (re-anchoring every ${every})` : null;
   }

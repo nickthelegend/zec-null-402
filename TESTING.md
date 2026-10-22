@@ -28,3 +28,17 @@ already kept nullifiers. The anchor tests use the Oct 20 anchor with a window of
 computed at test time.
 
 Live run: `Z402_FUNDER_WALLET=… pnpm --filter @z402/examples run-live` (README table).
+
+## Browser E2E (`e2e/`, Playwright in Google Chrome)
+
+`e2e/stack.sh` starts the real stack on 127.0.0.1 (gateway on a fresh SQLite database with the
+published demo viewing keys, a second gateway with a throwaway admin token and no wallet, the dashboard,
+the landing) and writes its PIDs; `e2e/stack.sh stop` kills them. Then `pnpm test:e2e`. Video, trace
+and screenshots for every test; desktop 1280×800 and mobile 375×812.
+
+| Spec | Desktop | Mobile | What |
+|---|---|---|---|
+| `landing.spec.ts` | 8 | 8 | pass and hero from the run record; tickets tear off once in view, never with reduced motion; the 22 nullifiers in spend order; rail arrows, keyboard, snap back to the gutter, edge fade gone at the end; nav, CTAs, skip link; voided codes and the agent's 9/23; every link (explorer links name run txids, repo links name tracked files); no button labelled "log" |
+| `dashboard.spec.ts` | 13 | 13 | punched pass; pick a ticket (mouse and keyboard) to read its stub; rail arrows and edge fade; section nav below the sticky header; who sees what; the 7 voided codes; all 23 agent calls with the 9 refusals; the anchor hash recomputed in the browser, Hash again, a tampered set shows the mismatch, Setup required without Web Crypto; every link; reduced motion |
+| `gateway.spec.ts` | 10 | — | fresh `/api/info` (no viewing key) and the 402 in Chrome; altered claim not credited; the SDK claims the published deposit (testnet viewing-key check), 409 on a second claim, Setup required without the anchor key, `UNANCHORED_ROOT` with no anchor (nothing sent); `MALFORMED_SIGNALS`, 400, 413; anchoring Setup required without a token, 401 without the bearer, Setup required without a wallet; the dashboard's anchor memo equals the one read from lightwalletd; the real MCP server writes one `Z402_MCP_LOG` line per call; a gateway without keys exits 2 with Setup required. Desktop only: it claims the one deposit on one database |
+| **Total** | **31** | **21** | 52, 0 failed; every test also fails on a console error or a failed same-origin request |

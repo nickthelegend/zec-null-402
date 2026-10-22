@@ -7,6 +7,7 @@
     "build:scan": "cd packages/scan && cargo build --release",
     "build": "pnpm build:scan && pnpm -r --if-present build",
     "test": "pnpm build && pnpm test:scan && pnpm -r --workspace-concurrency=1 --if-present test",
-    "test:scan": "cd packages/scan && cargo test --release"
+    "test:scan": "cd packages/scan && cargo test --release",
+    "test:e2e": "cd e2e && npm run test:e2e"
   }
 }

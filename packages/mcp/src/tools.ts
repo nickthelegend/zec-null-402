@@ -50,7 +50,8 @@ export function createServer(): McpServer {
     },
     (a) =>
       run('deposit', a, async () => {
-        // Everything that can refuse is checked before notes are created.
+        // The wallet and the cap are checked before notes are created. The wallet's balance is checked only
+        // by zingo-cli when it sends; if it refuses (nothing was sent), the unfunded plan is dropped.
         const wallet = need('Z402_WALLET');
         const c = client();
         const info = await c.info();
@@ -58,7 +59,15 @@ export function createServer(): McpServer {
         const total = BigInt(a.count) * BigInt(a.units) * BigInt(info.unitZat);
         if (total > max) throw new Error(`refused: deposit of ${total} zat is above Z402_MAX_DEPOSIT_ZAT (${max})`);
         const p = await c.plan(a.count, BigInt(a.units));
-        const [txid] = await quicksend(zingoConfig(), wallet, [{ address: p.address, amount: p.amountZat, memo: p.memo }]);
+        let txid: string;
+        try {
+          [txid] = await quicksend(zingoConfig(), wallet, [{ address: p.address, amount: p.amountZat, memo: p.memo }]);
+        } catch (e) {
+          if (/Insufficient balance/.test((e as Error).message)) await c.dropPlan(p.plan);
+          throw e;
+        }
+        // Saved at once: if this tool's answer is lost, the notes file still ties the funds to the plan.
+        await c.recordDeposit(p.plan, txid);
         return { plan: p.plan, txid, amount_zat: p.amountZat.toString(), notes: a.count };
       }),
   );

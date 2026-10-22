@@ -3,7 +3,8 @@
 // The client proves only against a root it has read itself in an on-chain anchor (lightwalletd + the
 // anchor address's published viewing key), so a gateway cannot tell clients apart by handing each its
 // own root.
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeSync } from 'node:fs';
+import { resolve as resolvePath } from 'node:path';
 import { depositCommitment, leafOf, newNote, nullifierOf, provePayment, Tree, type Note } from '@z402/circuits';
 import { intEnv, readAnchor, SetupRequiredError, wholeNumber } from '@z402/gateway';
 
@@ -16,12 +17,14 @@ export interface StoredNote {
   deposit: string;
   nullifier: string;
   spent: boolean;
+  /** set (ms since epoch) while a pay() is proving with this note, so a concurrent pay() picks another */
+  pending?: number;
 }
 
 interface NotesFile {
   type: 'zec-null-402-notes';
   gateway: string;
-  plans: Record<string, { commitment: string; units: string; items: { secretHash: string; value: string }[]; txid: string | null }>;
+  plans: Record<string, { commitment: string; units: string; items: { secretHash: string; value: string }[]; txid: string | null; amountZat?: string }>;
   notes: StoredNote[];
   /** the newest anchor this client has accepted: later anchors must extend it */
   anchor?: AcceptedAnchor;
@@ -46,6 +49,71 @@ export interface ClientOptions {
 }
 
 export const DEFAULT_MAX_ANCHOR_AGE_BLOCKS = 2880;
+/** a pay() that has held a note this long without finishing (a crashed process) no longer holds it */
+const PENDING_MS = 10 * 60_000;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const alive = (pid: number) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === 'EPERM';
+  }
+};
+
+/** Takes `<notes>.lock` with O_EXCL (other processes); a lock whose process has exited is taken over. */
+async function fileLock(lock: string): Promise<() => void> {
+  for (const deadline = Date.now() + 30_000; ; ) {
+    try {
+      const fd = openSync(lock, 'wx', 0o600);
+      writeSync(fd, String(process.pid));
+      closeSync(fd);
+      return () => unlinkSync(lock);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
+      let owner = 0;
+      let age = 0;
+      try {
+        owner = Number(readFileSync(lock, 'utf8')) || 0;
+        age = Date.now() - statSync(lock).mtimeMs;
+      } catch {
+        continue; // released meanwhile
+      }
+      // a lock whose process exited, or one left empty by a process that died while taking it
+      if ((owner && owner !== process.pid && !alive(owner)) || (!owner && age > 5_000)) {
+        try {
+          unlinkSync(lock);
+        } catch {}
+        continue;
+      }
+      if (Date.now() > deadline) throw new Error(`the notes file is locked by process ${owner || 'unknown'} (${lock})`);
+      await sleep(20);
+    }
+  }
+}
+
+/** One read-change-write of a notes file at a time: in this process by a promise chain, across processes by the lockfile. */
+const chains = new Map<string, Promise<void>>();
+async function withNotesLock<T>(path: string, fn: () => T): Promise<T> {
+  const key = resolvePath(path);
+  const prev = chains.get(key) ?? Promise.resolve();
+  let release!: () => void;
+  const tail = prev.then(() => new Promise<void>((r) => (release = r)));
+  chains.set(key, tail);
+  await prev;
+  try {
+    const unlock = await fileLock(`${key}.lock`);
+    try {
+      return fn();
+    } finally {
+      unlock();
+    }
+  } finally {
+    release();
+    if (chains.get(key) === tail) chains.delete(key);
+  }
+}
 
 /** The client would not prove: the gateway's root is not one it could check on-chain. Nothing was sent. */
 export class AnchorRefusedError extends Error {
@@ -96,8 +164,29 @@ export class Z402Client {
   }
 
   private write(f: NotesFile) {
-    writeFileSync(`${this.notesPath}.tmp`, JSON.stringify(f, null, 2), { mode: 0o600 });
-    renameSync(`${this.notesPath}.tmp`, this.notesPath);
+    const tmp = `${this.notesPath}.${process.pid}.tmp`;
+    const fd = openSync(tmp, 'w', 0o600);
+    try {
+      writeSync(fd, JSON.stringify(f, null, 2));
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
+    renameSync(tmp, this.notesPath);
+  }
+
+  /**
+   * Re-reads the notes file under the lock, applies `change` and writes it back. Every change goes
+   * through here, so a slow call (a claim waiting on the chain, a proof) never writes back a stale copy
+   * over notes another call added meanwhile.
+   */
+  private update<T>(change: (f: NotesFile) => T): Promise<T> {
+    return withNotesLock(this.notesPath, () => {
+      const f = this.read();
+      const r = change(f);
+      this.write(f);
+      return r;
+    });
   }
 
   async get<T>(path: string, init?: RequestInit): Promise<T> {
@@ -122,22 +211,41 @@ export class Z402Client {
     const info = await this.info();
     const notes: Note[] = Array.from({ length: count }, () => newNote(value));
     const d = await depositCommitment(notes);
-    const f = this.read();
-    f.plans[d.commitment] = { commitment: d.commitment, units: String(value * BigInt(count)), items: d.items, txid: null };
-    for (const n of notes) f.notes.push({ noteSecret: n.noteSecret.toString(), nullifierSecret: n.nullifierSecret.toString(), value: n.value.toString(), index: null, deposit: d.commitment, nullifier: (await nullifierOf(n)).toString(), spent: false });
-    this.write(f);
-    return { plan: d.commitment, address: info.depositUa, amountZat: value * BigInt(count) * BigInt(info.unitZat), memo: `z402:${d.commitment}` };
+    const stored: StoredNote[] = await Promise.all(notes.map(async (n) => ({ noteSecret: n.noteSecret.toString(), nullifierSecret: n.nullifierSecret.toString(), value: n.value.toString(), index: null, deposit: d.commitment, nullifier: (await nullifierOf(n)).toString(), spent: false })));
+    const amountZat = value * BigInt(count) * BigInt(info.unitZat);
+    await this.update((f) => {
+      f.plans[d.commitment] = { commitment: d.commitment, units: String(value * BigInt(count)), items: d.items, txid: null, amountZat: amountZat.toString() };
+      f.notes.push(...stored);
+    });
+    return { plan: d.commitment, address: info.depositUa, amountZat, memo: `z402:${d.commitment}` };
+  }
+
+  /** Records the txid of a deposit sent for `plan`, as soon as it is sent (before it is mined or claimed). */
+  recordDeposit(plan: string, txid: string): Promise<void> {
+    return this.update((f) => {
+      if (!f.plans[plan]) throw new Error(`no deposit plan ${plan}`);
+      f.plans[plan].txid = txid;
+    });
+  }
+
+  /** Removes a plan whose deposit was never sent (its notes were never credited), for example after the wallet refused to send it. */
+  dropPlan(plan: string): Promise<void> {
+    return this.update((f) => {
+      if (f.plans[plan]?.txid) throw new Error(`plan ${plan} has a deposit (${f.plans[plan].txid}); it is kept`);
+      delete f.plans[plan];
+      f.notes = f.notes.filter((n) => n.deposit !== plan || n.index !== null);
+    });
   }
 
   /** After the deposit tx is mined: the gateway credits the planned notes. */
   async claim(plan: string, txid: string): Promise<{ first: number; count: number; root: string }> {
-    const f = this.read();
-    const p = f.plans[plan];
+    const p = this.read().plans[plan];
     if (!p) throw new Error(`no deposit plan ${plan}`);
     const r = await this.get<{ first: number; count: number; root: string }>('/api/deposits', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ txid, items: p.items }) });
-    p.txid = txid;
-    f.notes.filter((n) => n.deposit === plan).forEach((n, i) => (n.index = r.first + i));
-    this.write(f);
+    await this.update((f) => {
+      if (f.plans[plan]) f.plans[plan].txid = txid;
+      f.notes.filter((n) => n.deposit === plan).forEach((n, i) => (n.index = r.first + i));
+    });
     return r;
   }
 
@@ -197,24 +305,38 @@ export class Z402Client {
     if (c.resource !== target.pathname) throw new Error(`refusing to pay: the challenge is for ${c.resource}, the request was ${target.pathname}`);
     if (c.payTo !== (await this.info()).payTo) throw new Error('refusing to pay: the challenge payTo is not the gateway’s');
     const f = this.read();
-    const priced = f.notes.filter((n) => n.index !== null && !n.spent && n.value === c.requiredAmount);
-    if (priced.length === 0) throw new Error(`no unspent note of exactly ${c.requiredAmount} units (a note pays one call of its full value)`);
+    const usable = (n: StoredNote, now: number) => n.index !== null && !n.spent && n.value === c.requiredAmount && !(n.pending && now - n.pending < PENDING_MS);
+    if (!f.notes.some((n) => n.index !== null && !n.spent && n.value === c.requiredAmount)) throw new Error(`no unspent note of exactly ${c.requiredAmount} units (a note pays one call of its full value)`);
     const { anchor, tree, leaves } = await this.checkAnchor(c, f);
-    const pick = priced.find((n) => n.index! < anchor.leaves);
-    if (!pick) throw new AnchorRefusedError('NOTE_NOT_ANCHORED', `every unspent ${c.requiredAmount}-unit note was credited after the latest anchor (${anchor.leaves} leaves); it can pay once the gateway's next anchor is mined`);
-    const note: Note = { noteSecret: BigInt(pick.noteSecret), nullifierSecret: BigInt(pick.nullifierSecret), value: BigInt(pick.value) };
-    if ((await leafOf(note)).toString() !== leaves[pick.index!]) throw new Error(`leaf ${pick.index} on the gateway is not this note's leaf`);
-    f.anchor = anchor;
-    this.write(f);
-    const t0 = Date.now();
-    const { proof, signals } = await provePayment(note, pick.index!, tree, BigInt(c.payTo), BigInt(c.requiredAmount), BigInt(c.contextHash));
-    const proveMs = Date.now() - t0;
-    const res = await fetch(url, { redirect: 'error', headers: { 'x-payment': Buffer.from(JSON.stringify({ nonce: c.nonce, proof, signals })).toString('base64') } });
-    const body = await res.json();
-    if (res.status === 200 || (body as { reason?: string }).reason === 'NULLIFIER_SPENT') {
-      pick.spent = true;
-      this.write(f);
+    // Pick under the lock and mark the note pending, so a concurrent pay() proves with a different note.
+    const pick = await this.update((g) => {
+      const now = Date.now();
+      const free = g.notes.filter((n) => usable(n, now));
+      if (free.length === 0) throw new Error(`no unspent note of exactly ${c.requiredAmount} units that another payment is not using right now`);
+      const p = free.find((n) => n.index! < anchor.leaves);
+      if (!p) throw new AnchorRefusedError('NOTE_NOT_ANCHORED', `every unspent ${c.requiredAmount}-unit note was credited after the latest anchor (${anchor.leaves} leaves); it can pay once the gateway's next anchor is mined`);
+      p.pending = now;
+      if (!g.anchor || anchor.height > g.anchor.height || (anchor.height === g.anchor.height && anchor.leaves >= g.anchor.leaves)) g.anchor = anchor;
+      return { ...p };
+    });
+    let spent = false;
+    try {
+      const note: Note = { noteSecret: BigInt(pick.noteSecret), nullifierSecret: BigInt(pick.nullifierSecret), value: BigInt(pick.value) };
+      if ((await leafOf(note)).toString() !== leaves[pick.index!]) throw new Error(`leaf ${pick.index} on the gateway is not this note's leaf`);
+      const t0 = Date.now();
+      const { proof, signals } = await provePayment(note, pick.index!, tree, BigInt(c.payTo), BigInt(c.requiredAmount), BigInt(c.contextHash));
+      const proveMs = Date.now() - t0;
+      const res = await fetch(url, { redirect: 'error', headers: { 'x-payment': Buffer.from(JSON.stringify({ nonce: c.nonce, proof, signals })).toString('base64') } });
+      const body = await res.json();
+      spent = res.status === 200 || (body as { reason?: string }).reason === 'NULLIFIER_SPENT';
+      return { status: res.status, body, nullifier: signals.nullifier, proveMs, anchor };
+    } finally {
+      await this.update((g) => {
+        const n = g.notes.find((x) => x.nullifier === pick.nullifier);
+        if (!n) return;
+        delete n.pending;
+        if (spent) n.spent = true;
+      });
     }
-    return { status: res.status, body, nullifier: signals.nullifier, proveMs, anchor };
   }
 }

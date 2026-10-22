@@ -50,16 +50,18 @@ pool contract (NEAR) cannot be ported to Zcash L1. Here **the gateway is the poo
 
 | Party | Learns | Does not learn |
 |---|---|---|
-| the chain | a shielded deposit and the anchor transactions happened | amounts, memos, who deposited (but see below: the demo's gateway viewing key is published) |
+| the chain | a shielded deposit and the anchor transactions happened (the Oct 20 run: the deposit and one anchor; with auto-anchoring, an anchor per credited deposit and periodic ones) | amounts, memos, who deposited (but see below: the demo's gateway viewing key is published) |
 | the gateway | each deposit (amount, its note leaves), each paid call's nullifier and the caller's network address | which note paid which call, if it serves everyone the same leaves |
 | anyone with the gateway's viewing key (published for the demo) | each deposit's amount, memo commitment and time | which notes were spent for what |
-| anyone with the anchor viewing key | the gateway's leaf count, root, spent count and nullifier-set hash at each anchor | individual payments |
+| anyone with the anchor viewing key | the gateway's leaf count, root, spent count and nullifier-set hash at each anchor, so how many calls were paid between two anchors: an auto-anchoring gateway re-anchors whenever the spent count changed (checked every 10 minutes), which at low traffic times single calls to within about 10 minutes | which note paid which call |
 
 **The anonymity set is the credited notes of that price inside the latest anchor.** A payment
 reveals its price (the circuit's `required_amount`; the SDK spends notes of exactly the price), and
-only notes inside the anchored leaf count can pay. With one depositor (the live run), the gateway knows
-every call came from that depositor's notes, just not which note. Unlinkability across users needs
-several depositors.
+only notes inside the anchored leaf count can pay. Both testnet runs (Oct 20 and pass 2 on Oct 22) had
+one depositor, so there the gateway knew every call came from that depositor's notes, just not which
+note. Unlinkability across users needs several depositors; no run has shown it yet. To blunt the
+count leak above, a gateway can re-anchor spent-count changes less often (for example only with the
+1,440-block refresh); this one does not yet.
 
 ## Trust model
 

@@ -8,9 +8,12 @@
   with auto-anchoring and a new anchor signing key, two deposits, paid calls through `Z402Client` with
   the default 2,880-block window, a proxy naming an older anchor, then a competing signed anchor that
   clients refuse. Uses the demo wallets from `run-live`. Writes `deployments/testnet-pass2.json`.
-- `demo` — no transaction: the shipped client against a fresh gateway that claims the Oct 20 deposit
-  and adopts its anchor. The default window refuses it (`ANCHOR_TOO_OLD`), a dishonest root is
-  `UNANCHORED_ROOT`, and two fixture-note calls pay under an explicitly widened window. About 10 s.
+- `demo` — no transaction: the shipped client against fresh gateways rebuilt from both runs. Oct 20: a live
+  client with the default window refuses its anchor (`ANCHOR_TOO_OLD`), a dishonest root is `UNANCHORED_ROOT`,
+  and replayed as of 10 blocks after its (unsigned) anchor two fixture-note calls pay. Pass 2: a live pinned-key
+  client refuses; replayed as of block 4,529,604 one call pays against the newest signed anchor under the
+  default window; replayed at the record's end it refuses `ANCHOR_COMPETING`. Replays use `replayAtHeight`, a
+  fixed scan range. About 20 s. No gateway of the current protocol is running live for it to pay.
 
 ```sh
 CARGO_TARGET_DIR=<where packages/scan is built> Z402_FUNDER_WALLET=<zingo data dir of a funded demo wallet> pnpm --filter @z402/examples run-live

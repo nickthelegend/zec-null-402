@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { agentLog, EXPLORER, expect, expectInViewport, expectNoHorizontalScroll, isMobile, logButtons, REPO, REPO_ROOT, repoPathOf, run, test, URLS } from './fixtures';
+import { agentLog, EXPLORER, expect, HOSTED_INFO, expectInViewport, expectNoHorizontalScroll, isMobile, logButtons, REPO, REPO_ROOT, repoPathOf, run, test, URLS } from './fixtures';
 
 const pass2 = JSON.parse(readFileSync(resolve(REPO_ROOT, 'deployments/testnet-pass2.json'), 'utf8'));
 const pass2Tx: string[] = [pass2.txs.deposit1, pass2.txs.deposit2, ...pass2.anchors.map((a: { txid: string }) => a.txid), pass2.competing.txid];
@@ -287,7 +287,7 @@ test.describe('dashboard', () => {
       expect(l.target, l.href).toBe('_blank');
       expect(l.rel, l.href).toContain('noreferrer');
       if (l.href.startsWith(EXPLORER)) expect(runTx.has(l.href.slice(EXPLORER.length)), l.href).toBe(true);
-      else if (l.href !== REPO) expect(tracked.has(repoPathOf(l.href) ?? ''), l.href).toBe(true);
+      else if (l.href !== REPO && l.href !== HOSTED_INFO) expect(tracked.has(repoPathOf(l.href) ?? ''), l.href).toBe(true);
     }
     // Deposit, fund and anchor transactions are all linked.
     for (const t of runTx) await expect(page.locator(`a[href="${EXPLORER + t}"]`).first()).toBeAttached();
@@ -328,6 +328,10 @@ test.describe('dashboard', () => {
     await expect(rows.nth(9).locator('.tag')).toHaveText('void');
     await expect(rows.nth(9)).toContainText(`ANCHOR_COMPETING once a client's scan held that block`);
     for (const a of pass2.anchors as { height: number }[]) await expect(sec).toContainText(`block ${a.height.toLocaleString('en-US')}`);
+    // the hosted gateway is linked, and the page says it cannot be paid yet (no anchors)
+    await expect(sec.locator('.lede')).not.toContainText('No live gateway of this protocol is running');
+    await expect(sec.locator('.lede')).toContainText('has no wallet to anchor roots, so no client can pay it yet');
+    await expect(sec.locator('.lede a')).toHaveAttribute('href', HOSTED_INFO);
     await expectNoHorizontalScroll(page);
     await sec.screenshot({ path: info.outputPath(`dash-pass2-${info.project.name}.png`) });
   });

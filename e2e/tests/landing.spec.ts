@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { agentLog, EXPLORER, expect, expectInViewport, expectNoHorizontalScroll, isMobile, logButtons, REPO, REPO_ROOT, repoPathOf, run, test, URLS } from './fixtures';
+import { agentLog, EXPLORER, expect, HOSTED_INFO, expectInViewport, expectNoHorizontalScroll, isMobile, logButtons, REPO, REPO_ROOT, repoPathOf, run, test, URLS } from './fixtures';
 
 const tracked = new Set(execFileSync('git', ['ls-files'], { cwd: REPO_ROOT }).toString().split('\n'));
 /** The rail's right-edge fade: present while there is more to scroll, gone at the end so the last ticket is not faded. */
@@ -208,6 +208,10 @@ test.describe('landing', () => {
     await expect(rows.nth(8).locator('.tag')).toHaveText('void');
     for (const a of pass2.anchors as { height: number }[]) await expect(sec).toContainText(`block ${a.height.toLocaleString('en-US')}`);
     await expect(sec.locator('.agent-side')).toContainText('4 + 1');
+    // the hosted gateway is linked, and the page says it cannot be paid yet (no anchors)
+    await expect(sec.locator('.agent-side')).not.toContainText('no live gateway of this protocol is running');
+    await expect(sec.locator('.agent-side')).toContainText('has no wallet to anchor roots, so no client can pay it yet');
+    await expect(sec.locator('.agent-side a')).toHaveAttribute('href', HOSTED_INFO);
     await expectNoHorizontalScroll(page);
     await sec.screenshot({ path: info.outputPath(`landing-pass2-${info.project.name}.png`) });
   });
@@ -232,8 +236,8 @@ test.describe('landing', () => {
         const id = h.slice(EXPLORER.length);
         expect(id, h).toMatch(/^[0-9a-f]{64}$/);
         expect(runTx.has(id), `${h} is a txid from the run record or the agent log`).toBe(true);
-      } else if (h === REPO) {
-        // the repo itself
+      } else if (h === REPO || h === HOSTED_INFO) {
+        // the repo itself, the hosted gateway
       } else {
         const p = repoPathOf(h);
         expect(p, `unexpected link ${h}`).not.toBeNull();

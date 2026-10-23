@@ -13,6 +13,8 @@ export const agentLog: { at: string; tool: string; args: Record<string, unknown>
   .map((l) => JSON.parse(l));
 export const REPO = 'https://github.com/nickthelegend/zec-null-402';
 export const EXPLORER = 'https://testnet.zecblock.com/tx/';
+/** The hosted gateway (VPS): it answers 402 challenges but has no wallet to anchor roots, so nobody can pay it yet. */
+export const HOSTED_INFO = 'https://kippu-api.201-18-198-162.sslip.io/api/info';
 
 type Allowed = { url: RegExp; status: number };
 

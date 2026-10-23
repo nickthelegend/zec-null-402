@@ -441,7 +441,11 @@ export function App() {
             <span className="count">Oct 22 · {p2.calls.length} calls + 1 probe paid</span>
           </div>
           <p className="muted lede">
-            The tickets above predate anchored roots. On Oct 22 a fresh gateway with auto-anchoring and an anchor signing key ran on testnet, and clients with the default 2,880-block window and that key pinned paid against its signed anchors. Every transaction is in <code>deployments/testnet-pass2.json</code>; <code>pnpm --filter @z402/examples demo</code> replays it at a pinned block. No live gateway of this protocol is running.
+            The tickets above predate anchored roots. On Oct 22 a fresh gateway with auto-anchoring and an anchor signing key ran on testnet, and clients with the default 2,880-block window and that key pinned paid against its signed anchors. Every transaction is in <code>deployments/testnet-pass2.json</code>; <code>pnpm --filter @z402/examples demo</code> replays it at a pinned block. A hosted gateway answers the 402 challenge (
+            <a href="https://kippu-api.201-18-198-162.sslip.io/api/info" target="_blank" rel="noreferrer">
+              <code>kippu-api…/api/info</code>
+            </a>
+            ), but it has no wallet to anchor roots, so no client can pay it yet.
           </p>
           <ol className="roll">
             {pass2Rows.map((x, i) => (

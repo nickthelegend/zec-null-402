@@ -1,0 +1,48 @@
+# Lightweight hackathon-demo deployment on the VPS behind Coolify's Traefik (network "coolify").
+# Redeploy: cd /opt/hk/kippu && docker compose up -d --build
+# Secrets live only on the server in ./.env (chmod 600, gitignored): Z402_ADMIN_TOKEN, generated there.
+# There is no gateway wallet (Z402_WALLET) on the server, so POST /api/anchor answers Setup required.
+# The deposit and anchor addresses and viewing keys are the pass-2 testnet ones, published in deployments/testnet-pass2.json.
+services:
+  gateway:
+    build: .
+    image: hk-kippu:latest
+    restart: unless-stopped
+    mem_limit: 384m
+    env_file: .env
+    environment:
+      Z402_DEPOSIT_UA: utest18v7q2kvdlsty35a3exga9xw2np0wupu5s4n0w8tta3ys8wjtrexkfeg2tr0vkvctd8npj0x5k62hqkr5nna24w99wyuzzka06qdjmu3q
+      Z402_DEPOSIT_UIVK: uivktest1mvej6lyq9y2p84hgndugjp0jusrkrmxtuzmyelcmyxqldsvl9ulzkad8nxrdhkvw7m8rg5k7laj4e8utf6we4r4x9y4fyl0e7dkky3j2xmnk7x4lqv0fz6fc0n656a44k0zz0lwesp82wypssmxzcp3utwxt88eh6ut9463v76etmku0g88a77aqn7scr86ha49crugdgy0zdky5lfwjldgszhm4m635pm3eajtck5p46gdcepq
+      Z402_ANCHOR_UA: utest1hzg24eygt8yd0gkzmfxqus6d2h24n24uqkzg5rlpprslqtmggnm5ufjhxjj7l6j0cuhqjfsweg4p3lqsuhl48we6mtgg39cqugwaslps
+      Z402_ANCHOR_UIVK: uivktest10qnh947uql4w36xl2saz8fvkyv3e9pg62crhh8hns39d4506sjdn2yypfy7aywnxfjv4arhxtrgl69cratsglwz7mxagtcrl3jzgxc8jay5dgrwkhzxsud52hsee7g8ryl0pyzsfqzmvk2763hvn8ujl3m7s54kk32fda70vtf5medm6pceuuy0huf9nxcsy55ce6069yzu80nsm7ds8utkvtn3kehdtwrxathrdtcdls8u0jxg
+      Z402_LWD_URL: https://testnet.zec.rocks:443
+      Z402_STATE: /data/z402.sqlite
+    volumes:
+      - kippu-data:/data
+    networks: [coolify]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8405/api/info').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.hk-kippu-api.rule=Host(`kippu-api.201-18-198-162.sslip.io`)
+      - traefik.http.routers.hk-kippu-api.entrypoints=https
+      - traefik.http.routers.hk-kippu-api.tls=true
+      - traefik.http.routers.hk-kippu-api.tls.certresolver=letsencrypt
+      - traefik.http.routers.hk-kippu-api.middlewares=hk-kippu-cors
+      - traefik.http.services.hk-kippu-api.loadbalancer.server.port=8405
+      # CORS for the future Vercel frontends (the gateway has no CORS setting of its own).
+      - traefik.http.middlewares.hk-kippu-cors.headers.accesscontrolalloworiginlistregex=^https://[a-z0-9-]+\.vercel\.app$$
+      - traefik.http.middlewares.hk-kippu-cors.headers.accesscontrolallowmethods=GET,POST,OPTIONS
+      - traefik.http.middlewares.hk-kippu-cors.headers.accesscontrolallowheaders=Content-Type,Authorization,X-PAYMENT
+      - traefik.http.middlewares.hk-kippu-cors.headers.accesscontrolexposeheaders=X-PAYMENT-RESPONSE,Retry-After
+      - traefik.http.middlewares.hk-kippu-cors.headers.accesscontrolmaxage=600
+      - traefik.http.middlewares.hk-kippu-cors.headers.addvaryheader=true
+volumes:
+  kippu-data:
+networks:
+  coolify:
+    external: true

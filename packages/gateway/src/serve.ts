@@ -7,6 +7,7 @@
 // Z402_ANCHOR_EVERY_BLOCKS old (default 1440), retrying failed sends; POST /api/anchor also needs
 // Z402_ADMIN_TOKEN as a bearer token. Z402_ANCHOR_SIGNING_KEY (an Ed25519 seed, 64 hex, in a gitignored
 // .env) signs every anchor; publish its public key (/api/info anchorPubkey) for clients to pin.
+// Z402_HOST: listen address (default 127.0.0.1; a container behind a reverse proxy sets 0.0.0.0).
 import { intEnv } from './env.js';
 import { Gateway, serveGateway } from './gateway.js';
 import { SetupRequiredError } from './scan.js';
@@ -34,7 +35,8 @@ try {
     sendAnchor: wallet && anchorUa ? async (memo) => (await quicksend(zingoConfig(), wallet, [{ address: anchorUa, amount: 10_000n, memo }]))[0] : undefined,
   });
   const port = intEnv('Z402_PORT', 8405, { min: 1, max: 65535 });
-  serveGateway(g).listen(port, '127.0.0.1', () => console.log(`zec-null-402 gateway on http://127.0.0.1:${port}`));
+  const host = process.env.Z402_HOST?.trim() || '127.0.0.1';
+  serveGateway(g).listen(port, host, () => console.log(`zec-null-402 gateway on http://${host}:${port}`));
   // Z402_AUTO_ANCHOR=1: keep anchoring (new notes, spent count, and every Z402_ANCHOR_EVERY_BLOCKS), retrying failed sends.
   g.startAnchoring();
 } catch (e) {

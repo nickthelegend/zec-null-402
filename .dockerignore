@@ -1,0 +1,16 @@
+# Keep secrets, local state and build output out of the image build context.
+.env
+.env.*
+.demo/
+.loom/
+.git/
+wallets/
+**/node_modules/
+**/target/
+**/dist/
+**/.next/
+**/*.ptau
+e2e/
+*.mp4
+*.mov
+*.webm

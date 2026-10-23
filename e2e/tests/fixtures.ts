@@ -12,7 +12,7 @@ export const agentLog: { at: string; tool: string; args: Record<string, unknown>
   .filter((l) => l.trim())
   .map((l) => JSON.parse(l));
 export const REPO = 'https://github.com/nickthelegend/zec-null-402';
-export const EXPLORER = 'https://testnet.zcashexplorer.app/transactions/';
+export const EXPLORER = 'https://testnet.zecblock.com/tx/';
 
 type Allowed = { url: RegExp; status: number };
 

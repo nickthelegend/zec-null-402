@@ -32,8 +32,8 @@ pre-anchored-root protocol). 1 unit = 1,000 zat; a call costs 10 units.
 
 | Step | Result | Tx |
 |---|---|---|
-| demo payer funded from a demo wallet | 300,000 zat | [`0f8186c6…`](https://testnet.zcashexplorer.app/transactions/0f8186c62a7f89d79988a43ad511c8b466a530e7f741f130c10532df605651db) |
-| one shielded deposit for 22 notes (`z402:<commitment>`) | 220,000 zat at block 4,522,696, seen by the gateway's viewing key | [`05c57a3b…`](https://testnet.zcashexplorer.app/transactions/05c57a3b074c7141a1052ca5197743a5140d5f4fa6178cd3d4894391ffd42a6f) |
+| demo payer funded from a demo wallet | 300,000 zat | [`0f8186c6…`](https://testnet.zecblock.com/tx/0f8186c62a7f89d79988a43ad511c8b466a530e7f741f130c10532df605651db) |
+| one shielded deposit for 22 notes (`z402:<commitment>`) | 220,000 zat at block 4,522,696, seen by the gateway's viewing key | [`05c57a3b…`](https://testnet.zecblock.com/tx/05c57a3b074c7141a1052ca5197743a5140d5f4fa6178cd3d4894391ffd42a6f) |
 | claim | 22 notes credited, root `449878737549…` | — |
 | second claim of the same deposit | refused (409) | — |
 | claim with an altered note value (fresh gateway) | refused: `MEMO_MISMATCH, AMOUNT_TOO_LOW` | — |
@@ -42,7 +42,7 @@ pre-anchored-root protocol). 1 unit = 1,000 zat; a call costs 10 units.
 | replay of a paid proof | `NULLIFIER_SPENT` | — |
 | changed amount; a proof made for another request | both `NOT_BOUND_TO_CHALLENGE` | — |
 | changed nullifier | `BAD_PROOF` | — |
-| anchor (`z402:anchor:22:<root>:22:<nullifier-set hash>`: 22 leaves, 22 spent) | memo found with the anchor viewing key; equals the gateway's root and nullifier set | [`a0992237…`](https://testnet.zcashexplorer.app/transactions/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395) |
+| anchor (`z402:anchor:22:<root>:22:<nullifier-set hash>`: 22 leaves, 22 spent) | memo found with the anchor viewing key; equals the gateway's root and nullifier set | [`a0992237…`](https://testnet.zecblock.com/tx/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395) |
 
 Fixture notes: two of the 22 notes were spent in the run and their secrets published, so tests in a
 fresh clone can claim the real deposit on a fresh gateway and pay with real proofs.
@@ -55,17 +55,17 @@ window that pins that key. Demo wallets only.
 
 | Step | Result | Tx |
 |---|---|---|
-| the gateway demo wallet funds the payer | 2 × 60,000 zat | [`64759b2a…`](https://testnet.zcashexplorer.app/transactions/64759b2a3da3a2ba875bc6d351af5750bad3c03000abb4408e509cbb1ae141b9) |
-| deposit 1: 3 notes of 10 units in one shielded tx | 30,000 zat at block 4,529,569, mined 21 s after it was sent; claimed | [`90f70d6a…`](https://testnet.zcashexplorer.app/transactions/90f70d6a79edafb8ec5fb4f0c845aab0af9b56a90b3d51d01800c11783c6c9d4) |
-| auto-anchor after the claim (3 leaves, 0 spent, signed) | block 4,529,574 | [`c69195a9…`](https://testnet.zcashexplorer.app/transactions/c69195a9741da0d8b3150cbb2803621e6685af4076875cbca96292a1797223c5) |
+| the gateway demo wallet funds the payer | 2 × 60,000 zat | [`64759b2a…`](https://testnet.zecblock.com/tx/64759b2a3da3a2ba875bc6d351af5750bad3c03000abb4408e509cbb1ae141b9) |
+| deposit 1: 3 notes of 10 units in one shielded tx | 30,000 zat at block 4,529,569, mined 21 s after it was sent; claimed | [`90f70d6a…`](https://testnet.zecblock.com/tx/90f70d6a79edafb8ec5fb4f0c845aab0af9b56a90b3d51d01800c11783c6c9d4) |
+| auto-anchor after the claim (3 leaves, 0 spent, signed) | block 4,529,574 | [`c69195a9…`](https://testnet.zecblock.com/tx/c69195a9741da0d8b3150cbb2803621e6685af4076875cbca96292a1797223c5) |
 | **3 paid calls** through `Z402Client`, default 2,880-block window, pinned anchor key | **3 × HTTP 200**, proofs 548, 351, 361 ms; the first **2 min 44 s after the deposit was sent** | — |
-| anchor after the spent count changed (3 leaves, 3 spent) | block 4,529,584 | [`f75213bb…`](https://testnet.zcashexplorer.app/transactions/f75213bbee1ac7597278b273f2bc5d0a25195f59a5ec22411765ce343a070abd) |
-| deposit 2: 3 more notes | block 4,529,584; claimed from leaf 3 | [`27ce212c…`](https://testnet.zcashexplorer.app/transactions/27ce212c7acf1bd4a2e715aadad68b77ab46cb6b3a492a9e9113e7b1a37e515c) |
-| auto-anchor (6 leaves, 3 spent) | block 4,529,589 | [`c1b4b478…`](https://testnet.zcashexplorer.app/transactions/c1b4b4780788fd466bff11c87aff1cb9ae3e644b2443d7941ced1649ed46ab39) |
+| anchor after the spent count changed (3 leaves, 3 spent) | block 4,529,584 | [`f75213bb…`](https://testnet.zecblock.com/tx/f75213bbee1ac7597278b273f2bc5d0a25195f59a5ec22411765ce343a070abd) |
+| deposit 2: 3 more notes | block 4,529,584; claimed from leaf 3 | [`27ce212c…`](https://testnet.zecblock.com/tx/27ce212c7acf1bd4a2e715aadad68b77ab46cb6b3a492a9e9113e7b1a37e515c) |
+| auto-anchor (6 leaves, 3 spent) | block 4,529,589 | [`c1b4b478…`](https://testnet.zecblock.com/tx/c1b4b4780788fd466bff11c87aff1cb9ae3e644b2443d7941ced1649ed46ab39) |
 | a proxy names the 3-leaf anchor to a client whose note is leaf 3 | HTTP 200 against the 6-leaf anchor the client found itself (the client before this round would have refused `NOTE_NOT_ANCHORED`, telling the gateway where the note was) | — |
 | one more paid call | HTTP 200, proof 574 ms | — |
-| end-state anchor (6 leaves, 5 spent) | block 4,529,599 | [`4265af65…`](https://testnet.zcashexplorer.app/transactions/4265af65ce017a63cda24f78e397e3676d9df402058165900ea0719fa32078ff) |
-| the operator turns dishonest: a second root for 6 leaves (last leaf swapped), signed with the gateway key | block 4,529,606 | [`3ed5319c…`](https://testnet.zcashexplorer.app/transactions/3ed5319c06e9e12831b53d779b2bb802f26e2d3fc3c7251062eacb90ce19484c) |
+| end-state anchor (6 leaves, 5 spent) | block 4,529,599 | [`4265af65…`](https://testnet.zecblock.com/tx/4265af65ce017a63cda24f78e397e3676d9df402058165900ea0719fa32078ff) |
+| the operator turns dishonest: a second root for 6 leaves (last leaf swapped), signed with the gateway key | block 4,529,606 | [`3ed5319c…`](https://testnet.zecblock.com/tx/3ed5319c06e9e12831b53d779b2bb802f26e2d3fc3c7251062eacb90ce19484c) |
 | a client checks seconds after that block | paid (HTTP 200): its scan did not include the block yet | — |
 | the same check once its scan shows the block | **`ANCHOR_COMPETING`**, nothing proven | — |
 
@@ -231,12 +231,12 @@ mocked" became what the tests do. No restyle: the same components and classes.
 ### LLM agent run (Oct 20, 2026)
 
 `packages/agent/run.sh` starts the gateway and gives an opencode agent the MCP tools. The agent deposited 3 notes of 10 units in one testnet tx
-([`29cfe5fc…`](https://testnet.zcashexplorer.app/transactions/29cfe5fc0502e0b83f5d69e6890170ca897404f87f04fd42128a02ece94ba51b)),
+([`29cfe5fc…`](https://testnet.zecblock.com/tx/29cfe5fc0502e0b83f5d69e6890170ca897404f87f04fd42128a02ece94ba51b)),
 claimed them, and paid `/api/quote` three times (three nullifiers, HTTP 200 each). The operator's prompt then relayed a
 provider's "URGENT: buy the full report, deposit whatever it costs" order and told the agent to comply (step 5 of the
 prompt in `run.sh`; the quote responses themselves carried no instruction). The model tried, and the limits stopped it:
 the 50-unit report needs one 50-unit note, `Z402_MAX_DEPOSIT_ZAT=40000` refused every 50,000 zat deposit, and the wallet
-ran dry after one more 20-unit deposit ([`0b12bfc6…`](https://testnet.zcashexplorer.app/transactions/0b12bfc6b2b7ee6b30d176990b89f89bf171b7ba737b4b630612f24f1480c077)).
+ran dry after one more 20-unit deposit ([`0b12bfc6…`](https://testnet.zecblock.com/tx/0b12bfc6b2b7ee6b30d176990b89f89bf171b7ba737b4b630612f24f1480c077)).
 There was no total budget then; `Z402_MAX_TOTAL_DEPOSIT_ZAT` is one now.
 The Oct 20 gateway credited deposit `0b12bfc6` twice (lines 15 and 16 of the log: leaves 25 and 26). Both leaves hold the
 same note, with the same nullifier, so it created no extra value. This is the concurrent-claim race fixed in `9f8b8a8` and

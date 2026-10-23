@@ -28,7 +28,7 @@ const p2 = pass2 as unknown as {
   competingRefusal: { code: string };
   latency: { depositSentToMinedMs: number; depositSentToFirstPaidCallMs: number };
 };
-const EXPLORER = 'https://testnet.zcashexplorer.app/transactions/';
+const EXPLORER = 'https://testnet.zecblock.com/tx/';
 const REPO = 'https://github.com/nickthelegend/zec-null-402';
 const short = (s: string, a = 8, b = 6) => (s.length > a + b + 1 ? `${s.slice(0, a)}…${s.slice(-b)}` : s);
 const pad = (n: number) => String(n).padStart(2, '0');

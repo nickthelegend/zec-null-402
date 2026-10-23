@@ -6,7 +6,7 @@ Zecathon allows one entry per team: Shielded x402 (Kage). Kippu is a portfolio p
 **One line:** One shielded Zcash deposit, then pay per API call with a zero-knowledge proof: no transaction per call, and a gateway that follows the protocol can't tell which credited note of that price paid (both testnet runs had one depositor, so there it knew whose notes).
 **Repo:** github.com/nickthelegend/zec-null-402 (public before submission; not pushed yet, so the GitHub links 404 until then)
 **Video:** `zec-null-402-demo.mp4`, recorded Oct 20 with the old client (before the Oct 21 fixes, the Oct 22 anchored roots and the Oct 23 replays), paying under a window widened on purpose. A new recording of `pnpm --filter @z402/examples demo` (about 20 s: both runs replayed, the pass-2 HTTP 200 against a signed anchor and `ANCHOR_COMPETING`) and the pass-2 record is still to be made by Nick
-**Demo URL:** none hosted yet (the landing is a static page and the dashboard a static build)
+**Demo URL:** https://kippu-landing.vercel.app (landing) and https://kippu-dashboard.vercel.app (run record), both static over the published runs; the hosted gateway https://kippu-api.201-18-198-162.sslip.io/api/info answers the 402 challenge but has no wallet to anchor roots, so it can't be paid yet
 
 ## Proof (Zcash testnet)
 - Oct 20: deposit [`05c57a3b…`](https://testnet.zecblock.com/tx/05c57a3b074c7141a1052ca5197743a5140d5f4fa6178cd3d4894391ffd42a6f) credited 22 notes (checked by the gateway's viewing key); 20 paid calls + 2 fixture-note calls, 0 transactions; replay, tamper, wrong-request and double-claim refused; anchor [`a0992237…`](https://testnet.zecblock.com/tx/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395) matches the gateway state.

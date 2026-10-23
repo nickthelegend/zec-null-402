@@ -2,7 +2,11 @@
 
 ![Kippu landing page: one deposit, a ticket per call](docs/kippu-landing.png)
 
-Not hosted yet: the landing page is `packages/landing/index.html` and the dashboard is
+Live: the landing at https://kippu-landing.vercel.app and the run record (dashboard) at
+https://kippu-dashboard.vercel.app, both static over the published runs. A hosted gateway answers the
+402 challenge at https://kippu-api.201-18-198-162.sslip.io/api/info (and `/api/quote`), but it has no
+wallet to anchor roots (Setup required: `Z402_WALLET`, `Z402_ANCHOR_SIGNING_KEY`), so no client can pay
+it yet. Locally the landing is `packages/landing/index.html` and the dashboard is
 `pnpm --filter @z402/dashboard dev`. Try it (Node 22.13+, pnpm 10, Rust 1.89; no wallet, no transaction):
 
 ```sh

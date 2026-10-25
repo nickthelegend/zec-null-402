@@ -293,18 +293,19 @@
             <div class="num"><b>0</b><p>Transactions</p></div>
             <div class="num"><b>569<small>ms</small></b><p>Proof</p></div>
           </div>
+          <p>0 on-chain transactions per paid call.</p>
           <div style="margin-top:28px">
             <a class="btn btn-line btn-sm" href="evidence.html">See the evidence <span aria-hidden="true">→</span></a>
           </div>
         </div>
       </section>
 
-      <!-- Section 3: Honest strip (live vs Setup required) -->
+      <!-- Section 3: Recorded evidence and Setup required -->
       <section class="sec" id="status" aria-labelledby="status-h">
         <div class="wrap">
           <div class="sec-head">
-            <div><span class="label">Honest status</span><h2 class="big" id="status-h">What is live vs Setup required.</h2></div>
-            <p>Live: zero-knowledge proof generation and verification, double-spend protection, and signed anchor verification.<br />Setup required: the hosted gateway (<a href="https://kippu-api.201-18-198-162.sslip.io/api/info" target="_blank" rel="noreferrer"><code>kippu-api…/api/info</code></a>) answers a 402 and has no wallet to anchor roots, so no client can pay it yet.</p>
+            <div><span class="label">Honest status</span><h2 class="big" id="status-h">Recorded testnet evidence.</h2></div>
+            <p>The <a href="https://kippu-api.201-18-198-162.sslip.io/api/info" target="_blank" rel="noreferrer">hosted gateway</a> answers a 402 but has no wallet: anchoring is Setup required, so no client can pay it yet.</p>
           </div>
         </div>
       </section>

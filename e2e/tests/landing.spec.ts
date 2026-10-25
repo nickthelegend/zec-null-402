@@ -180,6 +180,13 @@ test.describe('landing', () => {
   test('no overclaims: the corrected wording is shown and the old claims are gone', async ({ page }) => {
     await page.goto(URLS.landing + '/');
     const text = await page.locator('main').innerText();
+    expect(text).not.toMatch(/Live: zero-knowledge/);
+    await expect(page.locator('#status h2')).toHaveText('Recorded testnet evidence.');
+    await expect(page.locator('#status p')).toHaveText('The hosted gateway answers a 402 but has no wallet: anchoring is Setup required, so no client can pay it yet.');
+    await expect(page.locator('#status p a')).toHaveAttribute('href', HOSTED_INFO);
+    await expect(page.locator('#proof .num').nth(1).locator('b')).toHaveText('0');
+    await expect(page.locator('#proof .num').nth(1).locator('p')).toHaveText('Transactions');
+    await expect(page.locator('#proof > .wrap > p')).toHaveText('0 on-chain transactions per paid call.');
     for (const gone of [/everyone proves against the same one/, /The cap held/, /carried an injected/, /about a block with auto-anchoring/, /transactions on-chain: the deposit and the anchor/, /no longer hand each client its own root/, /don't yet scan for competing anchors/, /reads the named anchor on-chain itself/, /nothing is mocked/, /learns that some note paid, not which/, /transactions per run/, /In the run there was one depositor/, /Seven tickets the gateway would not honour/]) expect(text, String(gone)).not.toMatch(gone);
     // copy cut on Oct 25: the lead is one line; the single-depositor caveat stays in the conditions (below)
     await expect(page.locator('.lead')).toHaveText('Pay once with a shielded Zcash deposit, then each call with a zero-knowledge proof that never says which note paid.');

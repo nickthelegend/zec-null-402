@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kippu — Evidence & Methodology</title>
+    <meta name="description" content="Verifiable evidence, transaction records, proof timings, voided attacks, and conditions of carriage from the Kippu Zcash testnet runs." />
+    <meta name="theme-color" content="#063b33" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23063b33'/%3E%3Cpath d='M6 9h20v5a2 2 0 0 0 0 4v5H6v-5a2 2 0 0 0 0-4z' fill='%23ff8a3d'/%3E%3Cpath d='M20 10.5v11' stroke='%23063b33' stroke-width='1.4' stroke-dasharray='1.6 1.6'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&family=Azeret+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --teal: #063b33; --teal-2: #0d5146; --tangerine: #ff8a3d; --tangerine-ink: #3d1800; --tangerine-tint: #fff0e3;
+        --mint: #e2f5ee; --mint-2: #cdebdf; --paper: #fcfefd; --ink: #062a24; --muted: #476860; --soft: #6b8780;
+        --line: rgba(6, 59, 51, .14); --line-2: rgba(6, 59, 51, .3); --hole: var(--mint);
+        --sans: 'Plus Jakarta Sans', system-ui, sans-serif; --mono: 'Azeret Mono', ui-monospace, monospace;
+        color-scheme: light;
+      }
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+      body { margin: 0; background: var(--mint); color: var(--ink); font: 400 17px/1.55 var(--sans); letter-spacing: -.008em; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+      a { color: inherit; }
+      :focus-visible { outline: 3px solid var(--tangerine); outline-offset: 3px; border-radius: 6px; }
+      code, .mono { font-family: var(--mono); font-size: .82em; letter-spacing: -.01em; }
+      .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+      .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      .skip { position: absolute; left: 16px; top: -60px; background: var(--teal); color: #fff; padding: 10px 14px; border-radius: 8px; z-index: 50; }
+      .skip:focus { top: 12px; }
+
+      /* admission strip + nav */
+      .strip { background: var(--teal); color: var(--mint); font: 500 12px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+      .strip .wrap { display: flex; gap: 22px; justify-content: center; padding-top: 11px; padding-bottom: 11px; white-space: nowrap; overflow: hidden; }
+      .strip b { color: var(--tangerine); font-weight: 500; }
+      .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; }
+      .logo { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 600; font-size: 21px; letter-spacing: -.035em; }
+      .logo small { font-weight: 500; font-size: 14px; color: var(--soft); letter-spacing: 0; }
+      .nav ul { display: flex; align-items: center; gap: 26px; list-style: none; margin: 0; padding: 0; font-size: 15px; }
+      .nav ul a { text-decoration: none; color: var(--muted); }
+      .nav ul a:hover { color: var(--ink); }
+      .evidence-nav { display: none; }
+      .btn { display: inline-flex; align-items: center; gap: 9px; height: 48px; padding: 0 22px; border-radius: 12px; font: 600 16px/1 var(--sans); letter-spacing: -.015em; text-decoration: none; border: 0; cursor: pointer; transition: transform .2s cubic-bezier(.2, .7, .2, 1), background .2s; }
+      .btn:hover { transform: translateY(-1px); }
+      .btn svg { width: 17px; height: 17px; }
+      .btn-teal { background: var(--teal); color: #fff; }
+      .btn-teal:hover { background: var(--teal-2); }
+      .btn-line { background: transparent; color: var(--teal); box-shadow: inset 0 0 0 1.5px var(--line-2); }
+      .btn-tangerine { background: var(--tangerine); color: var(--tangerine-ink); }
+      .btn-sm { height: 40px; padding: 0 16px; font-size: 15px; border-radius: 10px; }
+
+      /* hero */
+      .hero { text-align: center; padding: 56px 0 0; }
+      .chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 8px; border-radius: 999px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: 14px; color: var(--muted); }
+      .chip span { background: var(--tangerine); color: var(--tangerine-ink); font: 500 11px/1 var(--mono); padding: 5px 8px; border-radius: 999px; letter-spacing: .04em; }
+      h1 { font-weight: 600; font-size: clamp(38px, 6vw, 76px); line-height: .98; letter-spacing: -.045em; margin: 26px auto 0; color: var(--teal); max-width: 16ch; }
+      h1 em { font-style: normal; color: var(--tangerine); display: block; }
+      .lead { max-width: 44rem; margin: 24px auto 0; font-size: clamp(17px, 1.6vw, 20px); line-height: 1.5; color: var(--muted); }
+
+      /* perforation */
+      .tear { position: relative; border-left: 2px dashed var(--line-2); }
+      .tear::before, .tear::after { content: ''; position: absolute; width: 24px; height: 24px; border-radius: 50%; background: var(--hole); left: -13px; }
+      .tear::before { top: -12px; }
+      .tear::after { bottom: -12px; }
+
+      /* the deposit pass */
+      .pass { margin: 48px auto 0; max-width: 1000px; display: grid; grid-template-columns: 150px 0 1fr 0 210px; background: var(--paper); border-radius: 22px; text-align: left; box-shadow: 0 1px 0 var(--line), 0 30px 60px -40px rgba(6, 59, 51, .45); }
+      .pass > div:not(.tear) { padding: 26px 28px; }
+      .pass-admit { display: flex; flex-direction: column; justify-content: space-between; background: var(--teal); color: var(--mint); border-radius: 22px 0 0 22px; }
+      .pass-admit .k { font: 500 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+      .pass-admit .n { font-weight: 600; font-size: 64px; line-height: .9; letter-spacing: -.05em; color: var(--tangerine); }
+      .pass-body .k, .pass-end .k, .label { font: 500 11px/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--soft); }
+      .pass-body h2 { margin: 10px 0 0; font-weight: 600; font-size: clamp(24px, 3vw, 34px); letter-spacing: -.035em; line-height: 1.05; color: var(--teal); }
+      .pass-meta { display: grid; grid-template-columns: repeat(3, auto); gap: 8px 28px; margin: 20px 0 0; justify-content: start; }
+      .pass-meta dt { font: 500 11px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--soft); }
+      .pass-meta dd { margin: 4px 0 0; font: 500 15px/1.3 var(--mono); color: var(--ink); }
+      .memo { display: block; margin-top: 18px; padding: 10px 12px; background: var(--mint); border-radius: 10px; font: 400 12.5px/1.5 var(--mono); color: var(--teal); overflow-wrap: anywhere; }
+      .pass-end { display: flex; flex-direction: column; justify-content: space-between; gap: 18px; }
+      .bars { display: flex; align-items: stretch; gap: 2px; height: 58px; }
+      .bars i { display: block; background: var(--teal); border-radius: 1px; }
+      .txlink { font: 500 13px/1.3 var(--mono); color: var(--teal); text-decoration-color: var(--tangerine); text-underline-offset: 3px; display: inline-flex; gap: 5px; align-items: center; }
+      .txlink svg { width: 13px; height: 13px; flex: none; }
+
+      /* sections */
+      section { scroll-margin-top: 16px; }
+      .sec { padding: 96px 0 0; }
+      .sec-head { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 48px; align-items: end; margin-bottom: 36px; }
+      h2.big { margin: 10px 0 0; font-weight: 600; font-size: clamp(34px, 4.6vw, 58px); line-height: 1; letter-spacing: -.045em; color: var(--teal); }
+      .sec-head p { margin: 0; color: var(--muted); }
+
+      /* numbers */
+      .nums { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 2px solid var(--teal); }
+      .num { padding: 22px 22px 0 0; }
+      .num + .num { padding-left: 22px; border-left: 1px solid var(--line); }
+      .num b { display: block; font-weight: 600; font-size: clamp(44px, 5.4vw, 72px); line-height: 1; letter-spacing: -.05em; color: var(--teal); }
+      .num b small { font-size: .38em; letter-spacing: -.02em; color: var(--soft); margin-left: 4px; }
+      .num p { margin: 10px 0 0; font-size: 15px; color: var(--muted); max-width: 22ch; }
+
+      /* voided tickets */
+      .voids { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; list-style: none; padding: 0; margin: 0; }
+      .void { position: relative; background: var(--paper); border-radius: 16px; padding: 20px 20px 18px; overflow: hidden; }
+      .void::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(135deg, transparent 0 10px, rgba(6, 59, 51, .035) 10px 11px); pointer-events: none; }
+      .void code { position: relative; display: inline-block; font-size: 13px; font-weight: 500; color: var(--teal); background: var(--mint); padding: 5px 8px; border-radius: 6px; overflow-wrap: anywhere; }
+      .void p { position: relative; margin: 12px 0 0; padding-right: 64px; font-size: 15px; color: var(--ink); }
+      .stamp { position: absolute; right: 16px; bottom: 16px; font: 500 13px/1 var(--mono); letter-spacing: .16em; color: var(--tangerine); border: 2px solid var(--tangerine); padding: 6px 8px 5px; border-radius: 6px; transform: rotate(-9deg); }
+      .fixed { margin-top: 16px; display: grid; grid-template-columns: 210px 0 1fr; background: var(--teal); color: var(--mint); border-radius: 18px; --hole: var(--mint); }
+      .fixed > div:not(.tear) { padding: 24px 26px; }
+      .fixed .tear { border-color: rgba(226, 245, 238, .35); }
+      .fixed h3 { margin: 8px 0 0; font-weight: 600; font-size: 22px; letter-spacing: -.03em; color: #fff; line-height: 1.15; }
+      .fixed .label { color: var(--tangerine); }
+      .fixed ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 28px; font-size: 15px; }
+      .fixed li { padding-left: 18px; position: relative; color: rgba(226, 245, 238, .9); }
+      .fixed li::before { content: ''; position: absolute; left: 0; top: .62em; width: 8px; height: 8px; border-radius: 2px; background: var(--tangerine); }
+      .fixed code { color: #fff; }
+      .fixed a { color: #fff; text-underline-offset: 3px; text-decoration-color: var(--tangerine); }
+
+      /* agent & pass 2 */
+      .agent { display: grid; grid-template-columns: 1fr 0 300px; background: var(--paper); border-radius: 20px; --hole: var(--mint); }
+      .agent > div:not(.tear) { padding: 26px 28px; }
+      .agent ol { list-style: none; margin: 0; padding: 0; }
+      .agent li { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; align-items: center; padding: 13px 0; border-bottom: 1px dashed var(--line); font-size: 15.5px; }
+      .agent li:last-child { border-bottom: 0; }
+      .tag { font: 500 11.5px/1 var(--mono); padding: 6px 8px; border-radius: 6px; background: var(--mint); color: var(--teal); white-space: nowrap; }
+      .tag.no { background: var(--tangerine-tint); color: #a3470b; }
+      .agent-side p { margin: 10px 0 0; font-size: 15px; color: var(--muted); }
+      .agent-side b { font-weight: 600; font-size: 54px; line-height: 1; letter-spacing: -.05em; color: var(--teal); display: block; margin-top: 8px; }
+
+      /* conditions of carriage */
+      .terms { columns: 2; column-gap: 48px; margin: 0; padding: 0; list-style: none; counter-reset: t; }
+      .terms li { break-inside: avoid; counter-increment: t; padding: 18px 0 18px 46px; border-top: 1px solid var(--line); position: relative; font-size: 15.5px; color: var(--muted); }
+      .terms li::before { content: counter(t, decimal-leading-zero); position: absolute; left: 0; top: 19px; font: 500 13px/1.4 var(--mono); color: var(--tangerine); }
+      .terms b { color: var(--ink); font-weight: 600; }
+
+      /* print your own */
+      .print { margin-top: 96px; background: var(--paper); border-radius: 26px; display: grid; grid-template-columns: 1fr 0 1fr; --hole: var(--mint); }
+      .print > div:not(.tear) { padding: 40px; }
+      .print h2 { margin: 0; font-weight: 600; font-size: clamp(32px, 4vw, 48px); letter-spacing: -.045em; line-height: 1; color: var(--teal); }
+      .print p { color: var(--muted); margin: 14px 0 24px; }
+      pre { margin: 0; background: var(--teal); color: var(--mint); border-radius: 14px; padding: 18px 20px; font: 400 13.5px/1.75 var(--mono); overflow-x: auto; white-space: pre; }
+      pre span { color: var(--tangerine); }
+      footer { padding: 40px 0 48px; font-size: 14px; color: var(--muted); }
+      footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px 28px; }
+      footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+      footer a { text-underline-offset: 3px; }
+
+      @media (max-width: 900px) {
+        .nav ul li:not(:last-child) { display: none; }
+        .evidence-nav { display: flex; flex-wrap: wrap; gap: 0 20px; padding-top: 8px; padding-bottom: 8px; color: var(--teal); font-size: 15px; }
+        .evidence-nav a { display: inline-flex; align-items: center; min-height: 44px; text-underline-offset: 4px; }
+        .pass { grid-template-columns: 1fr; }
+        .pass .tear, .agent .tear, .print .tear, .fixed .tear { border-left: 0; border-top: 2px dashed var(--line-2); margin: 0 14px; }
+        .fixed .tear { border-top-color: rgba(226, 245, 238, .35); }
+        .pass .tear::before, .agent .tear::before, .print .tear::before, .fixed .tear::before { left: -27px; top: -13px; }
+        .pass .tear::after, .agent .tear::after, .print .tear::after, .fixed .tear::after { left: auto; right: -27px; top: -13px; bottom: auto; }
+        .pass-admit { flex-direction: row; align-items: end; border-radius: 22px 22px 0 0; }
+        .pass-admit .n { font-size: 52px; }
+        .pass-end { flex-direction: row; align-items: end; flex-wrap: wrap; }
+        .bars { flex: 1 1 160px; height: 44px; }
+        .sec-head { grid-template-columns: 1fr; }
+        .nums { grid-template-columns: 1fr 1fr; }
+        .num:nth-child(3) { padding-left: 0; border-left: 0; }
+        .num:nth-child(n+3) { margin-top: 26px; border-top: 1px solid var(--line); }
+        .fixed, .agent, .print { grid-template-columns: 1fr; }
+        .fixed ul { grid-template-columns: 1fr; }
+        .terms { columns: 1; }
+        .print > div:not(.tear) { padding: 28px 24px; }
+      }
+      @media (max-width: 560px) {
+        .wrap { padding: 0 16px; }
+        .strip .wrap { justify-content: flex-start; }
+        .strip .opt { display: none; }
+        .hero { padding-top: 36px; }
+        .pass > div:not(.tear) { padding: 22px 20px; }
+        .pass-meta { gap: 8px 18px; }
+        .pass-meta dd { font-size: 14px; }
+        .pass .tear::before, .agent .tear::before, .print .tear::before, .fixed .tear::before { left: -27px; }
+        .sec { padding-top: 80px; }
+        .agent > div:not(.tear), .fixed > div:not(.tear) { padding: 22px 20px; }
+        .agent li { grid-template-columns: 1fr; }
+        .agent li .tag { justify-self: start; }
+        .num { padding-right: 12px; }
+        .num + .num { padding-left: 12px; }
+        .num:nth-child(3) { padding-left: 0; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        .btn { transition: none; }
+        .btn:hover { transform: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <div class="strip" role="note" aria-label="Run summary">
+      <div class="wrap"><span>Zcash testnet</span><span class="opt">Run of 20 Oct 2026</span><span><b>1</b> deposit</span><span><b>22</b> tickets</span><span class="opt"><b>0</b> transactions per call</span></div>
+    </div>
+    <header class="nav">
+      <div class="wrap">
+        <a class="logo" href="index.html#main" aria-label="Kippu, home">
+          <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#063b33" /><path d="M6 9h20v5a2 2 0 0 0 0 4v5H6v-5a2 2 0 0 0 0-4z" fill="#ff8a3d" /><path d="M20 10.5v11" stroke="#063b33" stroke-width="1.4" stroke-dasharray="1.6 1.6" /></svg>
+          Kippu <small lang="ja">切符</small>
+        </a>
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="#deposit">Deposit</a></li>
+          <li><a href="#live">Pass 2</a></li>
+          <li><a href="#void">Voided</a></li>
+          <li><a href="#terms">Conditions</a></li>
+          <li><a class="btn btn-line btn-sm" href="https://github.com/nickthelegend/zec-null-402">GitHub</a></li>
+        </ul>
+      </div>
+    </header>
+    <nav class="wrap evidence-nav" aria-label="Evidence sections">
+      <a href="#deposit">Deposit</a>
+      <a href="#live">Pass 2</a>
+      <a href="#void">Voided</a>
+      <a href="#terms">Conditions</a>
+    </nav>
+
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-h">
+        <div class="wrap">
+          <span class="chip"><span>EVIDENCE</span>Verifiable run data</span>
+          <h1 id="hero-h">Testnet runs, <em>proofs & limits.</em></h1>
+          <p class="lead">Every testnet transaction, Groth16 proof time, refused attack and condition of carriage recorded in the Oct 20 and Oct 22 live runs.</p>
+
+          <article class="pass" id="deposit" aria-label="The shielded deposit that bought the tickets">
+            <div class="pass-admit"><span class="k">Admit</span><span class="n">22</span><span class="k">notes · 10 units</span></div>
+            <div class="tear" aria-hidden="true"></div>
+            <div class="pass-body">
+              <span class="k">Oct 20 run · one shielded deposit · seen by the gateway's viewing key</span>
+              <h2>220,000 zat bought 22 tickets</h2>
+              <dl class="pass-meta">
+                <div><dt>Block</dt><dd>4,522,696</dd></div>
+                <div><dt>Per call</dt><dd>10,000 zat</dd></div>
+                <div><dt>Network</dt><dd>testnet</dd></div>
+              </dl>
+              <code class="memo">memo z402:&lt;sha256 over every note's secret hash and value&gt;</code>
+            </div>
+            <div class="tear" aria-hidden="true"></div>
+            <div class="pass-end">
+              <div class="bars" aria-hidden="true" title="Bars drawn from the deposit txid"><i style="width:1px;opacity:0.35"></i><i style="width:2px;opacity:0.55"></i><i style="width:1px;opacity:0.95"></i><i style="width:2px;opacity:0.55"></i><i style="width:4px;opacity:0.55"></i><i style="width:3px;opacity:0.75"></i><i style="width:4px;opacity:0.35"></i><i style="width:4px;opacity:0.75"></i><i style="width:1px;opacity:0.35"></i><i style="width:4px;opacity:0.55"></i><i style="width:1px;opacity:0.55"></i><i style="width:1px;opacity:0.95"></i><i style="width:4px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:1px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:3px;opacity:0.75"></i><i style="width:2px;opacity:0.35"></i><i style="width:1px;opacity:0.35"></i><i style="width:2px;opacity:0.55"></i><i style="width:3px;opacity:0.35"></i><i style="width:1px;opacity:0.95"></i><i style="width:3px;opacity:0.75"></i><i style="width:2px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:2px;opacity:0.75"></i><i style="width:4px;opacity:0.55"></i><i style="width:4px;opacity:0.55"></i><i style="width:1px;opacity:0.55"></i><i style="width:4px;opacity:0.35"></i><i style="width:3px;opacity:0.75"></i><i style="width:2px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:1px;opacity:0.55"></i><i style="width:1px;opacity:0.35"></i><i style="width:2px;opacity:0.95"></i><i style="width:2px;opacity:0.55"></i><i style="width:4px;opacity:0.95"></i><i style="width:1px;opacity:0.55"></i><i style="width:4px;opacity:0.95"></i></div>
+              <a class="txlink" href="https://testnet.zecblock.com/tx/05c57a3b074c7141a1052ca5197743a5140d5f4fa6178cd3d4894391ffd42a6f">05c57a3b…ffd42a6f <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 11 11 5M6 5h5v5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg><span class="sr">deposit transaction on the testnet explorer</span></a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="nums-h">
+        <div class="wrap">
+          <h2 class="sr" id="nums-h">The run in numbers</h2>
+          <div class="nums">
+            <div class="num"><b>2</b><p>transactions in the Oct 20 run: the deposit and its anchor (plus funding)</p></div>
+            <div class="num"><b>20</b><p>paid calls with no transaction of their own</p></div>
+            <div class="num"><b>569<small>ms</small></b><p>slowest client proof (fastest 346 ms)</p></div>
+            <div class="num"><b>106</b><p>tests plus a doc example, most against live testnet</p></div>
+          </div>
+          <p style="margin-top:20px;font-size:14px;color:var(--muted)">Oct 20 anchor transaction: <a class="txlink" href="https://testnet.zecblock.com/tx/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395">a0992237…</a></p>
+        </div>
+      </section>
+
+      <section class="sec" id="live" aria-labelledby="live-h">
+        <div class="wrap">
+          <div class="sec-head">
+            <div><span class="label">The current protocol, live on Oct 22</span><h2 class="big" id="live-h">Signed anchors, the default window, four paid calls.</h2></div>
+            <p>Pass 2 ran the protocol below on testnet: signed auto-anchors, and clients with the default 2,880-block window and the key pinned. Every transaction is in <code>deployments/testnet-pass2.json</code>.</p>
+          </div>
+          <div class="agent">
+            <div>
+              <ol>
+                <li><span>Deposit 3 notes of 10 units (<a class="txlink" href="https://testnet.zecblock.com/tx/90f70d6a79edafb8ec5fb4f0c845aab0af9b56a90b3d51d01800c11783c6c9d4">90f70d6a…</a>), mined in 21 s</span><span class="tag">deposited</span></li>
+                <li><span>Signed anchor <a class="txlink" href="https://testnet.zecblock.com/tx/c69195a9741da0d8b3150cbb2803621e6685af4076875cbca96292a1797223c5">c69195a9…</a>: 3 leaves, block 4,529,574</span><span class="tag">signed</span></li>
+                <li><span>Three calls to <code>/api/quote</code> against it, proofs 548, 351 and 361 ms. The first paid 2 min 44 s after the deposit was sent</span><span class="tag">3 × 200</span></li>
+                <li><span>Signed anchor <a class="txlink" href="https://testnet.zecblock.com/tx/f75213bbee1ac7597278b273f2bc5d0a25195f59a5ec22411765ce343a070abd">f75213bb…</a> because the spent count changed (block 4,529,584)</span><span class="tag">signed</span></li>
+                <li><span>Second deposit <a class="txlink" href="https://testnet.zecblock.com/tx/27ce212c7acf1bd4a2e715aadad68b77ab46cb6b3a492a9e9113e7b1a37e515c">27ce212c…</a>, then signed anchor <a class="txlink" href="https://testnet.zecblock.com/tx/c1b4b4780788fd466bff11c87aff1cb9ae3e644b2443d7941ced1649ed46ab39">c1b4b478…</a>: 6 leaves, block 4,529,589</span><span class="tag">signed</span></li>
+                <li><span>A call with a note from the second deposit, proof 574 ms</span><span class="tag">200</span></li>
+                <li><span>A probe that named the older anchor c69195a9…: the client proved against the newest, c1b4b478…, and paid</span><span class="tag">200</span></li>
+                <li><span>Signed anchor <a class="txlink" href="https://testnet.zecblock.com/tx/4265af65ce017a63cda24f78e397e3676d9df402058165900ea0719fa32078ff">4265af65…</a>: 6 leaves, 5 spent (block 4,529,599)</span><span class="tag">signed</span></li>
+                <li><span>The operator turned dishonest on purpose: a competing signed root <a class="txlink" href="https://testnet.zecblock.com/tx/3ed5319c06e9e12831b53d779b2bb802f26e2d3fc3c7251062eacb90ce19484c">3ed5319c…</a> (block 4,529,606). Once a client's scan held that block it refused with <code>ANCHOR_COMPETING</code>; a check seconds earlier still paid</span><span class="tag no">void</span></li>
+              </ol>
+            </div>
+            <div class="tear" aria-hidden="true"></div>
+            <div class="agent-side"><span class="label">Paid under the default window</span><b>4 + 1</b><p>calls plus the probe, against signed anchors. The hosted gateway (<a href="https://kippu-api.201-18-198-162.sslip.io/api/info" target="_blank" rel="noreferrer"><code>kippu-api…/api/info</code></a>) answers the 402 challenge but has no wallet to anchor roots, so no client can pay it yet.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec" id="void" aria-labelledby="void-h">
+        <div class="wrap">
+          <div class="sec-head">
+            <div><span class="label">Voided in the live runs</span><h2 class="big" id="void-h">Eight tickets that were not honoured.</h2></div>
+            <p>Seven are the gateway's own answers in the Oct 20 run; the last is a client refusal in pass 2.</p>
+          </div>
+          <ul class="voids">
+            <li class="void"><span class="stamp">VOID</span><code>NULLIFIER_SPENT</code><p>A paid proof sent again for a new request.</p></li>
+            <li class="void"><span class="stamp">VOID</span><code>NULLIFIER_SPENT</code><p>The second fixture note's proof replayed.</p></li>
+            <li class="void"><span class="stamp">VOID</span><code>NOT_BOUND_TO_CHALLENGE</code><p>The amount in the public signals changed.</p></li>
+            <li class="void"><span class="stamp">VOID</span><code>NOT_BOUND_TO_CHALLENGE</code><p>A proof made for one request sent for another.</p></li>
+            <li class="void"><span class="stamp">VOID</span><code>BAD_PROOF</code><p>The nullifier changed, claiming a different note.</p></li>
+            <li class="void"><span class="stamp">VOID</span><code>409 already claimed</code><p>The same deposit claimed a second time.</p></li>
+            <li class="void"><span class="stamp">VOID</span><code>MEMO_MISMATCH</code><p>A claim with one note's value altered, on a fresh gateway.</p></li>
+            <li class="void"><span class="stamp">VOID</span><code>ANCHOR_COMPETING</code><p>A second signed root for the same 6 leaves on the anchor address (pass 2).</p></li>
+          </ul>
+          <div class="fixed">
+            <div><span class="label">Fixed on Oct 21</span><h3>A review found two ways to pay twice. Both are closed.</h3></div>
+            <div class="tear" aria-hidden="true"></div>
+            <div>
+              <ul>
+                <li>A spent note's nullifier written <code>0&lt;n&gt;</code> or in hex: now <code>MALFORMED_SIGNALS</code>.</li>
+                <li>One payment sent several times at once: now paid once.</li>
+                <li>A server relaying the gateway's challenge: the client refuses to prove.</li>
+                <li>Anchoring over HTTP: needs the operator's token.</li>
+              </ul>
+              <p style="margin:16px 0 0;font-size:14px;color:rgba(226,245,238,.75)">Tested on testnet with real proofs. <a href="https://github.com/nickthelegend/zec-null-402/blob/main/docs/JUDGE-2026-10-21.md">The review</a>.</p>
+            </div>
+          </div>
+          <div class="fixed">
+            <div><span class="label">Fixed on Oct 22</span><h3>A gateway can no longer hand a client its own root without putting it on-chain.</h3></div>
+            <div class="tear" aria-hidden="true"></div>
+            <div>
+              <ul>
+                <li>A root with no on-chain anchor: the client won't prove (<code>UNANCHORED_ROOT</code>).</li>
+                <li>A per-client root passed off as the real anchor: <code>ANCHOR_MISMATCH</code>.</li>
+                <li>An anchor older than 2,880 blocks: <code>ANCHOR_TOO_OLD</code>.</li>
+                <li>A second root signed with the gateway's key on the anchor address: <code>ANCHOR_COMPETING</code>.</li>
+                <li>A restart keeps spent nullifiers and outstanding challenges; two gateway processes on one database pay a note once.</li>
+              </ul>
+              <p style="margin:16px 0 0;font-size:14px;color:rgba(226,245,238,.75)">Tested against dishonest gateways in front of a real one, with real proofs.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec" id="agent" aria-labelledby="agent-h">
+        <div class="wrap">
+          <div class="sec-head">
+            <div><span class="label">An LLM agent with a cap</span><h2 class="big" id="agent-h">The per-deposit cap blocked the 50-unit note. The wallet still ran dry.</h2></div>
+            <p>opencode drove the <code>z402-mcp</code> tools. The operator's prompt relayed a provider's "deposit whatever it costs" order; <code>Z402_MAX_DEPOSIT_ZAT</code> and the wallet balance refused it. There is now a total budget too (<code>Z402_MAX_TOTAL_DEPOSIT_ZAT</code>).</p>
+          </div>
+          <div class="agent">
+            <div>
+              <ol>
+                <li><span>Deposit 3 notes of 10 units in one transaction (<a class="txlink" href="https://testnet.zecblock.com/tx/29cfe5fc0502e0b83f5d69e6890170ca897404f87f04fd42128a02ece94ba51b">29cfe5fc…</a>)</span><span class="tag">deposited</span></li>
+                <li><span>Pay <code>/api/quote</code> three times, three nullifiers</span><span class="tag">3 × 200</span></li>
+                <li><span>Every 50,000 zat deposit for the report, over <code>Z402_MAX_DEPOSIT_ZAT</code></span><span class="tag no">refused</span></li>
+                <li><span>One more 20-unit deposit (<a class="txlink" href="https://testnet.zecblock.com/tx/0b12bfc6b2b7ee6b30d176990b89f89bf171b7ba737b4b630612f24f1480c077">0b12bfc6…</a>), then the wallet ran dry. The Oct 20 gateway credited it twice (leaves 25 and 26: one note, one nullifier, no extra value), the race fixed on Oct 21</span><span class="tag">deposited</span></li>
+              </ol>
+            </div>
+            <div class="tear" aria-hidden="true"></div>
+            <div class="agent-side"><span class="label">MCP calls refused</span><b>9 / 23</b><p>+1 double credit (pre-fix). Every call is in <code>deployments/agent-run-2026-10-20.jsonl</code>.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec" id="terms" aria-labelledby="terms-h">
+        <div class="wrap">
+          <div class="sec-head">
+            <div><span class="label">Read the back of the ticket</span><h2 class="big" id="terms-h">Conditions of carriage.</h2></div>
+            <p>What a ticket hides, and who you still trust.</p>
+          </div>
+          <ol class="terms">
+            <li><b>The gateway is trusted</b> for liveness and its nullifier set, and must keep anchoring, or notes stop paying after 2,880 blocks.</li>
+            <li><b>Roots are anchored, addresses are not.</b> Pinned clients refuse a second signed root; the gateway can still time anchors and sees each caller's address. The Oct 20 anchor is unsigned.</li>
+            <li><b>Anchors count paid calls.</b> At low traffic that times single calls to within about 10 minutes.</li>
+            <li><b>Lightwalletd is trusted for anchors.</b> No block header or Merkle path is checked, and it sees the client's reads.</li>
+            <li><b>New notes wait for an anchor.</b> In the Oct 22 live run the first call paid 2 min 44 s after the deposit was sent: the deposit was mined in 21 s.</li>
+            <li><b>The anonymity set is the credited notes of that price inside the latest anchor.</b> Both testnet runs had one depositor, so every call came from that depositor's notes.</li>
+            <li><b>No change.</b> A note pays one call of its full value; a dearer endpoint needs a note of its own price.</li>
+            <li><b>The demo viewing key is public.</b> Anyone can read the demo deposit's amount and memo.</li>
+            <li><b>Single-party Groth16 setup.</b> A real deployment needs a ceremony.</li>
+            <li><b>Testnet only, not audited.</b> A portfolio piece; the Zecathon entry is Kage (Shielded x402).</li>
+          </ol>
+        </div>
+      </section>
+
+      <div class="wrap">
+        <section class="print" aria-labelledby="print-h">
+          <div><h2 id="print-h">Print your own tickets.</h2><p>Circuits, the gateway, an SDK and an MCP server. Chain-touching tests read real Zcash testnet with real Groth16 proofs; tests that would send an anchor record the memo instead.</p><a class="btn btn-tangerine" href="https://github.com/nickthelegend/zec-null-402">Get the code</a></div>
+          <div class="tear" aria-hidden="true"></div>
+          <div><pre><code><span>$</span> pnpm install
+<span>$</span> pnpm test        <span># 106 tests + doc</span>
+<span>$</span> pnpm --filter @z402/dashboard dev</code></pre></div>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span>Kippu <span lang="ja">切符</span> · MIT · Copyright (c) 2026 Nivesh Gajengi · Zcash testnet, not audited</span>
+        <nav aria-label="Footer">
+          <a href="https://github.com/nickthelegend/zec-null-402">GitHub</a>
+          <a href="https://github.com/nickthelegend/zec-null-402/blob/main/deployments/testnet.json">Run record</a>
+          <a href="https://github.com/nickthelegend/zec-null-402/blob/main/packages/docs/README.md">Trust model</a>
+          <a href="https://github.com/nickthelegend/zec-null-402/blob/main/TESTING.md">Tests</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -129,8 +129,9 @@ export function createServer(): McpServer {
     { title: 'Fetch a paid URL', description: 'GETs `url`; on a zec-null-402 402 it pays with a zero-knowledge proof of one unspent note of the price. No transaction per call. Talks only to Z402_GATEWAY_URL: a URL on any other origin is never fetched (no request is sent there and no redirect is followed), and only a challenge for the path requested is paid. Proves only against a root it has read itself in a recent on-chain anchor; if every note of the price was credited after the latest anchor, or the anchor is too old or not yet confirmed, waits for the gateway’s next one (up to Z402_ANCHOR_WAIT_SEC, default 900 s).', inputSchema: { url: z.string().url() } },
     (a) =>
       run('pay', a, async () => {
-        const deadline = Date.now() + intEnv('Z402_ANCHOR_WAIT_SEC', 900) * 1000;
+        const waitMs = intEnv('Z402_ANCHOR_WAIT_SEC', 900) * 1000;
         const poll = intEnv('Z402_ANCHOR_POLL_SEC', 20, { min: 1 }) * 1000;
+        let deadline: number | undefined;
         let r;
         for (;;) {
           try {
@@ -139,7 +140,11 @@ export function createServer(): McpServer {
           } catch (e) {
             // Worth waiting for, because the gateway's next anchor fixes them (nothing was proven): notes newer
             // than the latest anchor, an anchor too old for the window, or one not yet confirmed.
-            if (!(e instanceof AnchorRefusedError && WAIT_FOR_ANCHOR.has(e.code)) || Date.now() + poll > deadline) throw e;
+            if (!(e instanceof AnchorRefusedError && WAIT_FOR_ANCHOR.has(e.code))) throw e;
+            // Start the wait when we first learn an anchor is needed. The initial chain scan can take
+            // longer than waitMs; charging it to the wait budget would prevent even one poll.
+            deadline ??= Date.now() + waitMs;
+            if (Date.now() + poll > deadline) throw e;
             await new Promise((res) => setTimeout(res, poll));
           }
         }

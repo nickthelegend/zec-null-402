@@ -147,6 +147,8 @@ test.describe('dashboard', () => {
     await expect(who).toHaveCount(4);
     await expect(who.locator('h3')).toHaveText(['The chain', 'The gateway', 'Anyone with the anchor key', 'Anyone with the gateway key']);
     for (const li of await who.all()) await expect(li.locator('.not')).toHaveText(/^Not /);
+    await expect(who.nth(0).locator('.not')).toContainText('in the clear');
+    await expect(who.nth(0).locator('.not')).toContainText('publishes the gateway viewing key');
     await expect(who.nth(2)).toContainText(`here ${run.anchor.leaves}, ${run.anchor.nullifiers} spent`);
     await expect(who.nth(2)).toContainText('how many calls were paid between two anchors');
     await expect(who.nth(2).locator('.not')).toHaveText('Not which note paid which call.');
@@ -296,7 +298,7 @@ test.describe('dashboard', () => {
   test('no overclaims: the corrected wording is shown and the old claims are gone', async ({ page }) => {
     await page.goto(URLS.dashboard + '/');
     const text = await page.locator('body').innerText();
-    for (const gone of [/transactions in the run/, /quote response carried an injected/i, /can't hand one client its own root \(/, /Clients now read this memo/, /transactions per run/, /Not individual payments/, /One depositor in this run/]) expect(text, String(gone)).not.toMatch(gone);
+    for (const gone of [/transactions in the run/, /quote response carried an injected/i, /can't hand one client its own root \(/, /Clients now read this memo/, /transactions per run/, /Not individual payments/, /One depositor in this run/, /Not amounts, memos, who paid or how many calls\./]) expect(text, String(gone)).not.toMatch(gone);
     await expect(page.locator('.stats')).toContainText('transactions in the Oct 20 run: the deposit and its anchor (plus the demo funding tx). Auto-anchoring now adds one per deposit and periodic ones');
     await expect(page.locator('#who')).toContainText('In the Oct 20 run, two shielded transactions: the deposit and the anchor (plus one funding tx). Auto-anchoring now adds an anchor per deposit and periodic ones.');
     await expect(page.locator('#who')).toContainText('at low traffic times single calls');

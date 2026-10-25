@@ -167,15 +167,17 @@ test.describe('landing', () => {
     await page.goto(URLS.landing + '/');
     const text = await page.locator('main').innerText();
     for (const gone of [/everyone proves against the same one/, /The cap held/, /carried an injected/, /about a block with auto-anchoring/, /transactions on-chain: the deposit and the anchor/, /no longer hand each client its own root/, /don't yet scan for competing anchors/, /reads the named anchor on-chain itself/, /nothing is mocked/, /learns that some note paid, not which/, /transactions per run/, /In the run there was one depositor/, /Seven tickets the gateway would not honour/]) expect(text, String(gone)).not.toMatch(gone);
-    await expect(page.locator('.lead')).toContainText('Both testnet runs had a single depositor, so there it knew whose notes paid.');
+    // copy cut on Oct 25: the lead is one line; the single-depositor caveat stays in the conditions (below)
+    await expect(page.locator('.lead')).toHaveText('Pay once with a shielded Zcash deposit, then each call with a zero-knowledge proof that never says which note paid.');
     await expect(page.locator('#rail')).toContainText('(Oct 20, pre-anchored-root protocol)');
     await expect(page.locator('#terms')).toContainText('Anchors count paid calls.');
     await expect(page.locator('#terms')).toContainText('At low traffic that times single calls to within about 10 minutes.');
     await expect(page.locator('#terms')).toContainText('Both testnet runs had one depositor');
     await expect(page.locator('.print')).toContainText('Chain-touching tests read real Zcash testnet with real Groth16 proofs; tests that would send an anchor record the memo instead.');
-    await expect(page.locator('.nums')).toContainText('transactions in the Oct 20 run: the deposit and its anchor (plus funding). Auto-anchoring now adds one per deposit and periodic ones');
+    await expect(page.locator('.nums')).toContainText('transactions in the Oct 20 run: the deposit and its anchor (plus funding)');
     await expect(page.locator('#how')).toContainText('clients that see the same anchor prove against the same root');
     await expect(page.locator('#how')).toContainText('through its own lightwalletd');
+    await expect(page.locator('#terms')).toContainText('Both testnet runs had one depositor, so every call came from that depositor');
     await expect(page.locator('#void')).toContainText('without putting it on-chain');
     await expect(page.locator('#void')).toContainText('ANCHOR_COMPETING');
     await expect(page.locator('#agent-h')).toHaveText('The per-deposit cap blocked the 50-unit note. The wallet still ran dry.');

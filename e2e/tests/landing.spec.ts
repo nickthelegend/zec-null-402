@@ -132,6 +132,13 @@ test.describe('landing', () => {
     await page.evaluate(() => scrollTo(0, 0));
     await page.getByRole('link', { name: 'Read the evidence' }).click();
     await expect(page).toHaveURL(/evidence\.html$/);
+    const evidenceNav = isMobile(info.project.name) ? page.getByRole('navigation', { name: 'Evidence sections' }) : page.locator('header.nav');
+    for (const [name, hash] of [['Deposit', '#deposit'], ['Pass 2', '#live'], ['Voided', '#void'], ['Conditions', '#terms']]) {
+      await expect(evidenceNav.getByRole('link', { name, exact: true })).toBeVisible();
+      await expect(evidenceNav.getByRole('link', { name, exact: true })).toHaveAttribute('href', hash);
+    }
+    await expectNoHorizontalScroll(page);
+    await page.screenshot({ path: info.outputPath(`landing-evidence-navigation-${info.project.name}.png`) });
     await page.getByRole('link', { name: 'Conditions' }).click();
     await expect(page).toHaveURL(/#terms$/);
     await expectInViewport(page, '#terms');
@@ -247,7 +254,7 @@ test.describe('landing', () => {
       const hrefs = await page.locator('a[href]').evaluateAll((as) => as.map((a) => a.getAttribute('href')!));
       expect(hrefs.length).toBeGreaterThan(5);
       const runTx = new Set([run.txs.fund, run.txs.deposit, run.txs.anchor, ...pass2Tx, ...agentLog.filter((c) => c.tool === 'deposit' && !c.isError).map((c) => String((c.result as { txid: string }).txid))]);
-      for (const h of hrefs) {
+      for (const h of new Set(hrefs)) {
         if (h.startsWith('#')) {
           expect(await page.locator(h).count(), `anchor ${h} on ${path}`).toBe(1);
         } else if (h.startsWith(EXPLORER)) {
@@ -256,8 +263,17 @@ test.describe('landing', () => {
           expect(runTx.has(id), `${h} is a txid from the run record or the agent log`).toBe(true);
         } else if (h === REPO || h === HOSTED_INFO) {
           // the repo itself, the hosted gateway
-        } else if (h.endsWith('.html') || h.includes('.html#')) {
-          // intra-page links
+        } else if (new URL(h, page.url()).origin === new URL(URLS.landing).origin) {
+          const url = new URL(h, page.url());
+          const response = await page.request.get(url.href);
+          expect(response.ok(), `${h} on ${path} resolves`).toBe(true);
+          expect(response.headers()['content-type'], h).toContain('text/html');
+          if (url.hash) {
+            const found = await page.evaluate(({ html, id }) => new DOMParser().parseFromString(html, 'text/html').getElementById(id) !== null, {
+              html: await response.text(), id: decodeURIComponent(url.hash.slice(1)),
+            });
+            expect(found, `anchor ${url.hash} in ${url.pathname}`).toBe(true);
+          }
         } else {
           const p = repoPathOf(h);
           expect(p, `unexpected link ${h} on ${path}`).not.toBeNull();
@@ -268,6 +284,7 @@ test.describe('landing', () => {
         const id = (await a.getAttribute('href'))!.slice(EXPLORER.length);
         expect((await a.innerText()).trim().slice(0, 8)).toBe(id.slice(0, 8));
       }
+      await expectNoHorizontalScroll(page);
     }
   });
 });

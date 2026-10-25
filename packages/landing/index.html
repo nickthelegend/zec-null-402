@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kippu — one Zcash deposit, a ZK ticket per API call</title>
-    <meta name="description" content="Kippu: pay once with a shielded Zcash deposit, then pay each API call with a zero-knowledge proof of one prepaid note. 20 paid calls on testnet, no transaction per call; clients prove only against a root they read themselves in an on-chain anchor." />
+    <meta name="description" content="Kippu: pay once with a shielded Zcash deposit, then pay each API call with a zero-knowledge proof of one prepaid note." />
     <meta name="theme-color" content="#063b33" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23063b33'/%3E%3Cpath d='M6 9h20v5a2 2 0 0 0 0 4v5H6v-5a2 2 0 0 0 0-4z' fill='%23ff8a3d'/%3E%3Cpath d='M20 10.5v11' stroke='%23063b33' stroke-width='1.4' stroke-dasharray='1.6 1.6'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -57,14 +57,14 @@
       .lead { max-width: 40rem; margin: 24px auto 0; font-size: clamp(17px, 1.6vw, 20px); line-height: 1.5; color: var(--muted); }
       .cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 32px; }
 
-      /* perforation: a dashed tear line with two punched half-circles in the page colour */
+      /* perforation */
       .tear { position: relative; border-left: 2px dashed var(--line-2); }
       .tear::before, .tear::after { content: ''; position: absolute; width: 24px; height: 24px; border-radius: 50%; background: var(--hole); left: -13px; }
       .tear::before { top: -12px; }
       .tear::after { bottom: -12px; }
 
       /* the deposit pass */
-      .pass { margin: 56px auto 0; max-width: 1000px; display: grid; grid-template-columns: 150px 0 1fr 0 210px; background: var(--paper); border-radius: 22px; text-align: left; box-shadow: 0 1px 0 var(--line), 0 30px 60px -40px rgba(6, 59, 51, .45); }
+      .pass { margin: 56px auto 0; max-width: 1000px; display: grid; grid-template-columns: 150px 0 1fr 0 180px; background: var(--paper); border-radius: 22px; text-align: left; box-shadow: 0 1px 0 var(--line), 0 30px 60px -40px rgba(6, 59, 51, .45); }
       .pass > div:not(.tear) { padding: 26px 28px; }
       .pass-admit { display: flex; flex-direction: column; justify-content: space-between; background: var(--teal); color: var(--mint); border-radius: 22px 0 0 22px; }
       .pass-admit .k { font: 500 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
@@ -75,11 +75,9 @@
       .pass-meta dt { font: 500 11px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--soft); }
       .pass-meta dd { margin: 4px 0 0; font: 500 15px/1.3 var(--mono); color: var(--ink); }
       .memo { display: block; margin-top: 18px; padding: 10px 12px; background: var(--mint); border-radius: 10px; font: 400 12.5px/1.5 var(--mono); color: var(--teal); overflow-wrap: anywhere; }
-      .pass-end { display: flex; flex-direction: column; justify-content: space-between; gap: 18px; }
-      .bars { display: flex; align-items: stretch; gap: 2px; height: 58px; }
+      .pass-end { display: flex; flex-direction: column; justify-content: space-between; gap: 18px; align-items: start; }
+      .bars { display: flex; align-items: stretch; gap: 2px; height: 58px; width: 100%; }
       .bars i { display: block; background: var(--teal); border-radius: 1px; }
-      .txlink { font: 500 13px/1.3 var(--mono); color: var(--teal); text-decoration-color: var(--tangerine); text-underline-offset: 3px; display: inline-flex; gap: 5px; align-items: center; }
-      .txlink svg { width: 13px; height: 13px; flex: none; }
 
       /* the rail: one moment */
       .rail-sec { padding: 26px 0 0; }
@@ -98,10 +96,10 @@
       .tix-no { font: 500 26px/1 var(--mono); letter-spacing: -.04em; color: var(--teal); }
       .tix-no small { display: block; font-size: 10px; letter-spacing: .1em; color: var(--soft); margin-bottom: 6px; }
       .ok { font: 500 11px/1 var(--mono); background: var(--mint); color: var(--teal); padding: 5px 7px; border-radius: 6px; }
-      .tix .tear, .tear-h { border-left: 0; border-top: 2px dashed var(--line-2); margin: 0 12px; }
-      .tix .tear::before, .tix .tear::after, .tear-h::before, .tear-h::after { width: 18px; height: 18px; top: -10px; bottom: auto; }
-      .tix .tear::before, .tear-h::before { left: -22px; }
-      .tix .tear::after, .tear-h::after { left: auto; right: -22px; }
+      .tix .tear { border-left: 0; border-top: 2px dashed var(--line-2); margin: 0 12px; }
+      .tix .tear::before, .tix .tear::after { width: 18px; height: 18px; top: -10px; bottom: auto; }
+      .tix .tear::before { left: -22px; }
+      .tix .tear::after { left: auto; right: -22px; }
       .tix-bot { padding: 12px 14px 14px; font-size: 12px; color: var(--muted); }
       .tix-bot code { display: block; color: var(--ink); font-size: 12px; margin: 3px 0 8px; }
       .tix.fixture { background: var(--tangerine-tint); }
@@ -115,67 +113,32 @@
         .js .rail.torn .tix { opacity: 1; transform: none; transition: opacity .45s ease, transform .6s cubic-bezier(.2, .8, .2, 1); transition-delay: calc(var(--i) * 45ms); }
       }
 
-      /* sections */
+      /* sections below the fold */
       section { scroll-margin-top: 16px; }
-      .sec { padding: 104px 0 0; }
-      .sec-head { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 48px; align-items: end; margin-bottom: 36px; }
-      h2.big { margin: 10px 0 0; font-weight: 600; font-size: clamp(34px, 4.6vw, 58px); line-height: 1; letter-spacing: -.045em; color: var(--teal); }
-      .sec-head p { margin: 0; color: var(--muted); }
+      .sec { padding: 88px 0 0; }
+      .sec-head { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 48px; align-items: end; margin-bottom: 32px; }
+      h2.big { margin: 8px 0 0; font-weight: 600; font-size: clamp(32px, 4.2vw, 52px); line-height: 1.05; letter-spacing: -.04em; color: var(--teal); }
+      .sec-head p { margin: 0; color: var(--muted); font-size: 16px; }
 
-      /* numbers */
-      .nums { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 2px solid var(--teal); }
+      /* steps: 3 columns */
+      .steps, .steps-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; list-style: none; padding: 0; margin: 0; }
+      .step { --hole: var(--mint); display: grid; grid-template-columns: 68px 0 1fr; background: var(--paper); border-radius: 18px; }
+      .step-n { display: grid; place-items: center; font: 500 20px/1 var(--mono); color: var(--tangerine); background: var(--teal); border-radius: 18px 0 0 18px; }
+      .step-b { padding: 20px 22px; }
+      .step-b h3 { margin: 0; font-weight: 600; font-size: 19px; letter-spacing: -.025em; color: var(--teal); }
+      .step-b p { margin: 8px 0 0; font-size: 14.5px; line-height: 1.45; color: var(--muted); }
+      .step-b code { color: var(--teal); }
+
+      /* proof: 3 numbers */
+      .nums, .nums-3 { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 2px solid var(--teal); }
       .num { padding: 22px 22px 0 0; }
       .num + .num { padding-left: 22px; border-left: 1px solid var(--line); }
       .num b { display: block; font-weight: 600; font-size: clamp(44px, 5.4vw, 72px); line-height: 1; letter-spacing: -.05em; color: var(--teal); }
       .num b small { font-size: .38em; letter-spacing: -.02em; color: var(--soft); margin-left: 4px; }
-      .num p { margin: 10px 0 0; font-size: 15px; color: var(--muted); max-width: 22ch; }
+      .num p { margin: 10px 0 0; font-size: 15px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .06em; font-family: var(--mono); }
 
-      /* steps as stubs */
-      .steps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; list-style: none; padding: 0; margin: 0; }
-      .step { --hole: var(--mint); display: grid; grid-template-columns: 76px 0 1fr; background: var(--paper); border-radius: 18px; }
-      .step-n { display: grid; place-items: center; font: 500 22px/1 var(--mono); color: var(--tangerine); background: var(--teal); border-radius: 18px 0 0 18px; }
-      .step-b { padding: 22px 24px; }
-      .step-b h3 { margin: 0; font-weight: 600; font-size: 21px; letter-spacing: -.03em; color: var(--teal); }
-      .step-b p { margin: 8px 0 0; font-size: 15.5px; color: var(--muted); }
-      .step-b code { color: var(--teal); }
-
-      /* voided tickets */
-      .voids { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; list-style: none; padding: 0; margin: 0; }
-      .void { position: relative; background: var(--paper); border-radius: 16px; padding: 20px 20px 18px; overflow: hidden; }
-      .void::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(135deg, transparent 0 10px, rgba(6, 59, 51, .035) 10px 11px); pointer-events: none; }
-      .void code { position: relative; display: inline-block; font-size: 13px; font-weight: 500; color: var(--teal); background: var(--mint); padding: 5px 8px; border-radius: 6px; overflow-wrap: anywhere; }
-      .void p { position: relative; margin: 12px 0 0; padding-right: 64px; font-size: 15px; color: var(--ink); }
-      .stamp { position: absolute; right: 16px; bottom: 16px; font: 500 13px/1 var(--mono); letter-spacing: .16em; color: var(--tangerine); border: 2px solid var(--tangerine); padding: 6px 8px 5px; border-radius: 6px; transform: rotate(-9deg); }
-      .fixed { margin-top: 16px; display: grid; grid-template-columns: 210px 0 1fr; background: var(--teal); color: var(--mint); border-radius: 18px; --hole: var(--mint); }
-      .fixed > div:not(.tear) { padding: 24px 26px; }
-      .fixed .tear { border-color: rgba(226, 245, 238, .35); }
-      .fixed h3 { margin: 8px 0 0; font-weight: 600; font-size: 22px; letter-spacing: -.03em; color: #fff; line-height: 1.15; }
-      .fixed .label { color: var(--tangerine); }
-      .fixed ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 28px; font-size: 15px; }
-      .fixed li { padding-left: 18px; position: relative; color: rgba(226, 245, 238, .9); }
-      .fixed li::before { content: ''; position: absolute; left: 0; top: .62em; width: 8px; height: 8px; border-radius: 2px; background: var(--tangerine); }
-      .fixed code { color: #fff; }
-      .fixed a { color: #fff; text-underline-offset: 3px; text-decoration-color: var(--tangerine); }
-
-      /* agent ticket */
-      .agent { display: grid; grid-template-columns: 1fr 0 300px; background: var(--paper); border-radius: 20px; --hole: var(--mint); }
-      .agent > div:not(.tear) { padding: 26px 28px; }
-      .agent ol { list-style: none; margin: 0; padding: 0; }
-      .agent li { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; align-items: center; padding: 13px 0; border-bottom: 1px dashed var(--line); font-size: 15.5px; }
-      .agent li:last-child { border-bottom: 0; }
-      .tag { font: 500 11.5px/1 var(--mono); padding: 6px 8px; border-radius: 6px; background: var(--mint); color: var(--teal); white-space: nowrap; }
-      .tag.no { background: var(--tangerine-tint); color: #a3470b; }
-      .agent-side p { margin: 10px 0 0; font-size: 15px; color: var(--muted); }
-      .agent-side b { font-weight: 600; font-size: 54px; line-height: 1; letter-spacing: -.05em; color: var(--teal); display: block; margin-top: 8px; }
-
-      /* conditions of carriage */
-      .terms { columns: 2; column-gap: 48px; margin: 0; padding: 0; list-style: none; counter-reset: t; }
-      .terms li { break-inside: avoid; counter-increment: t; padding: 18px 0 18px 46px; border-top: 1px solid var(--line); position: relative; font-size: 15.5px; color: var(--muted); }
-      .terms li::before { content: counter(t, decimal-leading-zero); position: absolute; left: 0; top: 19px; font: 500 13px/1.4 var(--mono); color: var(--tangerine); }
-      .terms b { color: var(--ink); font-weight: 600; }
-
-      /* print your own */
-      .print { margin-top: 112px; background: var(--paper); border-radius: 26px; display: grid; grid-template-columns: 1fr 0 1fr; --hole: var(--mint); }
+      /* cta / print */
+      .print { margin-top: 88px; background: var(--paper); border-radius: 26px; display: grid; grid-template-columns: 1fr 0 1fr; --hole: var(--mint); }
       .print > div:not(.tear) { padding: 40px; }
       .print h2 { margin: 0; font-weight: 600; font-size: clamp(32px, 4vw, 48px); letter-spacing: -.045em; line-height: 1; color: var(--teal); }
       .print p { color: var(--muted); margin: 14px 0 24px; }
@@ -189,22 +152,19 @@
       @media (max-width: 900px) {
         .nav ul li:not(:last-child) { display: none; }
         .pass { grid-template-columns: 1fr; }
-        .pass .tear, .agent .tear, .print .tear, .fixed .tear { border-left: 0; border-top: 2px dashed var(--line-2); margin: 0 14px; }
-        .fixed .tear { border-top-color: rgba(226, 245, 238, .35); }
-        .pass .tear::before, .agent .tear::before, .print .tear::before, .fixed .tear::before { left: -27px; top: -13px; }
-        .pass .tear::after, .agent .tear::after, .print .tear::after, .fixed .tear::after { left: auto; right: -27px; top: -13px; bottom: auto; }
+        .pass .tear, .print .tear { border-left: 0; border-top: 2px dashed var(--line-2); margin: 0 14px; }
+        .pass .tear::before, .print .tear::before { left: -27px; top: -13px; }
+        .pass .tear::after, .print .tear::after { left: auto; right: -27px; top: -13px; bottom: auto; }
         .pass-admit { flex-direction: row; align-items: end; border-radius: 22px 22px 0 0; }
         .pass-admit .n { font-size: 52px; }
         .pass-end { flex-direction: row; align-items: end; flex-wrap: wrap; }
         .bars { flex: 1 1 160px; height: 44px; }
         .sec-head { grid-template-columns: 1fr; }
-        .nums { grid-template-columns: 1fr 1fr; }
-        .num:nth-child(3) { padding-left: 0; border-left: 0; }
-        .num:nth-child(n+3) { margin-top: 26px; border-top: 1px solid var(--line); }
-        .steps { grid-template-columns: 1fr; }
-        .fixed, .agent, .print { grid-template-columns: 1fr; }
-        .fixed ul { grid-template-columns: 1fr; }
-        .terms { columns: 1; }
+        .steps, .steps-3 { grid-template-columns: 1fr; }
+        .nums, .nums-3 { grid-template-columns: 1fr; }
+        .nums .num, .nums-3 .num { padding-left: 0; border-left: 0; }
+        .nums .num + .num, .nums-3 .num + .num { margin-top: 26px; border-top: 1px solid var(--line); }
+        .print { grid-template-columns: 1fr; }
         .print > div:not(.tear) { padding: 28px 24px; }
       }
       @media (max-width: 560px) {
@@ -216,17 +176,12 @@
         .pass > div:not(.tear) { padding: 22px 20px; }
         .pass-meta { gap: 8px 18px; }
         .pass-meta dd { font-size: 14px; }
-        .pass .tear::before, .agent .tear::before, .print .tear::before, .fixed .tear::before { left: -27px; }
+        .pass .tear::before, .print .tear::before { left: -27px; }
         .rail-head { flex-direction: column; align-items: start; }
-        .sec { padding-top: 80px; }
+        .sec { padding-top: 72px; }
         .step { grid-template-columns: 58px 0 1fr; }
         .step-b { padding: 18px; }
-        .agent > div:not(.tear), .fixed > div:not(.tear) { padding: 22px 20px; }
-        .agent li { grid-template-columns: 1fr; }
-        .agent li .tag { justify-self: start; }
         .num { padding-right: 12px; }
-        .num + .num { padding-left: 12px; }
-        .num:nth-child(3) { padding-left: 0; }
       }
       @media (prefers-reduced-motion: reduce) {
         html { scroll-behavior: auto; }
@@ -249,9 +204,9 @@
         <ul>
           <li><a href="#rail">The tickets</a></li>
           <li><a href="#how">How it works</a></li>
-          <li><a href="#live">Pass 2</a></li>
-          <li><a href="#void">Voided</a></li>
-          <li><a href="#terms">Conditions</a></li>
+          <li><a href="#proof">Proof</a></li>
+          <li><a href="#status">Status</a></li>
+          <li><a href="evidence.html">Evidence</a></li>
           <li><a class="btn btn-line btn-sm" href="https://github.com/nickthelegend/zec-null-402">GitHub</a></li>
         </ul>
       </div>
@@ -265,26 +220,26 @@
           <p class="lead">Pay once with a shielded Zcash deposit, then each call with a zero-knowledge proof that never says which note paid.</p>
           <div class="cta">
             <a class="btn btn-teal" href="#rail">See the 22 tickets <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3.5 8.5 8 13l4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg></a>
-            <a class="btn btn-line" href="#terms">Read the conditions</a>
+            <a class="btn btn-line" href="evidence.html">Read the evidence</a>
           </div>
 
           <article class="pass" aria-label="The shielded deposit that bought the tickets">
             <div class="pass-admit"><span class="k">Admit</span><span class="n">22</span><span class="k">notes · 10 units</span></div>
             <div class="tear" aria-hidden="true"></div>
             <div class="pass-body">
-              <span class="k">Oct 20 run · one shielded deposit · seen by the gateway's viewing key</span>
+              <span class="k">One shielded deposit · seen by viewing key</span>
               <h2>220,000 zat bought 22 tickets</h2>
               <dl class="pass-meta">
-                <div><dt>Block</dt><dd>4,522,696</dd></div>
                 <div><dt>Per call</dt><dd>10,000 zat</dd></div>
                 <div><dt>Network</dt><dd>testnet</dd></div>
+                <div><dt>Proof</dt><dd>Groth16</dd></div>
               </dl>
-              <code class="memo">memo z402:&lt;sha256 over every note's secret hash and value&gt;</code>
+              <code class="memo">memo z402:&lt;commitment&gt;</code>
             </div>
             <div class="tear" aria-hidden="true"></div>
             <div class="pass-end">
-              <div class="bars" aria-hidden="true" title="Bars drawn from the deposit txid"><i style="width:1px;opacity:0.35"></i><i style="width:2px;opacity:0.55"></i><i style="width:1px;opacity:0.95"></i><i style="width:2px;opacity:0.55"></i><i style="width:4px;opacity:0.55"></i><i style="width:3px;opacity:0.75"></i><i style="width:4px;opacity:0.35"></i><i style="width:4px;opacity:0.75"></i><i style="width:1px;opacity:0.35"></i><i style="width:4px;opacity:0.55"></i><i style="width:1px;opacity:0.55"></i><i style="width:1px;opacity:0.95"></i><i style="width:4px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:1px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:3px;opacity:0.75"></i><i style="width:2px;opacity:0.35"></i><i style="width:1px;opacity:0.35"></i><i style="width:2px;opacity:0.55"></i><i style="width:3px;opacity:0.35"></i><i style="width:1px;opacity:0.95"></i><i style="width:3px;opacity:0.75"></i><i style="width:2px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:2px;opacity:0.75"></i><i style="width:4px;opacity:0.55"></i><i style="width:4px;opacity:0.55"></i><i style="width:1px;opacity:0.55"></i><i style="width:4px;opacity:0.35"></i><i style="width:3px;opacity:0.75"></i><i style="width:2px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:1px;opacity:0.55"></i><i style="width:1px;opacity:0.35"></i><i style="width:2px;opacity:0.95"></i><i style="width:2px;opacity:0.55"></i><i style="width:4px;opacity:0.95"></i><i style="width:1px;opacity:0.55"></i><i style="width:4px;opacity:0.95"></i></div>
-              <a class="txlink" href="https://testnet.zecblock.com/tx/05c57a3b074c7141a1052ca5197743a5140d5f4fa6178cd3d4894391ffd42a6f">05c57a3b…ffd42a6f <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 11 11 5M6 5h5v5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg><span class="sr">deposit transaction on the testnet explorer</span></a>
+              <div class="bars" aria-hidden="true" title="Barcode stub"><i style="width:1px;opacity:0.35"></i><i style="width:2px;opacity:0.55"></i><i style="width:1px;opacity:0.95"></i><i style="width:2px;opacity:0.55"></i><i style="width:4px;opacity:0.55"></i><i style="width:3px;opacity:0.75"></i><i style="width:4px;opacity:0.35"></i><i style="width:4px;opacity:0.75"></i><i style="width:1px;opacity:0.35"></i><i style="width:4px;opacity:0.55"></i><i style="width:1px;opacity:0.55"></i><i style="width:1px;opacity:0.95"></i><i style="width:4px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:1px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:3px;opacity:0.75"></i><i style="width:2px;opacity:0.35"></i><i style="width:1px;opacity:0.35"></i><i style="width:2px;opacity:0.55"></i><i style="width:3px;opacity:0.35"></i><i style="width:1px;opacity:0.95"></i><i style="width:3px;opacity:0.75"></i><i style="width:2px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:2px;opacity:0.75"></i><i style="width:4px;opacity:0.55"></i><i style="width:4px;opacity:0.55"></i><i style="width:1px;opacity:0.55"></i><i style="width:4px;opacity:0.35"></i><i style="width:3px;opacity:0.75"></i><i style="width:2px;opacity:0.55"></i><i style="width:2px;opacity:0.35"></i><i style="width:1px;opacity:0.55"></i><i style="width:1px;opacity:0.35"></i><i style="width:2px;opacity:0.95"></i><i style="width:2px;opacity:0.55"></i><i style="width:4px;opacity:0.95"></i><i style="width:1px;opacity:0.55"></i><i style="width:4px;opacity:0.95"></i></div>
+              <a class="label" href="evidence.html#deposit" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px">Evidence <span aria-hidden="true">→</span></a>
             </div>
           </article>
         </div>
@@ -311,154 +266,64 @@
         </div>
       </section>
 
-      <section class="sec" aria-labelledby="nums-h">
-        <div class="wrap">
-          <h2 class="sr" id="nums-h">The run in numbers</h2>
-          <div class="nums">
-            <div class="num"><b>2</b><p>transactions in the Oct 20 run: the deposit and its anchor (plus funding)</p></div>
-            <div class="num"><b>20</b><p>paid calls with no transaction of their own</p></div>
-            <div class="num"><b>569<small>ms</small></b><p>slowest client proof (fastest 346 ms)</p></div>
-            <div class="num"><b>106</b><p>tests plus a doc example, most against live testnet</p></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="sec" id="live" aria-labelledby="live-h">
-        <div class="wrap">
-          <div class="sec-head">
-            <div><span class="label">The current protocol, live on Oct 22</span><h2 class="big" id="live-h">Signed anchors, the default window, four paid calls.</h2></div>
-            <p>Pass 2 ran the protocol below on testnet: signed auto-anchors, and clients with the default 2,880-block window and the key pinned. Every transaction is in <code>deployments/testnet-pass2.json</code>.</p>
-          </div>
-          <div class="agent">
-            <div>
-              <ol>
-                <li><span>Deposit 3 notes of 10 units (<a class="txlink" href="https://testnet.zecblock.com/tx/90f70d6a79edafb8ec5fb4f0c845aab0af9b56a90b3d51d01800c11783c6c9d4">90f70d6a…</a>), mined in 21 s</span><span class="tag">deposited</span></li>
-                <li><span>Signed anchor <a class="txlink" href="https://testnet.zecblock.com/tx/c69195a9741da0d8b3150cbb2803621e6685af4076875cbca96292a1797223c5">c69195a9…</a>: 3 leaves, block 4,529,574</span><span class="tag">signed</span></li>
-                <li><span>Three calls to <code>/api/quote</code> against it, proofs 548, 351 and 361 ms. The first paid 2 min 44 s after the deposit was sent</span><span class="tag">3 × 200</span></li>
-                <li><span>Signed anchor <a class="txlink" href="https://testnet.zecblock.com/tx/f75213bbee1ac7597278b273f2bc5d0a25195f59a5ec22411765ce343a070abd">f75213bb…</a> because the spent count changed (block 4,529,584)</span><span class="tag">signed</span></li>
-                <li><span>Second deposit <a class="txlink" href="https://testnet.zecblock.com/tx/27ce212c7acf1bd4a2e715aadad68b77ab46cb6b3a492a9e9113e7b1a37e515c">27ce212c…</a>, then signed anchor <a class="txlink" href="https://testnet.zecblock.com/tx/c1b4b4780788fd466bff11c87aff1cb9ae3e644b2443d7941ced1649ed46ab39">c1b4b478…</a>: 6 leaves, block 4,529,589</span><span class="tag">signed</span></li>
-                <li><span>A call with a note from the second deposit, proof 574 ms</span><span class="tag">200</span></li>
-                <li><span>A probe that named the older anchor c69195a9…: the client proved against the newest, c1b4b478…, and paid</span><span class="tag">200</span></li>
-                <li><span>Signed anchor <a class="txlink" href="https://testnet.zecblock.com/tx/4265af65ce017a63cda24f78e397e3676d9df402058165900ea0719fa32078ff">4265af65…</a>: 6 leaves, 5 spent (block 4,529,599)</span><span class="tag">signed</span></li>
-                <li><span>The operator turned dishonest on purpose: a competing signed root <a class="txlink" href="https://testnet.zecblock.com/tx/3ed5319c06e9e12831b53d779b2bb802f26e2d3fc3c7251062eacb90ce19484c">3ed5319c…</a> (block 4,529,606). Once a client's scan held that block it refused with <code>ANCHOR_COMPETING</code>; a check seconds earlier still paid</span><span class="tag no">void</span></li>
-              </ol>
-            </div>
-            <div class="tear" aria-hidden="true"></div>
-            <div class="agent-side"><span class="label">Paid under the default window</span><b>4 + 1</b><p>calls plus the probe, against signed anchors. The hosted gateway (<a href="https://kippu-api.201-18-198-162.sslip.io/api/info" target="_blank" rel="noreferrer"><code>kippu-api…/api/info</code></a>) answers the 402 challenge but has no wallet to anchor roots, so no client can pay it yet.</p></div>
-          </div>
-        </div>
-      </section>
-
+      <!-- Section 1: How it works in 3 steps -->
       <section class="sec" id="how" aria-labelledby="how-h">
         <div class="wrap">
           <div class="sec-head">
             <div><span class="label">How it works</span><h2 class="big" id="how-h">Zcash has no contracts, so the gateway is the pool.</h2></div>
-            <p>The deposit and the audit trail stay on-chain; the per-call check moves to the gateway, in the open.</p>
+            <p>The deposit stays on-chain; per-call checks happen off-chain in zero knowledge.</p>
           </div>
-          <ol class="steps">
-            <li class="step"><span class="step-n">01</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Print notes</h3><p>N notes and one commitment over them. Secrets stay in a 0600 file.</p></div></li>
-            <li class="step"><span class="step-n">02</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Deposit once</h3><p>One shielded transaction with memo <code>z402:&lt;commitment&gt;</code>, credited once by the gateway's viewing key.</p></div></li>
-            <li class="step"><span class="step-n">03</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Prove per call</h3><p><code>402</code> → the client reads the anchors itself, through its own lightwalletd, and proves an unspent note bound to this request → the gateway burns the nullifier.</p></div></li>
-            <li class="step"><span class="step-n">04</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Anchor</h3><p>The gateway writes its root in a shielded memo (<a class="txlink" href="https://testnet.zecblock.com/tx/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395">a0992237…</a>), so clients that see the same anchor prove against the same root.</p></div></li>
+          <ol class="steps steps-3">
+            <li class="step"><span class="step-n">01</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Deposit once</h3><p>One shielded transaction credits your notes under the gateway's viewing key.</p></div></li>
+            <li class="step"><span class="step-n">02</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Prove per call</h3><p>On 402, the client reads on-chain anchors through its own lightwalletd and proves an unspent note.</p></div></li>
+            <li class="step"><span class="step-n">03</span><span class="tear" aria-hidden="true"></span><div class="step-b"><h3>Anchor</h3><p>The gateway posts its root in a shielded memo so clients that see the same anchor prove against the same root.</p></div></li>
           </ol>
         </div>
       </section>
 
-      <section class="sec" id="void" aria-labelledby="void-h">
+      <!-- Section 2: Proof (3 big numbers with a one-word label each + evidence link) -->
+      <section class="sec" id="proof" aria-labelledby="proof-h">
         <div class="wrap">
           <div class="sec-head">
-            <div><span class="label">Voided in the live runs</span><h2 class="big" id="void-h">Eight tickets that were not honoured.</h2></div>
-            <p>Seven are the gateway's own answers in the Oct 20 run; the last is a client refusal in pass 2.</p>
+            <div><span class="label">Proof</span><h2 class="big" id="proof-h">Measured on testnet.</h2></div>
+            <p>Real Groth16 proofs against live Zcash testnet across published test runs.</p>
           </div>
-          <ul class="voids">
-            <li class="void"><span class="stamp">VOID</span><code>NULLIFIER_SPENT</code><p>A paid proof sent again for a new request.</p></li>
-            <li class="void"><span class="stamp">VOID</span><code>NULLIFIER_SPENT</code><p>The second fixture note's proof replayed.</p></li>
-            <li class="void"><span class="stamp">VOID</span><code>NOT_BOUND_TO_CHALLENGE</code><p>The amount in the public signals changed.</p></li>
-            <li class="void"><span class="stamp">VOID</span><code>NOT_BOUND_TO_CHALLENGE</code><p>A proof made for one request sent for another.</p></li>
-            <li class="void"><span class="stamp">VOID</span><code>BAD_PROOF</code><p>The nullifier changed, claiming a different note.</p></li>
-            <li class="void"><span class="stamp">VOID</span><code>409 already claimed</code><p>The same deposit claimed a second time.</p></li>
-            <li class="void"><span class="stamp">VOID</span><code>MEMO_MISMATCH</code><p>A claim with one note's value altered, on a fresh gateway.</p></li>
-            <li class="void"><span class="stamp">VOID</span><code>ANCHOR_COMPETING</code><p>A second signed root for the same 6 leaves on the anchor address (pass 2).</p></li>
-          </ul>
-          <div class="fixed">
-            <div><span class="label">Fixed on Oct 21</span><h3>A review found two ways to pay twice. Both are closed.</h3></div>
-            <div class="tear" aria-hidden="true"></div>
-            <div>
-              <ul>
-                <li>A spent note's nullifier written <code>0&lt;n&gt;</code> or in hex: now <code>MALFORMED_SIGNALS</code>.</li>
-                <li>One payment sent several times at once: now paid once.</li>
-                <li>A server relaying the gateway's challenge: the client refuses to prove.</li>
-                <li>Anchoring over HTTP: needs the operator's token.</li>
-              </ul>
-              <p style="margin:16px 0 0;font-size:14px;color:rgba(226,245,238,.75)">Tested on testnet with real proofs. <a href="https://github.com/nickthelegend/zec-null-402/blob/main/docs/JUDGE-2026-10-21.md">The review</a>.</p>
-            </div>
+          <div class="nums nums-3">
+            <div class="num"><b>20</b><p>Calls</p></div>
+            <div class="num"><b>0</b><p>Transactions</p></div>
+            <div class="num"><b>569<small>ms</small></b><p>Proof</p></div>
           </div>
-          <div class="fixed">
-            <div><span class="label">Fixed on Oct 22</span><h3>A gateway can no longer hand a client its own root without putting it on-chain.</h3></div>
-            <div class="tear" aria-hidden="true"></div>
-            <div>
-              <ul>
-                <li>A root with no on-chain anchor: the client won't prove (<code>UNANCHORED_ROOT</code>).</li>
-                <li>A per-client root passed off as the real anchor: <code>ANCHOR_MISMATCH</code>.</li>
-                <li>An anchor older than 2,880 blocks: <code>ANCHOR_TOO_OLD</code>.</li>
-                <li>A second root signed with the gateway's key on the anchor address: <code>ANCHOR_COMPETING</code>.</li>
-                <li>A restart keeps spent nullifiers and outstanding challenges; two gateway processes on one database pay a note once.</li>
-              </ul>
-              <p style="margin:16px 0 0;font-size:14px;color:rgba(226,245,238,.75)">Tested against dishonest gateways in front of a real one, with real proofs.</p>
-            </div>
+          <div style="margin-top:28px">
+            <a class="btn btn-line btn-sm" href="evidence.html">See the evidence <span aria-hidden="true">→</span></a>
           </div>
         </div>
       </section>
 
-      <section class="sec" aria-labelledby="agent-h">
+      <!-- Section 3: Honest strip (live vs Setup required) -->
+      <section class="sec" id="status" aria-labelledby="status-h">
         <div class="wrap">
           <div class="sec-head">
-            <div><span class="label">An LLM agent with a cap</span><h2 class="big" id="agent-h">The per-deposit cap blocked the 50-unit note. The wallet still ran dry.</h2></div>
-            <p>opencode drove the <code>z402-mcp</code> tools. The operator's prompt relayed a provider's "deposit whatever it costs" order; <code>Z402_MAX_DEPOSIT_ZAT</code> and the wallet balance refused it. There is now a total budget too (<code>Z402_MAX_TOTAL_DEPOSIT_ZAT</code>).</p>
-          </div>
-          <div class="agent">
-            <div>
-              <ol>
-                <li><span>Deposit 3 notes of 10 units in one transaction (<a class="txlink" href="https://testnet.zecblock.com/tx/29cfe5fc0502e0b83f5d69e6890170ca897404f87f04fd42128a02ece94ba51b">29cfe5fc…</a>)</span><span class="tag">deposited</span></li>
-                <li><span>Pay <code>/api/quote</code> three times, three nullifiers</span><span class="tag">3 × 200</span></li>
-                <li><span>Every 50,000 zat deposit for the report, over <code>Z402_MAX_DEPOSIT_ZAT</code></span><span class="tag no">refused</span></li>
-                <li><span>One more 20-unit deposit (<a class="txlink" href="https://testnet.zecblock.com/tx/0b12bfc6b2b7ee6b30d176990b89f89bf171b7ba737b4b630612f24f1480c077">0b12bfc6…</a>), then the wallet ran dry. The Oct 20 gateway credited it twice (leaves 25 and 26: one note, one nullifier, no extra value), the race fixed on Oct 21</span><span class="tag">deposited</span></li>
-              </ol>
-            </div>
-            <div class="tear" aria-hidden="true"></div>
-            <div class="agent-side"><span class="label">MCP calls refused</span><b>9 / 23</b><p>+1 double credit (pre-fix). Every call is in <code>deployments/agent-run-2026-10-20.jsonl</code>.</p></div>
+            <div><span class="label">Honest status</span><h2 class="big" id="status-h">What is live vs Setup required.</h2></div>
+            <p>Live: zero-knowledge proof generation and verification, double-spend protection, and signed anchor verification.<br />Setup required: the hosted gateway (<a href="https://kippu-api.201-18-198-162.sslip.io/api/info" target="_blank" rel="noreferrer"><code>kippu-api…/api/info</code></a>) answers a 402 and has no wallet to anchor roots, so no client can pay it yet.</p>
           </div>
         </div>
       </section>
 
-      <section class="sec" id="terms" aria-labelledby="terms-h">
-        <div class="wrap">
-          <div class="sec-head">
-            <div><span class="label">Read the back of the ticket</span><h2 class="big" id="terms-h">Conditions of carriage.</h2></div>
-            <p>What a ticket hides, and who you still trust.</p>
-          </div>
-          <ol class="terms">
-            <li><b>The gateway is trusted</b> for liveness and its nullifier set, and must keep anchoring, or notes stop paying after 2,880 blocks.</li>
-            <li><b>Roots are anchored, addresses are not.</b> Pinned clients refuse a second signed root; the gateway can still time anchors and sees each caller's address. The Oct 20 anchor is unsigned.</li>
-            <li><b>Anchors count paid calls.</b> At low traffic that times single calls to within about 10 minutes.</li>
-            <li><b>Lightwalletd is trusted for anchors.</b> No block header or Merkle path is checked, and it sees the client's reads.</li>
-            <li><b>New notes wait for an anchor.</b> In the Oct 22 live run the first call paid 2 min 44 s after the deposit was sent: the deposit was mined in 21 s.</li>
-            <li><b>The anonymity set is the credited notes of that price inside the latest anchor.</b> Both testnet runs had one depositor, so every call came from that depositor's notes.</li>
-            <li><b>No change.</b> A note pays one call of its full value; a dearer endpoint needs a note of its own price.</li>
-            <li><b>The demo viewing key is public.</b> Anyone can read the demo deposit's amount and memo.</li>
-            <li><b>Single-party Groth16 setup.</b> A real deployment needs a ceremony.</li>
-            <li><b>Testnet only, not audited.</b> A portfolio piece; the Zecathon entry is Kage (Shielded x402).</li>
-          </ol>
-        </div>
-      </section>
-
+      <!-- Section 4: Short footer CTA to the GitHub repo -->
       <div class="wrap">
-        <section class="print" aria-labelledby="print-h">
-          <div><h2 id="print-h">Print your own tickets.</h2><p>Circuits, the gateway, an SDK and an MCP server. Chain-touching tests read real Zcash testnet with real Groth16 proofs; tests that would send an anchor record the memo instead.</p><a class="btn btn-tangerine" href="https://github.com/nickthelegend/zec-null-402">Get the code</a></div>
+        <section class="print" id="cta" aria-labelledby="cta-h" style="margin-top:80px">
+          <div>
+            <span class="label">Open Source</span>
+            <h2 id="cta-h" style="margin-top:8px">Print your own tickets.</h2>
+            <p>Circuits, the gateway, an SDK and an MCP server for private API micropayments.</p>
+            <a class="btn btn-tangerine" href="https://github.com/nickthelegend/zec-null-402">Get the code on GitHub</a>
+          </div>
           <div class="tear" aria-hidden="true"></div>
-          <div><pre><code><span>$</span> pnpm install
-<span>$</span> pnpm test        <span># 106 tests + doc</span>
-<span>$</span> pnpm --filter @z402/dashboard dev</code></pre></div>
+          <div>
+            <pre><code><span>$</span> pnpm install
+<span>$</span> pnpm test
+<span>$</span> pnpm --filter @z402/dashboard dev</code></pre>
+          </div>
         </section>
       </div>
     </main>
@@ -468,9 +333,8 @@
         <span>Kippu <span lang="ja">切符</span> · MIT · Copyright (c) 2026 Nivesh Gajengi · Zcash testnet, not audited</span>
         <nav aria-label="Footer">
           <a href="https://github.com/nickthelegend/zec-null-402">GitHub</a>
+          <a href="evidence.html">Evidence</a>
           <a href="https://github.com/nickthelegend/zec-null-402/blob/main/deployments/testnet.json">Run record</a>
-          <a href="https://github.com/nickthelegend/zec-null-402/blob/main/packages/docs/README.md">Trust model</a>
-          <a href="https://github.com/nickthelegend/zec-null-402/blob/main/TESTING.md">Tests</a>
         </nav>
       </div>
     </footer>
@@ -478,25 +342,25 @@
     <script>
       document.documentElement.classList.add('js');
       const rail = document.querySelector('.rail');
-      document.querySelectorAll('.rail-ctl button').forEach((b) =>
-        b.addEventListener('click', () => rail.scrollBy({ left: Number(b.dataset.dir) * rail.clientWidth * 0.8, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })),
-      );
-      // The right-edge fade says "more to scroll"; at the end of the rail it would only hide the last ticket.
-      const edge = () => rail.classList.toggle('at-end', rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 2);
-      rail.addEventListener('scroll', edge, { passive: true });
-      addEventListener('resize', edge);
-      edge();
-      // The one moment: the tickets tear off the deposit pass once, when the rail first comes into view.
-      if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
-        rail.classList.add('armed');
-        const io = new IntersectionObserver((es) => {
-          if (es.some((e) => e.isIntersecting)) {
-            requestAnimationFrame(() => rail.classList.add('torn'));
-            io.disconnect();
-          }
-        }, { threshold: 0.2 });
-        io.observe(rail);
-        setTimeout(() => rail.classList.add('torn'), 2500); // never leave the tickets hidden
+      if (rail) {
+        document.querySelectorAll('.rail-ctl button').forEach((b) =>
+          b.addEventListener('click', () => rail.scrollBy({ left: Number(b.dataset.dir) * rail.clientWidth * 0.8, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })),
+        );
+        const edge = () => rail.classList.toggle('at-end', rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 2);
+        rail.addEventListener('scroll', edge, { passive: true });
+        addEventListener('resize', edge);
+        edge();
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
+          rail.classList.add('armed');
+          const io = new IntersectionObserver((es) => {
+            if (es.some((e) => e.isIntersecting)) {
+              requestAnimationFrame(() => rail.classList.add('torn'));
+              io.disconnect();
+            }
+          }, { threshold: 0.2 });
+          io.observe(rail);
+          setTimeout(() => rail.classList.add('torn'), 2500);
+        }
       }
     </script>
   </body>

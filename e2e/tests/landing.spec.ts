@@ -31,10 +31,14 @@ test.describe('landing', () => {
     const pass = page.getByRole('article', { name: 'The shielded deposit that bought the tickets' });
     await expect(pass).toContainText(`${run.gateway.leaves}`);
     await expect(pass).toContainText(`${Number(run.deposit.amountZat).toLocaleString('en-US')} zat bought ${tickets.length} tickets`);
-    await expect(pass).toContainText(run.deposit.height.toLocaleString('en-US'));
     await expect(page.getByRole('note', { name: 'Run summary' })).toContainText(`${tickets.length} tickets`);
     await expectNoHorizontalScroll(page);
     await page.screenshot({ path: info.outputPath(`landing-hero-${info.project.name}.png`) });
+
+    // Block height moved to evidence.html (first screen has no block heights)
+    await page.goto(URLS.landing + '/evidence.html');
+    const evPass = page.getByRole('article', { name: 'The shielded deposit that bought the tickets' });
+    await expect(evPass).toContainText(run.deposit.height.toLocaleString('en-US'));
   });
 
   test('tickets tear off the pass once when the rail comes into view', async ({ page }, info) => {
@@ -107,8 +111,8 @@ test.describe('landing', () => {
     const links: [string, string][] = [
       ['The tickets', '#rail'],
       ['How it works', '#how'],
-      ['Voided', '#void'],
-      ['Conditions', '#terms'],
+      ['Proof', '#proof'],
+      ['Status', '#status'],
     ];
     if (isMobile(info.project.name)) {
       // The section links are hidden on phones by design; the GitHub button stays.
@@ -126,9 +130,12 @@ test.describe('landing', () => {
     await expect(page).toHaveURL(/#rail$/);
     await expectInViewport(page, '#rail');
     await page.evaluate(() => scrollTo(0, 0));
-    await page.getByRole('link', { name: 'Read the conditions' }).click();
+    await page.getByRole('link', { name: 'Read the evidence' }).click();
+    await expect(page).toHaveURL(/evidence\.html$/);
+    await page.getByRole('link', { name: 'Conditions' }).click();
     await expect(page).toHaveURL(/#terms$/);
     await expectInViewport(page, '#terms');
+    await page.goto(URLS.landing + '/');
     await page.getByRole('link', { name: 'Kippu, home' }).click();
     await expect(page).toHaveURL(/#main$/);
     // Skip link: hidden until focused, then jumps to the content.
@@ -142,7 +149,7 @@ test.describe('landing', () => {
   });
 
   test('voided tickets and the agent section match the published run record', async ({ page }) => {
-    await page.goto(URLS.landing + '/');
+    await page.goto(URLS.landing + '/evidence.html');
     const voids = page.locator('#void ul.voids > li');
     await expect(voids).toHaveCount(8);
     const codes = await voids.locator('code').allTextContents();
@@ -170,13 +177,18 @@ test.describe('landing', () => {
     // copy cut on Oct 25: the lead is one line; the single-depositor caveat stays in the conditions (below)
     await expect(page.locator('.lead')).toHaveText('Pay once with a shielded Zcash deposit, then each call with a zero-knowledge proof that never says which note paid.');
     await expect(page.locator('#rail')).toContainText('(Oct 20, pre-anchored-root protocol)');
+    await expect(page.locator('#how')).toContainText('clients that see the same anchor prove against the same root');
+    await expect(page.locator('#how')).toContainText('through its own lightwalletd');
+
+    // Moved facts verified on evidence.html:
+    await page.goto(URLS.landing + '/evidence.html');
+    const evText = await page.locator('main').innerText();
+    for (const gone of [/everyone proves against the same one/, /The cap held/, /carried an injected/, /about a block with auto-anchoring/, /transactions on-chain: the deposit and the anchor/, /no longer hand each client its own root/, /don't yet scan for competing anchors/, /reads the named anchor on-chain itself/, /nothing is mocked/, /learns that some note paid, not which/, /transactions per run/, /In the run there was one depositor/, /Seven tickets the gateway would not honour/]) expect(evText, String(gone)).not.toMatch(gone);
     await expect(page.locator('#terms')).toContainText('Anchors count paid calls.');
     await expect(page.locator('#terms')).toContainText('At low traffic that times single calls to within about 10 minutes.');
     await expect(page.locator('#terms')).toContainText('Both testnet runs had one depositor');
     await expect(page.locator('.print')).toContainText('Chain-touching tests read real Zcash testnet with real Groth16 proofs; tests that would send an anchor record the memo instead.');
     await expect(page.locator('.nums')).toContainText('transactions in the Oct 20 run: the deposit and its anchor (plus funding)');
-    await expect(page.locator('#how')).toContainText('clients that see the same anchor prove against the same root');
-    await expect(page.locator('#how')).toContainText('through its own lightwalletd');
     await expect(page.locator('#terms')).toContainText('Both testnet runs had one depositor, so every call came from that depositor');
     await expect(page.locator('#void')).toContainText('without putting it on-chain');
     await expect(page.locator('#void')).toContainText('ANCHOR_COMPETING');
@@ -192,7 +204,7 @@ test.describe('landing', () => {
   });
 
   test('pass 2: the current protocol live, every row from deployments/testnet-pass2.json', async ({ page }, info) => {
-    await page.goto(URLS.landing + '/#live');
+    await page.goto(URLS.landing + '/evidence.html#live');
     const sec = page.locator('#live');
     await expect(sec.locator('h2')).toHaveText('Signed anchors, the default window, four paid calls.');
     expect(pass2.calls).toHaveLength(4);
@@ -222,34 +234,40 @@ test.describe('landing', () => {
     await page.goto(URLS.landing + '/');
     expect(await logButtons(page)).toHaveLength(0);
     expect(await page.getByRole('link', { name: /\blog\b/i }).count()).toBe(0);
+    await page.goto(URLS.landing + '/evidence.html');
+    expect(await logButtons(page)).toHaveLength(0);
+    expect(await page.getByRole('link', { name: /\blog\b/i }).count()).toBe(0);
     await expect(page.locator(`${agentSec} .agent-side`)).toContainText('deployments/agent-run-2026-10-20.jsonl');
     expect(tracked.has('deployments/agent-run-2026-10-20.jsonl')).toBe(true);
   });
 
   test('every link: anchors resolve, explorer links name real run txids, repo links name tracked files', async ({ page }) => {
-    await page.goto(URLS.landing + '/');
-    const hrefs = await page.locator('a[href]').evaluateAll((as) => as.map((a) => a.getAttribute('href')!));
-    expect(hrefs.length).toBeGreaterThan(15);
-    const runTx = new Set([run.txs.fund, run.txs.deposit, run.txs.anchor, ...pass2Tx, ...agentLog.filter((c) => c.tool === 'deposit' && !c.isError).map((c) => String((c.result as { txid: string }).txid))]);
-    for (const h of hrefs) {
-      if (h.startsWith('#')) {
-        expect(await page.locator(h).count(), `anchor ${h}`).toBe(1);
-      } else if (h.startsWith(EXPLORER)) {
-        const id = h.slice(EXPLORER.length);
-        expect(id, h).toMatch(/^[0-9a-f]{64}$/);
-        expect(runTx.has(id), `${h} is a txid from the run record or the agent log`).toBe(true);
-      } else if (h === REPO || h === HOSTED_INFO) {
-        // the repo itself, the hosted gateway
-      } else {
-        const p = repoPathOf(h);
-        expect(p, `unexpected link ${h}`).not.toBeNull();
-        expect(tracked.has(p!), `${p} is tracked in the repo`).toBe(true);
+    for (const path of ['/', '/evidence.html']) {
+      await page.goto(URLS.landing + path);
+      const hrefs = await page.locator('a[href]').evaluateAll((as) => as.map((a) => a.getAttribute('href')!));
+      expect(hrefs.length).toBeGreaterThan(5);
+      const runTx = new Set([run.txs.fund, run.txs.deposit, run.txs.anchor, ...pass2Tx, ...agentLog.filter((c) => c.tool === 'deposit' && !c.isError).map((c) => String((c.result as { txid: string }).txid))]);
+      for (const h of hrefs) {
+        if (h.startsWith('#')) {
+          expect(await page.locator(h).count(), `anchor ${h} on ${path}`).toBe(1);
+        } else if (h.startsWith(EXPLORER)) {
+          const id = h.slice(EXPLORER.length);
+          expect(id, h).toMatch(/^[0-9a-f]{64}$/);
+          expect(runTx.has(id), `${h} is a txid from the run record or the agent log`).toBe(true);
+        } else if (h === REPO || h === HOSTED_INFO) {
+          // the repo itself, the hosted gateway
+        } else if (h.endsWith('.html') || h.includes('.html#')) {
+          // intra-page links
+        } else {
+          const p = repoPathOf(h);
+          expect(p, `unexpected link ${h} on ${path}`).not.toBeNull();
+          expect(tracked.has(p!), `${p} is tracked in the repo`).toBe(true);
+        }
       }
-    }
-    // The visible txid labels are the start of the txid they link to.
-    for (const a of await page.locator('a.txlink').all()) {
-      const id = (await a.getAttribute('href'))!.slice(EXPLORER.length);
-      expect((await a.innerText()).trim().slice(0, 8)).toBe(id.slice(0, 8));
+      for (const a of await page.locator('a.txlink').all()) {
+        const id = (await a.getAttribute('href'))!.slice(EXPLORER.length);
+        expect((await a.innerText()).trim().slice(0, 8)).toBe(id.slice(0, 8));
+      }
     }
   });
 });

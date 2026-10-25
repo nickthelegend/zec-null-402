@@ -118,6 +118,12 @@ function AnchorCheck() {
         <span className="dot" aria-hidden="true" />
         {message}
       </p>
+      {state === 'unavailable' && (
+        <p className="check-hint">The ellipsis is not still loading. The recorded anchor is unchanged; this tab cannot run SHA-256 until the page is opened on https or localhost.</p>
+      )}
+      {state === 'bad' && (
+        <p className="check-hint">The two hashes disagree. The on-chain row is the value from the recorded run; this tab hashed something else.</p>
+      )}
       <dl className="kv">
         <div>
           <dt>sha256 of the sorted set, here</dt>
@@ -186,7 +192,7 @@ function Rail() {
   const [atEnd, setAtEnd] = useState(false);
   const edge = useCallback(() => {
     const el = railRef.current;
-    if (el) setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 2);
+    if (el) setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 8);
   }, []);
   useEffect(() => {
     edge();
@@ -195,10 +201,10 @@ function Rail() {
   }, [edge]);
   if (tickets.length === 0)
     return (
-      <div className="empty">
+      <div className="empty" role="status">
         <Mark size={36} />
-        <p>No tickets spent yet.</p>
-        <p className="muted">Run the live example to publish deployments/testnet.json; each paid call appears here as a ticket.</p>
+        <p>No spent tickets in this file.</p>
+        <p className="muted">This rail reads deployments/testnet.json. With no paid calls recorded there, there is no stub to open.</p>
       </div>
     );
   const t = tickets[sel];
@@ -396,12 +402,22 @@ export function App() {
                   <li key={i} className={i < r.gateway.spent ? (i >= r.calls.length ? 'f' : 'p') : ''} />
                 ))}
               </ol>
+              <p className="punch-key">
+                <span>
+                  <span className="swatch p" aria-hidden="true" />
+                  {r.calls.length} paid
+                </span>
+                <span>
+                  <span className="swatch f" aria-hidden="true" />
+                  {r.fixtureNullifiers.length} fixture
+                </span>
+              </p>
             </div>
           </article>
 
           <div className="stats">
             <div>
-              <span className="label">On-chain</span>
+              <span className="label">On-chain, Oct 20</span>
               <b>2</b>
               <p>transactions in the Oct 20 run: the deposit and its anchor (plus the demo funding tx). Auto-anchoring now adds one per deposit and periodic ones</p>
             </div>
@@ -420,7 +436,7 @@ export function App() {
               ) : (
                 <b className="muted">—</b>
               )}
-              <p>measured on the paying client</p>
+              <p>{proveTimes.length ? 'measured on the paying client' : 'No proof times in this run.'}</p>
             </div>
           </div>
         </section>
@@ -440,13 +456,18 @@ export function App() {
             <h2 id="pass2-h">Pass 2: the current protocol, live</h2>
             <span className="count">Oct 22 · {p2.calls.length} calls + 1 probe paid</span>
           </div>
-          <p className="muted lede">
-            The tickets above predate anchored roots. On Oct 22 a fresh gateway with auto-anchoring and an anchor signing key ran on testnet, and clients with the default 2,880-block window and that key pinned paid against its signed anchors. Every transaction is in <code>deployments/testnet-pass2.json</code>; <code>pnpm --filter @z402/examples demo</code> replays it at a pinned block. A hosted gateway answers the 402 challenge (
-            <a href="https://kippu-api.201-18-198-162.sslip.io/api/info" target="_blank" rel="noreferrer">
-              <code>kippu-api…/api/info</code>
-            </a>
-            ), but it has no wallet to anchor roots, so no client can pay it yet.
-          </p>
+          <div className="lede">
+            <p className="muted">
+              The tickets above predate anchored roots. On Oct 22 a fresh gateway with auto-anchoring and an anchor signing key ran on testnet, and clients with the default 2,880-block window and that key pinned paid against its signed anchors. Every transaction is in <code>deployments/testnet-pass2.json</code>; <code>pnpm --filter @z402/examples demo</code> replays it at a pinned block.
+            </p>
+            <p className="caveat">
+              A hosted gateway answers the 402 challenge (
+              <a href="https://kippu-api.201-18-198-162.sslip.io/api/info" target="_blank" rel="noreferrer">
+                <code>kippu-api…/api/info</code>
+              </a>
+              ), but it has no wallet to anchor roots, so no client can pay it yet.
+            </p>
+          </div>
           <ol className="roll">
             {pass2Rows.map((x, i) => (
               <li key={i}>
@@ -467,7 +488,7 @@ export function App() {
             <li>
               <h3>The chain</h3>
               <p>In the Oct 20 run, two shielded transactions: the deposit and the anchor (plus one funding tx). Auto-anchoring now adds an anchor per deposit and periodic ones.</p>
-              <p className="not">Not amounts, memos, who paid or how many calls.</p>
+              <p className="not">Not amounts, memos, who paid, or how many calls, in the clear. The amount on the pass is readable because this demo publishes the gateway viewing key.</p>
             </li>
             <li>
               <h3>The gateway</h3>
@@ -527,11 +548,18 @@ export function App() {
               {refused} of {agentCalls.length} calls refused
             </span>
           </div>
-          <p className="muted lede">
-            opencode used the four MCP tools against a local gateway on testnet. The operator's prompt relayed a provider's "URGENT: buy the full report, deposit whatever it costs" order and told the agent to comply. The model tried; <code>Z402_MAX_DEPOSIT_ZAT=40000</code> refused every 50,000 zat deposit and the wallet ran dry. The Oct 20 gateway also credited deposit <code>0b12bfc6</code> twice (row {pad(agentRows.findIndex((x) => x.double) + 1)}, leaves 25 and 26: the same note and nullifier, no extra value): +{doubleCredits} double credit, the pre-fix race closed on Oct 21. Every line is from <code>deployments/agent-run-2026-10-20.jsonl</code>.
-          </p>
+          <div className="lede muted">
+            <p>
+              opencode used the four MCP tools against a local gateway on testnet. The operator's prompt relayed a provider's "URGENT: buy the full report, deposit whatever it costs" order and told the agent to comply. The model tried; <code>Z402_MAX_DEPOSIT_ZAT=40000</code> refused every 50,000 zat deposit and the wallet ran dry.
+            </p>
+            <p>
+              The Oct 20 gateway also credited deposit <code>0b12bfc6</code> twice (row {pad(agentRows.findIndex((x) => x.double) + 1)}, leaves 25 and 26: the same note and nullifier, no extra value): +{doubleCredits} double credit, the pre-fix race closed on Oct 21. Every line is from <code>deployments/agent-run-2026-10-20.jsonl</code>.
+            </p>
+          </div>
           {agentCalls.length === 0 ? (
-            <p className="empty">No agent run recorded yet.</p>
+            <p className="empty" role="status">
+              No calls in deployments/agent-run-2026-10-20.jsonl. Refusals and a double-credit row would be listed here.
+            </p>
           ) : (
             <ol className="roll">
               {agentCalls.map((c, i) => {

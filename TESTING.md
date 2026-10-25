@@ -4,12 +4,15 @@ No mocked clients, no stub RPCs. Chain-touching tests read Zcash testnet through
 Proofs are real Groth16 proofs with this repo's setup. Where a test needs the gateway to send an anchor,
 `sendAnchor` is a callback that records the memo it is asked to send (no transaction leaves the test);
 everything else in that gateway is real. `anchor-window.test.ts` is local (anchors built and signed in the test) and
-`tip.test.ts` runs small shell scripts in place of the scan binary. Counts are from `pnpm test` on Oct 23, 2026 (second ultra round).
+`tip.test.ts` runs small shell scripts in place of the scan binary. Counts are from a fresh, complete
+`pnpm test` on Oct 25, 2026, after the unit fixes, landing cut and dashboard polish (Node 26.5.0,
+pnpm 10.29.2, pinned Rust 1.89.0). The build and every suite passed: 106 tests plus 1 doc test,
+0 failed, 0 skipped.
 CI (`.github/workflows/ci.yml`) runs the same `pnpm test` on every push.
 
-| Package | Runs against | Tests | What |
+| Package | Runs against | Passed | What |
 |---|---|---|---|
-| scan (Rust) | local | 3 + doc | payment rules (from zpay-verify); the crate doc example compiles. `scan-range` is exercised through the gateway's `anchor.test.ts` |
+| scan (Rust) | local | 3 + 1 doc | payment rules (from zpay-verify); the crate doc example compiles. `scan-range` is exercised through the gateway's `anchor.test.ts` |
 | circuits | local | 6 | real proofs; tampered payTo/amount/context fail; no witness above the value or outside the tree; deposit commitments bind every note and value; context per nonce; the verification key is parsed once and stays usable |
 | gateway `gateway.test.ts` | HTTP + testnet | 6 | altered values not credited; the real deposit credits 22 notes once, root = published; a foreign deposit refused; a real proof pays and its replay is refused; tampered nullifier, unknown root, another request, unknown nonce refused; the run's anchor memo is on-chain and equals the recomputed root and nullifier set |
 | gateway `attacks.test.ts` | HTTP + testnet | 10 | a spent note's fresh proof with its nullifier as `0<n>`, `00<n>` or hex is refused; a re-encoded root or non-string signal is `MALFORMED_SIGNALS`; one payment sent three times at once pays once; two proofs of one note sent together pay once; two concurrent claims credit once; `POST /api/anchor` is 503 without a configured token and 401 without the right bearer (wallet never reached); `/api/info` has no viewing key; 10,000 bare GETs store nothing and the honest challenge still pays (its nonce cannot be answered again, even with another note); a forged, re-dated or moved nonce is `UNKNOWN_CHALLENGE`; formerly: the challenge cap drops the oldest; a 70 KB body is 413 |
@@ -27,7 +30,7 @@ CI (`.github/workflows/ci.yml`) runs the same `pnpm test` on every push.
 | sdk `config.test.ts` | local | 4 | a malformed `Z402_MAX_ANCHOR_AGE_BLOCKS` is Setup required (not NaN); blank is the default; `Z402_REPLAY_AT_HEIGHT` unset or blank is a live client, malformed is Setup required; options must be non-negative whole numbers |
 | sdk `pass2.test.ts` | lightwalletd (testnet) + HTTP + a proxy naming an older anchor | 4 | the pass-2 anchors and the competing one are on-chain, signed with the published anchor key; replayed as of block 4,529,604 a pinned-key client with the default window pays against `4265af65…` (its window holds the four honest anchors, not the competing one); after accepting `4265af65…`, a gateway that still names `c69195a9…` is paid again (it was `ANCHOR_ROLLBACK`); replayed at the record's end (4,529,619) the competing anchor is in the window: `ANCHOR_COMPETING`, nothing proven |
 | mcp | stdio MCP client + HTTP + testnet | 9 | tools; claim the real deposit and refuse a second claim; pay against the anchored root (Setup required without the anchor key); `pay` asks again while the anchor is too old (`ANCHOR_TOO_OLD`); status never shows a secret; deposit without a wallet → Setup required; `Z402_MAX_TOTAL_DEPOSIT_ZAT` refuses before any plan is made, and holds for two `deposit` calls at once through a local stand-in zingo-cli (one send, one plan); the call log is 0600, new or existing; malformed caps and waits are Setup required |
-| **Total** | | **106 + doc** | 0 skipped, 0 failed |
+| **Total** | | **106 + 1 doc** | 0 skipped, 0 failed |
 
 Failing first. The 12 tests in `attacks.test.ts` and `relay.test.ts` from Oct 21 failed on the code before
 those fixes (see `docs/JUDGE-2026-10-21.md`). Oct 22 pass 2, run against `a8aa033`: all 9 `anchored-root.test.ts`
@@ -61,9 +64,16 @@ published demo viewing keys, a second gateway with a throwaway admin token and n
 the landing) and writes its PIDs; `e2e/stack.sh stop` kills them. Then `pnpm test:e2e`. Video, trace
 and screenshots for every test; desktop 1280×800 and mobile 375×812.
 
-| Spec | Desktop | Mobile | What |
+Fresh full `pnpm test:e2e` on Oct 25, 2026 (Playwright 1.63.0, Google Chrome, one worker,
+0 retries): **60 passed, 0 failed, 0 skipped** — desktop 35/35, mobile 25/25. The first full
+run found one failure (59 passed): the evidence page hid its Conditions link on mobile. A compact
+mobile section menu fixes it; the landing spec then passed 20/20 before the final full run.
+Both stack runs used one heavy slot with an exit trap to stop the stack and release the slot,
+including on failure. No transaction was sent and the recorded live-testnet evidence is unchanged.
+
+| Spec | Desktop passed | Mobile passed | What |
 |---|---|---|---|
-| `landing.spec.ts` | 10 | 10 | the pass-2 section: its 9 rows, links in order to every pass-2 txid, proof times, the probe, the `ANCHOR_COMPETING` void; pass and hero from the run record; tickets tear off once in view, never with reduced motion; the 22 nullifiers in spend order; rail arrows, keyboard, snap back to the gutter, edge fade gone at the end; nav, CTAs, skip link; voided codes, the agent's 9/23 and its +1 double credit; the corrected wording is shown and the old claims are gone, with the deposit-to-first-call latency read from `testnet-pass2.json`; every link (explorer links name run txids, repo links name tracked files); no button labelled "log" |
+| `landing.spec.ts` | 10 | 10 | landing and `evidence.html`, both without horizontal page scroll; the pass-2 section: its 9 rows, links in order to every pass-2 txid, proof times, the probe, the `ANCHOR_COMPETING` void; pass and hero from the run record; tickets tear off once in view, never with reduced motion; the 22 nullifiers in spend order; rail arrows, keyboard, snap back to the gutter, edge fade gone at the end; nav, CTAs, skip link, visible evidence section links on mobile; voided codes, the agent's 9/23 and its +1 double credit; the corrected wording is shown and the old claims are gone, with the deposit-to-first-call latency read from `testnet-pass2.json`; every link (local pages are fetched and fragment targets checked, explorer links name run txids, repo links name tracked files); no button labelled "log" |
 | `dashboard.spec.ts` | 15 | 15 | the pass-2 roll: 10 rows from `testnet-pass2.json` with every txid linked in order; the 8th void (`ANCHOR_COMPETING`); punched pass; pick a ticket (mouse and keyboard) to read its stub; rail arrows and edge fade; section nav below the sticky header; who sees what; the 7 voided codes; all 23 agent calls with the 9 refusals and row 16 marked as the pre-fix double credit; the corrected wording; the anchor hash recomputed in the browser, Hash again, a tampered set shows the mismatch, Setup required without Web Crypto; every link; reduced motion |
 | `gateway.spec.ts` | 10 | — | fresh `/api/info` (no viewing key) and the 402 in Chrome (a stateless `v1.` nonce carrying the challenge's expiry); altered claim not credited; the SDK claims the published deposit (testnet viewing-key check), 409 on a second claim, Setup required without the anchor key, `UNANCHORED_ROOT` with no anchor (nothing sent); `MALFORMED_SIGNALS`, 400, 413; anchoring Setup required without a token, 401 without the bearer, Setup required without a wallet; the dashboard's anchor memo equals the one read from lightwalletd; the real MCP server writes one `Z402_MCP_LOG` line per call; a gateway without keys exits 2 with Setup required. Desktop only: it claims the one deposit on one database |
-| **Total** | **35** | **25** | 60, 0 failed; every test also fails on a console error or a failed same-origin request |
+| **Total** | **35** | **25** | **60 passed, 0 failed, 0 skipped**; every test also fails on a console error or a failed same-origin request |

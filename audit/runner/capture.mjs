@@ -351,6 +351,18 @@ function clip(value, max) {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
+// Chrome logs this exact line for an HTTP error. It is not a product failure when that
+// status is the one the item expects or lists in allowStatuses. Any other console text still fails.
+const CHROME_FAILED_RESOURCE = /^Failed to load resource: the server responded with a status of (\d{3})(?: \([^)]*\))?$/;
+
+function excusedResourceConsoleError(text, item) {
+  const match = CHROME_FAILED_RESOURCE.exec(text);
+  if (!match) return false;
+  const status = Number(match[1]);
+  if (item.expectStatus != null && status === item.expectStatus) return true;
+  return item.allowStatuses.includes(status);
+}
+
 async function runActions(page, actions) {
   for (const action of actions) {
     if (action.type === 'wait') {
@@ -609,7 +621,9 @@ async function capture(chromium, executablePath, item) {
     failures.push(`refused navigation to a third-party explorer or GitHub: ${blockedNavigations[0]}`);
   }
   for (const message of consoleMessages) {
-    if (message.type === 'error') failures.push(`console error: ${message.text}`);
+    if (message.type !== 'error') continue;
+    if (excusedResourceConsoleError(message.text, item)) continue;
+    failures.push(`console error: ${message.text}`);
   }
   for (const error of pageErrors) failures.push(`page error: ${error.message}`);
   const mainUrl = navigation?.url() || '';

@@ -1,0 +1,6 @@
+{
+  "id": "DOC-PACKAGES-DOCS-TRUST-MODEL",
+  "status": "PASS",
+  "actual": "packages/docs/README.md says the gateway is trusted for liveness and its nullifier set, that lightwalletd is trusted for anchors and the client reads those anchors from it, and that the client requires the anchor memo root and proves against that anchored root.",
+  "quote": "- **The gateway is trusted** for liveness and for its nullifier set: it could refuse to credit a\n  deposit, refuse a valid proof, or (by editing its state) allow a double spend.\n- **Lightwalletd is trusted for anchors.** The client reads anchor transactions and their heights from\n  its configured lightwalletd (`Z402_LWD_URL`) and checks no block header or Merkle path\nwith (never one the gateway sends), requires a memo for exactly that leaf count and root, mined and\n`Payment(20)` for one note of exactly the price under that anchored root\nEvery client proves against\n  the root of a recent anchor it has read on-chain itself"
+}

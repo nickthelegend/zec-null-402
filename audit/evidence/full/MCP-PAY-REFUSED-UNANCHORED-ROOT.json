@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "refusing to pay: UNANCHORED_ROOT: the gateway offers root 150197972326… with no on-chain anchor"
+    }
+  ],
+  "isError": true
+}

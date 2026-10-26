@@ -1,0 +1,29 @@
+{
+  "id": "HOST-INFO-NO-KEY",
+  "url": "https://kippu-api.201-18-198-162.sslip.io/api/info",
+  "requestHost": "kippu-api.201-18-198-162.sslip.io",
+  "width": 1280,
+  "height": 800,
+  "waitFor": "load",
+  "expectStatus": null,
+  "allowStatuses": [],
+  "ok": true,
+  "failures": [],
+  "actual": "{\"hasDepositUivk\":false,\"hasAnchorUivk\":false}",
+  "navigationStatus": 200,
+  "screenshot": "audit/evidence/retest/HOST-INFO-NO-KEY.jpg",
+  "screenshotBytes": 53985,
+  "browserExecutable": "/Users/jaibajrang/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "console": [],
+  "pageErrors": [],
+  "responses": [
+    {
+      "url": "https://kippu-api.201-18-198-162.sslip.io/api/info",
+      "status": 200,
+      "host": "kippu-api.201-18-198-162.sslip.io",
+      "sameOrigin": true,
+      "counted": true
+    }
+  ],
+  "blockedNavigations": []
+}

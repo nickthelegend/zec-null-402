@@ -1,0 +1,6 @@
+{
+  "id": "DOC-README-OCT20-DEPOSIT-FACTS",
+  "status": "PASS",
+  "actual": "README cites deposit txid 05c57a3b074c7141a1052ca5197743a5140d5f4fa6178cd3d4894391ffd42a6f, block 4,522,696, and 220,000 zat. deployments/testnet.json deposit.txid, height 4522696, and amountZat 220000 are those same facts.",
+  "quote": "| one shielded deposit for 22 notes (`z402:<commitment>`) | 220,000 zat at block 4,522,696, seen by the gateway's viewing key | [`05c57a3b…`](https://testnet.zecblock.com/tx/05c57a3b074c7141a1052ca5197743a5140d5f4fa6178cd3d4894391ffd42a6f) |"
+}

@@ -1,0 +1,57 @@
+{
+  "id": "API-PAYMENT-CONCURRENT-TWO-PROOFS-SAME-NOTE",
+  "url": "http://127.0.0.1:50841/api/info",
+  "requestHost": "127.0.0.1:50841",
+  "width": 1280,
+  "height": 800,
+  "waitFor": "load",
+  "expectStatus": null,
+  "allowStatuses": [
+    402
+  ],
+  "ok": true,
+  "failures": [],
+  "actual": "{\"statuses\":[200,402],\"bodies\":[{\"paid\":{\"nullifier\":\"3477147957942530944050927393345713478286610069364623778307973764366901676840\",\"amount\":\"10\"},\"data\":{\"quote\":\"ZEC/USD\"}},{\"error\":\"payment refused: NULLIFIER_SPENT\",\"reason\":\"NULLIFIER_SPENT\",\"accepts\":[{\"x402Version\":1,\"scheme\":\"zec-null-402\",\"network\":\"zcash-testnet\",\"payTo\":\"147551880896112913897675743344837910262631220285031220338749446957089074982\",\"requiredAmount\":\"10\",\"resource\":\"/api/quote\",\"nonce\":\"v1.cc2ce9879f794d6e4db08c94845245e4.1793002849255.76c4300de9e2173a5908415973e5a5ed\",\"contextHash\":\"242622005896442044243858927141576443050492112147362673923577214353094827662\",\"root\":\"4498787375493044641629502448109918628546215513903653918575713697752952913389\",\"anchor\":{\"txid\":\"a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395\",\"leaves\":22,\"root\":\"4498787375493044641629502448109918628546215513903653918575713697752952913389\",\"height\":4522706},\"expiresAt\":1793002849255}]}]}",
+  "navigationStatus": 200,
+  "screenshot": "audit/evidence/retest/API-PAYMENT-CONCURRENT-TWO-PROOFS-SAME-NOTE.jpg",
+  "screenshotBytes": 86212,
+  "browserExecutable": "/Users/jaibajrang/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 402 (Payment Required)",
+      "location": {
+        "url": "http://127.0.0.1:50841/api/quote",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    }
+  ],
+  "pageErrors": [],
+  "responses": [
+    {
+      "url": "http://127.0.0.1:50841/api/info",
+      "status": 200,
+      "host": "127.0.0.1:50841",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:50841/api/quote",
+      "status": 402,
+      "host": "127.0.0.1:50841",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:50841/api/quote",
+      "status": 200,
+      "host": "127.0.0.1:50841",
+      "sameOrigin": true,
+      "counted": true
+    }
+  ],
+  "blockedNavigations": []
+}

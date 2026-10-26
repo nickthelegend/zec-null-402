@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "no unspent note of exactly 10 units (a note pays one call of its full value)"
+    }
+  ],
+  "isError": true
+}

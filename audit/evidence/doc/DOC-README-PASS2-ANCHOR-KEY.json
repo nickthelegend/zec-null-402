@@ -1,0 +1,6 @@
+{
+  "id": "DOC-README-PASS2-ANCHOR-KEY",
+  "status": "PASS",
+  "actual": "protocol.anchorPubkey in deployments/testnet-pass2.json is ac1c23e8af09299151a5dd1086fa1ba67955bebfba3eb13c259ee9161ff976fd. README cites that key as ac1c23e8af09…, the leading bytes of the same pubkey.",
+  "quote": "5. the Oct 22 pass-2 run (current protocol, signed anchors, key ac1c23e8af09… pinned from the record): a fresh gateway credits its two deposits and adopts its four anchors"
+}

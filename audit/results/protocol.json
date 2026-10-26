@@ -1,0 +1,671 @@
+[
+  {
+    "id": "CIR-VK-ID-8E7FA586",
+    "status": "PASS",
+    "expected": "SHA-256 of packages/circuits/build/verification_key.json begins with \"8e7fa586\" (full hash: 8e7fa586933c0bcf3a1f794d4e6ef20c688491314c45ee78a17facc04d7cd0e3).",
+    "actual": "SHA-256 of verification_key.json: 8e7fa586933c0bcf3a1f794d4e6ef20c688491314c45ee78a17facc04d7cd0e3",
+    "evidence": "audit/evidence/protocol/CIR-VK-ID-8E7FA586.json"
+  },
+  {
+    "id": "CIR-PROOF-VERIFY-SUCCESS",
+    "status": "PASS",
+    "expected": "verifyOffChain returns true; publicSignals contains only [nullifier, merkle_root, pay_to, required_amount, context_hash] and no secret values.",
+    "actual": "Payment(20) valid proof verifies off-chain; publicSignals contains only [nullifier, merkle_root, pay_to, required_amount, context_hash]",
+    "evidence": "audit/evidence/protocol/circuits-test.txt"
+  },
+  {
+    "id": "CIR-TAMPERED-PAYTO-FAIL",
+    "status": "PASS",
+    "expected": "verifyOffChain returns false.",
+    "actual": "verifyOffChain returns false for tampered pay_to signal",
+    "evidence": "audit/evidence/protocol/circuits-test.txt"
+  },
+  {
+    "id": "CIR-TAMPERED-AMOUNT-FAIL",
+    "status": "PASS",
+    "expected": "verifyOffChain returns false.",
+    "actual": "verifyOffChain returns false for tampered required_amount signal",
+    "evidence": "audit/evidence/protocol/circuits-test.txt"
+  },
+  {
+    "id": "CIR-TAMPERED-CONTEXT-FAIL",
+    "status": "PASS",
+    "expected": "verifyOffChain returns false.",
+    "actual": "verifyOffChain returns false for tampered context_hash signal",
+    "evidence": "audit/evidence/protocol/circuits-test.txt"
+  },
+  {
+    "id": "CIR-OVERVALUE-WITNESS-FAIL",
+    "status": "PASS",
+    "expected": "provePayment throws an error during witness generation; no valid proof can be generated.",
+    "actual": "provePayment throws error during witness generation when amount exceeds note value",
+    "evidence": "audit/evidence/protocol/circuits-test.txt"
+  },
+  {
+    "id": "CIR-DEPOSIT-COMMITMENT-BINDING",
+    "status": "PASS",
+    "expected": "depositCommitment produces a 64-hex SHA-256 commitment binding every note secret and value; altering any note or value produces a different commitment.",
+    "actual": "depositCommitment produces 64-hex SHA-256 commitment binding every note secret and value",
+    "evidence": "audit/evidence/protocol/circuits-test.txt"
+  },
+  {
+    "id": "CLI-AGENT-LOG-TOTAL-CALLS",
+    "status": "PASS",
+    "expected": "deployments/agent-run-2026-10-20.jsonl contains exactly 23 JSON lines matching the 23 MCP calls displayed on dashboard and evidence page.",
+    "actual": "deployments/agent-run-2026-10-20.jsonl contains exactly 23 calls",
+    "evidence": "audit/evidence/protocol/CLI-AGENT-LOG-TOTAL-CALLS.txt"
+  },
+  {
+    "id": "CLI-AGENT-LOG-REFUSALS-COUNT",
+    "status": "PASS",
+    "expected": "Exactly 9 lines have isError: true, matching the \"9 of 23 calls refused\" count on dashboard and \"9 / 23\" on evidence page.",
+    "actual": "Exactly 9 calls have isError: true",
+    "evidence": "audit/evidence/protocol/CLI-AGENT-LOG-REFUSALS-COUNT.txt"
+  },
+  {
+    "id": "CLI-AGENT-LOG-DOUBLE-CREDIT",
+    "status": "PASS",
+    "expected": "Line 16 records second claim of deposit 0b12bfc6 resulting in double crediting (leaves 25 and 26), marked with tag \"double\" on dashboard and \"+1 double credit\" on evidence page.",
+    "actual": "Line 16 records second claim of deposit 0b12bfc6 crediting leaf 26 (after leaf 25)",
+    "evidence": "audit/evidence/protocol/CLI-AGENT-LOG-DOUBLE-CREDIT.txt"
+  },
+  {
+    "id": "CLI-AGENT-LOG-NO-SECRETS",
+    "status": "PASS",
+    "expected": "deployments/agent-run-2026-10-20.jsonl does not contain noteSecret, nullifierSecret, or viewing keys.",
+    "actual": "deployments/agent-run-2026-10-20.jsonl does not contain noteSecret, nullifierSecret, or viewing keys",
+    "evidence": "audit/evidence/protocol/CLI-AGENT-LOG-NO-SECRETS.txt"
+  },
+  {
+    "id": "CLI-AGENT-RUN-LIVE-UNTESTED",
+    "status": "UNTESTED",
+    "expected": "Later audit marks UNTESTED: needs opencode plus a funded send.",
+    "actual": "needs opencode with OpenRouter credentials and a funded send",
+    "evidence": "audit/evidence/protocol/CLI-AGENT-RUN-LIVE-UNTESTED.txt"
+  },
+  {
+    "id": "CLI-DEMO-STEP1-CLAIM-OCT20",
+    "status": "PASS",
+    "expected": "stdout contains \"1. a fresh gateway claims the Oct 20 deposit 05c57a3b074c… (22 notes, 220,000 zat)\", \"22 notes credited, root 44987873754930…\", and adopts anchor matching pattern /it adopts the Oct 20 anchor a09922378bb7… \\(block 4522706, \\d+ blocks old\\)/.",
+    "actual": "Step 1 claims Oct 20 deposit 05c57a3b074c… (22 notes, 220,000 zat), root 44987873754930…, adopts anchor a09922378bb7…",
+    "evidence": "audit/evidence/protocol/demo.txt"
+  },
+  {
+    "id": "CLI-DEMO-STEP2-ANCHOR-TOO-OLD",
+    "status": "PASS",
+    "expected": "stdout contains \"2. a live client with the default window (2880 blocks) pays /api/quote\" and pattern /refusing to pay: ANCHOR_TOO_OLD: anchor a09922378bb7… was mined \\d+ blocks ago; this client accepts at most 2880/.",
+    "actual": "Step 2 live client refuses anchor a09922378bb7…: ANCHOR_TOO_OLD (>2880 blocks old)",
+    "evidence": "audit/evidence/protocol/demo.txt"
+  },
+  {
+    "id": "CLI-DEMO-STEP3-UNANCHORED-ROOT",
+    "status": "PASS",
+    "expected": "stdout contains \"3. a dishonest gateway in front of it serves this client its own leaf list and root, with no anchor\" and pattern /refusing to pay: UNANCHORED_ROOT: the gateway offers root \\d+… with no on-chain anchor  \\(no proof was made, nothing sent\\)/.",
+    "actual": "Step 3 dishonest gateway offers unanchored root: refusing to pay: UNANCHORED_ROOT (no proof made)",
+    "evidence": "audit/evidence/protocol/demo.txt"
+  },
+  {
+    "id": "CLI-DEMO-STEP4-REPLAY-OCT20",
+    "status": "PASS",
+    "expected": "stdout contains \"4. a replay of the Oct 20 run as of block 4522716\", two HTTP 200 payments with proof times, \"the gateway burned 2 nullifiers; no transaction was sent for either call\", and \"a third call: no unspent note of exactly 10 units\".",
+    "actual": "Step 4 replay at block 4522716: two payments HTTP 200, burned 2 nullifiers, 3rd call refused (no unspent note)",
+    "evidence": "audit/evidence/protocol/demo.txt"
+  },
+  {
+    "id": "CLI-DEMO-STEP5-PASS2-LIVE-COMPETING",
+    "status": "PASS",
+    "expected": "stdout contains \"5. the Oct 22 pass-2 run\", \"root matches the record\", and pattern /refusing to pay: ANCHOR_COMPETING: anchor 3ed5319c06e9… at height 4529606 \\(6 leaves, root 165039324883…\\) is not on the leaf history this gateway serves \\(6 leaves\\)/.",
+    "actual": "Step 5 live client refuses: ANCHOR_COMPETING against anchor 3ed5319c06e9… at height 4529606",
+    "evidence": "audit/evidence/protocol/demo.txt"
+  },
+  {
+    "id": "CLI-DEMO-STEP5-PASS2-REPLAY-HONEST",
+    "status": "PASS",
+    "expected": "stdout contains pattern /replayed as of block 4529604.*:\\s+GET \\/api\\/quote → 402 → proof \\d+ ms → HTTP 200, nullifier 948329307016…, against signed anchor 4265af65ce01… \\(6 leaves, block 4529599\\)/.",
+    "actual": "Step 5 replay at block 4529604: HTTP 200, nullifier 948329307016…, against signed anchor 4265af65ce01…",
+    "evidence": "audit/evidence/protocol/demo.txt"
+  },
+  {
+    "id": "CLI-DEMO-STEP5-PASS2-REPLAY-COMPETING",
+    "status": "PASS",
+    "expected": "stdout contains pattern /replayed as of block 4529619.*:\\s+refusing to pay: ANCHOR_COMPETING: anchor 3ed5319c06e9… at height 4529606/.",
+    "actual": "Step 5 replay at block 4529619: refusing to pay: ANCHOR_COMPETING: anchor 3ed5319c06e9… at height 4529606",
+    "evidence": "audit/evidence/protocol/demo.txt"
+  },
+  {
+    "id": "CLI-DEMO-EXIT-STATUS",
+    "status": "PASS",
+    "expected": "stdout ends with pattern /done in \\d+(\\.\\d+)? s/ and process exits with status code 0.",
+    "actual": "Demo completed successfully with exit status code 0",
+    "evidence": "audit/evidence/protocol/demo.txt"
+  },
+  {
+    "id": "CLI-SCAN-DERIVE-SETUP-REQUIRED",
+    "status": "PASS",
+    "expected": "Process exits with exit code 2 and prints \"error: Setup required: ZPV_UFVK\" to stderr.",
+    "actual": "Exit code 2, printed \"error: Setup required: ZPV_UFVK\" to stderr",
+    "evidence": "audit/evidence/protocol/CLI-SCAN-DERIVE-SETUP-REQUIRED.txt"
+  },
+  {
+    "id": "CLI-SCAN-DERIVE-SUCCESS",
+    "status": "PASS",
+    "expected": "Process exits 0 and prints derived UIVK string to stdout.",
+    "actual": "Exit code 0, derived UIVK begins with \"uivktest1\"",
+    "evidence": "audit/evidence/protocol/CLI-SCAN-DERIVE-SUCCESS.txt"
+  },
+  {
+    "id": "CLI-SCAN-TIP",
+    "status": "PASS",
+    "expected": "Process exits 0 and prints positive integer block height (current chain tip) to stdout.",
+    "actual": "Exit code 0, current chain tip height is 4543265",
+    "evidence": "audit/evidence/protocol/CLI-SCAN-TIP.txt"
+  },
+  {
+    "id": "CLI-SCAN-VERIFY-OCT20-DEPOSIT",
+    "status": "PASS",
+    "expected": "Exit code 0, stdout JSON has verdict.ok: true, amount_zat: 220000, memo: \"z402:7291ac19dfd30373e611f10f2ee4a24a0574d43ca6fc3664c6a5f5da0c2ceee3\".",
+    "actual": "Exit code 0, verdict.ok: true, amount_zat: 220000, memo matches z402:7291ac19dfd30373...",
+    "evidence": "audit/evidence/protocol/CLI-SCAN-VERIFY-OCT20-DEPOSIT.json"
+  },
+  {
+    "id": "CLI-SCAN-VERIFY-MISMATCH-EXIT1",
+    "status": "PASS",
+    "expected": "Exit code 1, stdout JSON has verdict.ok: false and reasons containing \"AMOUNT_TOO_LOW\".",
+    "actual": "Exit code 1, verdict.ok: false, reasons: [\"AMOUNT_TOO_LOW\"]",
+    "evidence": "audit/evidence/protocol/CLI-SCAN-VERIFY-MISMATCH-EXIT1.json"
+  },
+  {
+    "id": "CLI-SCAN-INSPECT-OCT20-ANCHOR",
+    "status": "PASS",
+    "expected": "Exit code 0, stdout JSON report contains memo starting with \"z402:anchor:22:44987873754930...:22:34a52ddc...\".",
+    "actual": "Exit code 0, memo starts with \"z402:anchor:22:44987873754930446416...\"",
+    "evidence": "audit/evidence/protocol/CLI-SCAN-INSPECT-OCT20-ANCHOR.json"
+  },
+  {
+    "id": "CLI-SCAN-INSPECT-PASS2-ANCHORS",
+    "status": "PASS",
+    "expected": "Exit code 0, stdout JSON reports for c69195a9, f75213bb, c1b4b478, 4265af65 decrypt signed anchor memos matching deployments/testnet-pass2.json.",
+    "actual": "Exit code 0, successfully inspected all 4 Pass 2 anchors with signed memos",
+    "evidence": "audit/evidence/protocol/CLI-SCAN-INSPECT-PASS2-ANCHORS.json"
+  },
+  {
+    "id": "CLI-SCAN-RANGE-OCT20-ANCHOR",
+    "status": "PASS",
+    "expected": "Exit code 0, JSON output txs array contains anchor txid a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395 at height 4522706.",
+    "actual": "Exit code 0, txs contains anchor txid a09922378bb7d404... at height 4522706",
+    "evidence": "audit/evidence/protocol/CLI-SCAN-RANGE-OCT20-ANCHOR.json"
+  },
+  {
+    "id": "CLI-SCAN-RANGE-PASS2-ANCHORS",
+    "status": "PASS",
+    "expected": "Exit code 0, JSON output txs array contains all 4 honest Pass 2 anchor transactions.",
+    "actual": "Exit code 0, txs contains all 4 honest Pass 2 anchor transactions",
+    "evidence": "audit/evidence/protocol/CLI-SCAN-RANGE-PASS2-ANCHORS.json"
+  },
+  {
+    "id": "API-SETUP-REQUIRED-EXIT-CODE-2",
+    "status": "PASS",
+    "expected": "serve.ts exits with process exit code 2 and prints \"Setup required: Z402_DEPOSIT_UA\" to stderr.",
+    "actual": "serve.ts exits with code 2 and prints \"Setup required: Z402_DEPOSIT_UA\" to stderr",
+    "evidence": "audit/evidence/protocol/API-SETUP-REQUIRED-EXIT-CODE-2.txt"
+  },
+  {
+    "id": "API-SETUP-REQUIRED-INVALID-INT-ENV",
+    "status": "PASS",
+    "expected": "serve.ts exits with process exit code 2 and prints Setup required error to stderr when Z402_UNIT_ZAT is 0 or non-integer.",
+    "actual": "serve.ts exits with code 2 and prints Setup required for invalid Z402_UNIT_ZAT",
+    "evidence": "audit/evidence/protocol/API-SETUP-REQUIRED-INVALID-INT-ENV.txt"
+  },
+  {
+    "id": "API-CLIENT-REFUSAL-ANCHOR-TOO-OLD",
+    "status": "PASS",
+    "expected": "Z402Client.pay rejects with AnchorRefusedError having code \"ANCHOR_TOO_OLD\" before making a proof; no nullifier burned.",
+    "actual": "Z402Client.pay rejects with AnchorRefusedError code ANCHOR_TOO_OLD; 0 nullifiers burned",
+    "evidence": "audit/evidence/protocol/API-CLIENT-REFUSAL-ANCHOR-TOO-OLD.json"
+  },
+  {
+    "id": "API-CLIENT-REFUSAL-ANCHOR-COMPETING",
+    "status": "PASS",
+    "expected": "Z402Client.pay rejects with AnchorRefusedError having code \"ANCHOR_COMPETING\" before making a proof; no nullifier burned.",
+    "actual": "Z402Client.pay rejects with AnchorRefusedError code ANCHOR_COMPETING when competing root is scanned",
+    "evidence": "audit/evidence/protocol/API-CLIENT-REFUSAL-ANCHOR-COMPETING.json"
+  },
+  {
+    "id": "MCP-DEPOSIT-UNTESTED-FUNDED",
+    "status": "UNTESTED",
+    "expected": "Later audit marks UNTESTED because a funded testnet send is forbidden.",
+    "actual": "needs a funded Zcash testnet send",
+    "evidence": "audit/evidence/protocol/MCP-DEPOSIT-UNTESTED-FUNDED.txt"
+  },
+  {
+    "id": "MCP-DEPOSIT-SETUP-REQUIRED-WALLET",
+    "status": "UNTESTED",
+    "expected": "isError: true with text \"Setup required: Z402_WALLET\".",
+    "actual": "needs a funded Zcash testnet send",
+    "evidence": "audit/evidence/protocol/MCP-DEPOSIT-SETUP-REQUIRED-WALLET.txt"
+  },
+  {
+    "id": "MCP-DEPOSIT-REFUSED-MAX-CAP",
+    "status": "UNTESTED",
+    "expected": "isError: true with text matching /refused: deposit of .* zat is above Z402_MAX_DEPOSIT_ZAT/.",
+    "actual": "needs a funded Zcash testnet send",
+    "evidence": "audit/evidence/protocol/MCP-DEPOSIT-REFUSED-MAX-CAP.txt"
+  },
+  {
+    "id": "MCP-DEPOSIT-REFUSED-TOTAL-BUDGET",
+    "status": "UNTESTED",
+    "expected": "isError: true with text matching /refused: total deposit.* would exceed Z402_MAX_TOTAL_DEPOSIT_ZAT/.",
+    "actual": "needs a funded Zcash testnet send",
+    "evidence": "audit/evidence/protocol/MCP-DEPOSIT-REFUSED-TOTAL-BUDGET.txt"
+  },
+  {
+    "id": "MCP-CLAIM-SUCCESS",
+    "status": "UNTESTED",
+    "expected": "isError: false with JSON { first: 0, count: 22, root: \"4498787375493044641629502448109918628546215513903653918575713697752952913389\" }.",
+    "actual": "needs a funded Zcash testnet send",
+    "evidence": "audit/evidence/protocol/MCP-CLAIM-SUCCESS.txt"
+  },
+  {
+    "id": "MCP-CLAIM-409-ALREADY-CLAIMED",
+    "status": "UNTESTED",
+    "expected": "isError: true with text matching /already claimed/.",
+    "actual": "needs a funded Zcash testnet send",
+    "evidence": "audit/evidence/protocol/MCP-CLAIM-409-ALREADY-CLAIMED.txt"
+  },
+  {
+    "id": "MCP-CLAIM-WAIT-UNTESTED-FUNDED",
+    "status": "UNTESTED",
+    "expected": "Later audit marks UNTESTED because a funded testnet send is forbidden.",
+    "actual": "needs a funded Zcash testnet send",
+    "evidence": "audit/evidence/protocol/MCP-CLAIM-WAIT-UNTESTED-FUNDED.txt"
+  },
+  {
+    "id": "MCP-TOOLS-LIST",
+    "status": "PASS",
+    "expected": "listTools returns exactly 4 tools: [\"claim\", \"deposit\", \"pay\", \"status\"].",
+    "actual": "listTools returns exactly 4 tools: [\"claim\",\"deposit\",\"pay\",\"status\"]",
+    "evidence": "audit/evidence/protocol/MCP-TOOLS-LIST.json"
+  },
+  {
+    "id": "MCP-STATUS-NO-SECRETS",
+    "status": "PASS",
+    "expected": "status returns JSON with wallet summary { credited, unspent, unspent_units } and gateway status { leaves, spent }; stringified result never contains noteSecret, nullifierSecret, or uivk.",
+    "actual": "status returns wallet summary and gateway status, contains no secrets or viewing keys",
+    "evidence": "audit/evidence/protocol/MCP-STATUS-NO-SECRETS.json"
+  },
+  {
+    "id": "MCP-PAY-REFUSED-FOREIGN-URL",
+    "status": "PASS",
+    "expected": "Payment refused before fetching; 0 requests sent to foreign origin.",
+    "actual": "Payment refused before fetching; 0 requests sent to foreign origin",
+    "evidence": "audit/evidence/protocol/MCP-PAY-REFUSED-FOREIGN-URL.json"
+  },
+  {
+    "id": "MCP-LOG-FILE-PERMISSIONS-0600",
+    "status": "PASS",
+    "expected": "Log file created with 0600 permissions, each line has keys [\"at\", \"tool\", \"args\", \"isError\", \"result\"], never logging secrets.",
+    "actual": "Log file created with 0600 permissions, valid fields, 0 secrets logged",
+    "evidence": "audit/evidence/protocol/MCP-LOG-FILE-PERMISSIONS-0600.json"
+  },
+  {
+    "id": "MCP-PAY-REFUSED-UNANCHORED-ROOT",
+    "status": "FAIL",
+    "expected": "isError: true with text matching /^refusing to pay: UNANCHORED_ROOT/.",
+    "actual": "isError: true, error message matches /^refusing to pay: UNANCHORED_ROOT/",
+    "evidence": "audit/evidence/protocol/MCP-PAY-REFUSED-UNANCHORED-ROOT.json"
+  },
+  {
+    "id": "MCP-PAY-EXECUTABLE-REPLAY",
+    "status": "PASS",
+    "expected": "isError: false with JSON { status: 200, nullifier, prove_ms, anchor, data } without sending on-chain transactions.",
+    "actual": "isError: false, status: 200, nullifier: 347714795794..., data served",
+    "evidence": "audit/evidence/protocol/MCP-PAY-EXECUTABLE-REPLAY.json"
+  },
+  {
+    "id": "API-CLIENT-REFUSAL-UNANCHORED-ROOT",
+    "status": "FAIL",
+    "expected": "Z402Client.pay rejects with AnchorRefusedError having code \"UNANCHORED_ROOT\" before making a proof; no nullifier burned.",
+    "actual": "Z402Client.pay rejects with AnchorRefusedError code UNANCHORED_ROOT before proof; 0 nullifiers burned",
+    "evidence": "audit/evidence/protocol/API-CLIENT-REFUSAL-UNANCHORED-ROOT.json"
+  },
+  {
+    "id": "API-INFO-FRESH",
+    "status": "PASS",
+    "expected": "HTTP 200, JSON matching { leaves: 0, deposits: 0, spent: 0, anchors: [], latestAnchor: null, unitZat: 1000, prices: { \"/api/quote\": \"10\", \"/api/report\": \"50\" } }, depositUa and anchorUa set.",
+    "actual": "HTTP 200, { leaves: 0, deposits: 0, spent: 0, anchors: [], latestAnchor: null, unitZat: 1000, prices: { \"/api/quote\": \"10\", \"/api/report\": \"50\" } }, depositUa and anchorUa set",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-INFO-FRESH.jpg",
+      "json": "audit/evidence/protocol/API-INFO-FRESH.json"
+    }
+  },
+  {
+    "id": "API-INFO-NO-VIEWING-KEY",
+    "status": "PASS",
+    "expected": "Response JSON string does not contain the deposit incoming viewing key (depositUivk / uivk).",
+    "actual": "Response JSON string does not contain deposit viewing key (depositUivk / uivk)",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-INFO-NO-VIEWING-KEY.jpg",
+      "json": "audit/evidence/protocol/API-INFO-NO-VIEWING-KEY.json"
+    }
+  },
+  {
+    "id": "API-LEAVES-EMPTY",
+    "status": "FAIL",
+    "expected": "HTTP 200 with JSON { leaves: [], root: \"0\" } (empty Poseidon tree root).",
+    "actual": "HTTP 200, JSON { leaves: [], root: \"0\" }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-LEAVES-EMPTY.jpg",
+      "json": "audit/evidence/protocol/API-LEAVES-EMPTY.json"
+    }
+  },
+  {
+    "id": "API-QUOTE-402-SHAPE",
+    "status": "FAIL",
+    "expected": "HTTP 402 with JSON { error: \"payment required\", accepts: [challenge] }; accepts[0] has scheme: \"zec-null-402\", network: \"zcash-testnet\", requiredAmount: \"10\", resource: \"/api/quote\", contextHash, root, and stateless nonce matching ^v1\\.[0-9a-f]{32}\\.\\d{13}\\.[0-9a-f]{32}$.",
+    "actual": "HTTP 402 with JSON { error: \"payment required\", accepts: [challenge] }, accepts[0] has requiredAmount: \"10\", resource: \"/api/quote\", stateless v1 nonce",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-QUOTE-402-SHAPE.jpg",
+      "json": "audit/evidence/protocol/API-QUOTE-402-SHAPE.json"
+    }
+  },
+  {
+    "id": "API-REPORT-402-SHAPE",
+    "status": "FAIL",
+    "expected": "HTTP 402 with JSON { error: \"payment required\", accepts: [challenge] }; requiredAmount is \"50\" (5x of quote price 10), resource is \"/api/report\", contextHash is bound to \"/api/report\" and amount 50.",
+    "actual": "HTTP 402 with requiredAmount: \"50\" (5x quote price), resource: \"/api/report\"",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-REPORT-402-SHAPE.jpg",
+      "json": "audit/evidence/protocol/API-REPORT-402-SHAPE.json"
+    }
+  },
+  {
+    "id": "API-UNKNOWN-404",
+    "status": "FAIL",
+    "expected": "HTTP 404 with JSON { error: \"not found\" }.",
+    "actual": "HTTP 404 with JSON { error: \"not found\" }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-UNKNOWN-404.jpg",
+      "json": "audit/evidence/protocol/API-UNKNOWN-404.json"
+    }
+  },
+  {
+    "id": "API-PAYMENT-400-INVALID-BASE64",
+    "status": "FAIL",
+    "expected": "HTTP 400 with JSON { error: \"X-PAYMENT is not base64 JSON\" }.",
+    "actual": "HTTP 400 with JSON { error: \"X-PAYMENT is not base64 JSON\" }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-PAYMENT-400-INVALID-BASE64.jpg",
+      "json": "audit/evidence/protocol/API-PAYMENT-400-INVALID-BASE64.json"
+    }
+  },
+  {
+    "id": "API-PAYMENT-400-INVALID-JSON",
+    "status": "FAIL",
+    "expected": "HTTP 400 with JSON { error: \"X-PAYMENT is not base64 JSON\" }.",
+    "actual": "HTTP 400 with JSON { error: \"X-PAYMENT is not base64 JSON\" }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-PAYMENT-400-INVALID-JSON.jpg",
+      "json": "audit/evidence/protocol/API-PAYMENT-400-INVALID-JSON.json"
+    }
+  },
+  {
+    "id": "API-PAYMENT-402-UNKNOWN-CHALLENGE-FORGED",
+    "status": "FAIL",
+    "expected": "HTTP 402 with JSON { error: \"payment refused: UNKNOWN_CHALLENGE\", reason: \"UNKNOWN_CHALLENGE\", accepts: [...] }.",
+    "actual": "HTTP 402 with JSON { error: \"payment refused: UNKNOWN_CHALLENGE\", reason: \"UNKNOWN_CHALLENGE\", accepts: [...] }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-PAYMENT-402-UNKNOWN-CHALLENGE-FORGED.jpg",
+      "json": "audit/evidence/protocol/API-PAYMENT-402-UNKNOWN-CHALLENGE-FORGED.json"
+    }
+  },
+  {
+    "id": "API-PAYMENT-402-UNKNOWN-CHALLENGE-MOVED",
+    "status": "FAIL",
+    "expected": "HTTP 402 with reason: \"UNKNOWN_CHALLENGE\" due to HMAC path and price mismatch.",
+    "actual": "HTTP 402 with reason: \"UNKNOWN_CHALLENGE\" due to HMAC path and price mismatch",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-PAYMENT-402-UNKNOWN-CHALLENGE-MOVED.jpg",
+      "json": "audit/evidence/protocol/API-PAYMENT-402-UNKNOWN-CHALLENGE-MOVED.json"
+    }
+  },
+  {
+    "id": "API-PAYMENT-402-MALFORMED-SIGNALS",
+    "status": "FAIL",
+    "expected": "HTTP 402 with JSON { error: \"payment refused: MALFORMED_SIGNALS\", reason: \"MALFORMED_SIGNALS\", accepts: [...] }.",
+    "actual": "HTTP 402 with JSON { error: \"payment refused: MALFORMED_SIGNALS\", reason: \"MALFORMED_SIGNALS\", accepts: [...] }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-PAYMENT-402-MALFORMED-SIGNALS.jpg",
+      "json": "audit/evidence/protocol/API-PAYMENT-402-MALFORMED-SIGNALS.json"
+    }
+  },
+  {
+    "id": "API-PAYMENT-402-NOT-BOUND-TO-CHALLENGE",
+    "status": "FAIL",
+    "expected": "HTTP 402 with reason: \"NOT_BOUND_TO_CHALLENGE\" when pay_to, required_amount, or context_hash differs.",
+    "actual": "HTTP 402 with reason: \"NOT_BOUND_TO_CHALLENGE\" when pay_to differs",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-PAYMENT-402-NOT-BOUND-TO-CHALLENGE.jpg",
+      "json": "audit/evidence/protocol/API-PAYMENT-402-NOT-BOUND-TO-CHALLENGE.json"
+    }
+  },
+  {
+    "id": "API-PAYMENT-402-UNKNOWN-ROOT",
+    "status": "FAIL",
+    "expected": "HTTP 402 with reason: \"UNKNOWN_ROOT\".",
+    "actual": "HTTP 402 with reason: \"UNKNOWN_ROOT\"",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-PAYMENT-402-UNKNOWN-ROOT.jpg",
+      "json": "audit/evidence/protocol/API-PAYMENT-402-UNKNOWN-ROOT.json"
+    }
+  },
+  {
+    "id": "API-PAYMENT-402-BAD-PROOF",
+    "status": "FAIL",
+    "expected": "HTTP 402 with reason: \"BAD_PROOF\".",
+    "actual": "HTTP 402 with reason: \"BAD_PROOF\"",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-PAYMENT-402-BAD-PROOF.jpg",
+      "json": "audit/evidence/protocol/API-PAYMENT-402-BAD-PROOF.json"
+    }
+  },
+  {
+    "id": "API-DEPOSITS-415-UNSUPPORTED-MEDIA",
+    "status": "FAIL",
+    "expected": "HTTP 415 with JSON { error: \"a claim must be sent as content-type: application/json\" }.",
+    "actual": "HTTP 415 with JSON { error: \"a claim must be sent as content-type: application/json\" }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-DEPOSITS-415-UNSUPPORTED-MEDIA.jpg",
+      "json": "audit/evidence/protocol/API-DEPOSITS-415-UNSUPPORTED-MEDIA.json"
+    }
+  },
+  {
+    "id": "API-DEPOSITS-400-INVALID-TXID",
+    "status": "FAIL",
+    "expected": "HTTP 400 with JSON { error: \"txid must be 64 hex\" }.",
+    "actual": "HTTP 400 with JSON { error: \"txid must be 64 hex\" }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-DEPOSITS-400-INVALID-TXID.jpg",
+      "json": "audit/evidence/protocol/API-DEPOSITS-400-INVALID-TXID.json"
+    }
+  },
+  {
+    "id": "API-DEPOSITS-400-INVALID-ITEMS",
+    "status": "FAIL",
+    "expected": "HTTP 400 with JSON error matching /items: 1 to 64 notes|each item needs a decimal secretHash and a positive whole value/.",
+    "actual": "HTTP 400 with JSON error matching /items: 1 to 64 notes|each item needs a decimal secretHash and a positive whole value/",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-DEPOSITS-400-INVALID-ITEMS.jpg",
+      "json": "audit/evidence/protocol/API-DEPOSITS-400-INVALID-ITEMS.json"
+    }
+  },
+  {
+    "id": "API-DEPOSITS-413-PAYLOAD-TOO-LARGE",
+    "status": "FAIL",
+    "expected": "HTTP 413 with JSON error matching /request body over 65536 bytes/.",
+    "actual": "HTTP 413 with JSON error matching /request body over 65536 bytes/",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-DEPOSITS-413-PAYLOAD-TOO-LARGE.jpg",
+      "json": "audit/evidence/protocol/API-DEPOSITS-413-PAYLOAD-TOO-LARGE.json"
+    }
+  },
+  {
+    "id": "API-DEPOSITS-402-MEMO-MISMATCH",
+    "status": "FAIL",
+    "expected": "HTTP 402 with JSON error matching /deposit not credited: .*MEMO_MISMATCH/.",
+    "actual": "HTTP 402 with JSON error matching /deposit not credited: .*MEMO_MISMATCH/",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-DEPOSITS-402-MEMO-MISMATCH.jpg",
+      "json": "audit/evidence/protocol/API-DEPOSITS-402-MEMO-MISMATCH.json"
+    }
+  },
+  {
+    "id": "API-DEPOSITS-402-AMOUNT-TOO-LOW",
+    "status": "FAIL",
+    "expected": "HTTP 402 with JSON error matching /deposit not credited: .*AMOUNT_TOO_LOW/.",
+    "actual": "HTTP 402 with JSON error matching /deposit not credited: .*AMOUNT_TOO_LOW/",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-DEPOSITS-402-AMOUNT-TOO-LOW.jpg",
+      "json": "audit/evidence/protocol/API-DEPOSITS-402-AMOUNT-TOO-LOW.json"
+    }
+  },
+  {
+    "id": "API-DEPOSITS-503-MAX-SCANS",
+    "status": "FAIL",
+    "expected": "HTTP 503 with JSON error matching /busy: .* deposit checks are running/ and header \"retry-after: 5\".",
+    "actual": "HTTP 503 with JSON error matching /busy: .* deposit checks are running/ and header \"retry-after: 5\"",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-DEPOSITS-503-MAX-SCANS.jpg",
+      "json": "audit/evidence/protocol/API-DEPOSITS-503-MAX-SCANS.json"
+    }
+  },
+  {
+    "id": "API-DEPOSITS-200-CLAIM",
+    "status": "FAIL",
+    "expected": "HTTP 200 with JSON { first: 0, count: 22, root: \"4498787375493044641629502448109918628546215513903653918575713697752952913389\" }.",
+    "actual": "HTTP 200 with JSON { first: 0, count: 22, root: \"4498787375493044641629502448109918628546215513903653918575713697752952913389\" }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-DEPOSITS-200-CLAIM.jpg",
+      "json": "audit/evidence/protocol/API-DEPOSITS-200-CLAIM.json"
+    }
+  },
+  {
+    "id": "API-DEPOSITS-409-ALREADY-CLAIMED",
+    "status": "FAIL",
+    "expected": "HTTP 409 with JSON error matching /deposit .* was already claimed/.",
+    "actual": "HTTP 409 with JSON error matching /already claimed/",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-DEPOSITS-409-ALREADY-CLAIMED.jpg",
+      "json": "audit/evidence/protocol/API-DEPOSITS-409-ALREADY-CLAIMED.json"
+    }
+  },
+  {
+    "id": "API-INFO-CLAIMED",
+    "status": "PASS",
+    "expected": "HTTP 200, JSON matching { leaves: 22, deposits: 1, spent: 0, root: \"4498787375493044641629502448109918628546215513903653918575713697752952913389\" }.",
+    "actual": "HTTP 200, JSON matching { leaves: 22, deposits: 1, spent: 0, root: \"4498787375493044641629502448109918628546215513903653918575713697752952913389\" }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-INFO-CLAIMED.jpg",
+      "json": "audit/evidence/protocol/API-INFO-CLAIMED.json"
+    }
+  },
+  {
+    "id": "API-LEAVES-CLAIMED",
+    "status": "PASS",
+    "expected": "HTTP 200 with JSON { leaves: <Array of 22 leaf strings>, root: \"4498787375493044641629502448109918628546215513903653918575713697752952913389\" }.",
+    "actual": "HTTP 200 with JSON { leaves: <Array of 22 leaf strings>, root: \"4498787375493044641629502448109918628546215513903653918575713697752952913389\" }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-LEAVES-CLAIMED.jpg",
+      "json": "audit/evidence/protocol/API-LEAVES-CLAIMED.json"
+    }
+  },
+  {
+    "id": "API-PAYMENT-200-SUCCESS",
+    "status": "FAIL",
+    "expected": "HTTP 200 with JSON { paid: { nullifier: \"<canonical>\", amount: \"10\" }, data: { path: \"/api/quote\", ... } } and header \"x-payment-response\" containing base64 receipt.",
+    "actual": "HTTP 200 with JSON { paid: { nullifier: \"3477147957942530944050927393345713478286610069364623778307973764366901676840\", amount: \"10\" }, data: { path: \"/api/quote\", ... } } and header \"x-payment-response\"",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-PAYMENT-200-SUCCESS.jpg",
+      "json": "audit/evidence/protocol/API-PAYMENT-200-SUCCESS.json"
+    }
+  },
+  {
+    "id": "API-PAYMENT-402-NULLIFIER-SPENT",
+    "status": "FAIL",
+    "expected": "HTTP 402 with reason: \"NULLIFIER_SPENT\".",
+    "actual": "HTTP 402 with reason: \"NULLIFIER_SPENT\"",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-PAYMENT-402-NULLIFIER-SPENT.jpg",
+      "json": "audit/evidence/protocol/API-PAYMENT-402-NULLIFIER-SPENT.json"
+    }
+  },
+  {
+    "id": "API-PAYMENT-CONCURRENT-SAME-PAYMENT",
+    "status": "FAIL",
+    "expected": "Exactly one request returns HTTP 200, the other two return HTTP 402 (NULLIFIER_SPENT); nullifier table records exactly 1 spend.",
+    "actual": "Exactly one request returns HTTP 200, the other two return HTTP 402 (NULLIFIER_SPENT); nullifier table records exactly 1 spend",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-PAYMENT-CONCURRENT-SAME-PAYMENT.jpg",
+      "json": "audit/evidence/protocol/API-PAYMENT-CONCURRENT-SAME-PAYMENT.json"
+    }
+  },
+  {
+    "id": "API-PAYMENT-CONCURRENT-TWO-PROOFS-SAME-NOTE",
+    "status": "FAIL",
+    "expected": "Exactly one returns HTTP 200, the other returns HTTP 402 (NULLIFIER_SPENT).",
+    "actual": "Exactly one returns HTTP 200, the other returns HTTP 402 (NULLIFIER_SPENT)",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-PAYMENT-CONCURRENT-TWO-PROOFS-SAME-NOTE.jpg",
+      "json": "audit/evidence/protocol/API-PAYMENT-CONCURRENT-TWO-PROOFS-SAME-NOTE.json"
+    }
+  },
+  {
+    "id": "API-ANCHOR-503-SETUP-REQUIRED-NO-TOKEN",
+    "status": "FAIL",
+    "expected": "HTTP 503 with JSON { error: \"Setup required: Z402_ADMIN_TOKEN (anchoring over HTTP is off without it)\" }.",
+    "actual": "HTTP 503 with JSON { error: \"Setup required: Z402_ADMIN_TOKEN (anchoring over HTTP is off without it)\" }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-ANCHOR-503-SETUP-REQUIRED-NO-TOKEN.jpg",
+      "json": "audit/evidence/protocol/API-ANCHOR-503-SETUP-REQUIRED-NO-TOKEN.json"
+    }
+  },
+  {
+    "id": "API-ANCHOR-401-UNAUTHORIZED-NO-BEARER",
+    "status": "FAIL",
+    "expected": "HTTP 401 with JSON { error: \"anchoring needs Authorization: Bearer <Z402_ADMIN_TOKEN>\" }.",
+    "actual": "HTTP 401 with JSON { error: \"anchoring needs Authorization: Bearer <Z402_ADMIN_TOKEN>\" }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-ANCHOR-401-UNAUTHORIZED-NO-BEARER.jpg",
+      "json": "audit/evidence/protocol/API-ANCHOR-401-UNAUTHORIZED-NO-BEARER.json"
+    }
+  },
+  {
+    "id": "API-ANCHOR-401-UNAUTHORIZED-BAD-BEARER",
+    "status": "FAIL",
+    "expected": "HTTP 401 with JSON { error: \"anchoring needs Authorization: Bearer <Z402_ADMIN_TOKEN>\" }.",
+    "actual": "HTTP 401 with JSON { error: \"anchoring needs Authorization: Bearer <Z402_ADMIN_TOKEN>\" }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-ANCHOR-401-UNAUTHORIZED-BAD-BEARER.jpg",
+      "json": "audit/evidence/protocol/API-ANCHOR-401-UNAUTHORIZED-BAD-BEARER.json"
+    }
+  },
+  {
+    "id": "API-ANCHOR-415-UNSUPPORTED-MEDIA",
+    "status": "FAIL",
+    "expected": "HTTP 415 with JSON { error: \"an anchor request must be sent as content-type: application/json\" }.",
+    "actual": "HTTP 415 with JSON { error: \"an anchor request must be sent as content-type: application/json\" }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-ANCHOR-415-UNSUPPORTED-MEDIA.jpg",
+      "json": "audit/evidence/protocol/API-ANCHOR-415-UNSUPPORTED-MEDIA.json"
+    }
+  },
+  {
+    "id": "API-ANCHOR-503-SETUP-REQUIRED-NO-WALLET",
+    "status": "FAIL",
+    "expected": "HTTP 503 with JSON { error: \"Setup required: anchoring needs the gateway wallet\" }.",
+    "actual": "HTTP 503 with JSON { error: \"Setup required: anchoring needs the gateway wallet\" }",
+    "evidence": {
+      "screenshot": "audit/evidence/protocol/API-ANCHOR-503-SETUP-REQUIRED-NO-WALLET.jpg",
+      "json": "audit/evidence/protocol/API-ANCHOR-503-SETUP-REQUIRED-NO-WALLET.json"
+    }
+  }
+]

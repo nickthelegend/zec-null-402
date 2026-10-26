@@ -1,0 +1,1 @@
+UNTESTED: needs opencode with OpenRouter credentials and a funded send

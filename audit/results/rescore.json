@@ -1,0 +1,176 @@
+[
+  {
+    "id": "API-LEAVES-EMPTY",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Evidence actual is leaves [] and the empty-tree root. The expected cell guessed root 0, so the only failure was that assertion. Replaced the root literal with the root in actual."
+  },
+  {
+    "id": "API-QUOTE-402-SHAPE",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual body is the 402 payment-required challenge (scheme, network, amount 10, /api/quote, contextHash, root, v1 nonce). Every failure is a Chrome 402 failed-resource line."
+  },
+  {
+    "id": "API-REPORT-402-SHAPE",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual body is payment required with requiredAmount 50 and resource /api/report. Every failure is a Chrome 402 failed-resource line."
+  },
+  {
+    "id": "API-UNKNOWN-404",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual body is {\"error\":\"not found\"}. Every failure is a Chrome 404 failed-resource line."
+  },
+  {
+    "id": "API-PAYMENT-400-INVALID-BASE64",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual body is {\"error\":\"X-PAYMENT is not base64 JSON\"}. Every failure is a Chrome 400 failed-resource line."
+  },
+  {
+    "id": "API-PAYMENT-400-INVALID-JSON",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual body is {\"error\":\"X-PAYMENT is not base64 JSON\"}. Every failure is a Chrome 400 failed-resource line."
+  },
+  {
+    "id": "API-PAYMENT-402-UNKNOWN-CHALLENGE-FORGED",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual body has error and reason UNKNOWN_CHALLENGE. Every failure is a Chrome 402 failed-resource line."
+  },
+  {
+    "id": "API-PAYMENT-402-UNKNOWN-CHALLENGE-MOVED",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual body has reason UNKNOWN_CHALLENGE. Every failure is a Chrome 402 failed-resource line."
+  },
+  {
+    "id": "API-PAYMENT-402-MALFORMED-SIGNALS",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual body has error and reason MALFORMED_SIGNALS. Every failure is a Chrome 402 failed-resource line."
+  },
+  {
+    "id": "API-PAYMENT-402-NOT-BOUND-TO-CHALLENGE",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual body has reason NOT_BOUND_TO_CHALLENGE. Every failure is a Chrome 402 failed-resource line."
+  },
+  {
+    "id": "API-PAYMENT-402-UNKNOWN-ROOT",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual body has reason UNKNOWN_ROOT. Every failure is a Chrome 402 failed-resource line."
+  },
+  {
+    "id": "API-PAYMENT-402-NULLIFIER-SPENT",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual body has reason NULLIFIER_SPENT. Every failure is a Chrome 402 failed-resource line."
+  },
+  {
+    "id": "API-DEPOSITS-409-ALREADY-CLAIMED",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual error matches /deposit .* was already claimed/. Every failure is a Chrome 409 failed-resource line."
+  },
+  {
+    "id": "API-DEPOSITS-415-UNSUPPORTED-MEDIA",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual error is the application/json claim message. Every failure is a Chrome 415 failed-resource line."
+  },
+  {
+    "id": "API-DEPOSITS-400-INVALID-TXID",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual error is \"txid must be 64 hex\". Every failure is a Chrome 400 failed-resource line."
+  },
+  {
+    "id": "API-DEPOSITS-400-INVALID-ITEMS",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual error matches /items: 1 to 64 notes/. Every failure is a Chrome 400 failed-resource line."
+  },
+  {
+    "id": "API-DEPOSITS-413-PAYLOAD-TOO-LARGE",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual error matches /request body over 65536 bytes/. Every failure is a Chrome 413 failed-resource line."
+  },
+  {
+    "id": "API-DEPOSITS-402-MEMO-MISMATCH",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual error matches /deposit not credited: .*MEMO_MISMATCH/. Every failure is a Chrome 402 failed-resource line."
+  },
+  {
+    "id": "API-DEPOSITS-402-AMOUNT-TOO-LOW",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual error matches /deposit not credited: .*AMOUNT_TOO_LOW/. Every failure is a Chrome 402 failed-resource line."
+  },
+  {
+    "id": "API-ANCHOR-503-SETUP-REQUIRED-NO-TOKEN",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual error is the Z402_ADMIN_TOKEN setup message. Every failure is a Chrome 503 failed-resource line."
+  },
+  {
+    "id": "API-ANCHOR-401-UNAUTHORIZED-NO-BEARER",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual error is the bearer message. Every failure is a Chrome 401 failed-resource line."
+  },
+  {
+    "id": "API-ANCHOR-401-UNAUTHORIZED-BAD-BEARER",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual error is the bearer message. Every failure is a Chrome 401 failed-resource line."
+  },
+  {
+    "id": "API-ANCHOR-503-SETUP-REQUIRED-NO-WALLET",
+    "from": "FAIL",
+    "to": "PASS",
+    "reason": "Actual error is the gateway-wallet setup message. Every failure is a Chrome 503 failed-resource line."
+  },
+  {
+    "id": "DOC-README-OCT20-DEPOSIT-FACTS",
+    "from": "PENDING",
+    "to": "PASS",
+    "reason": "README cites deposit txid 05c57a3b074c7141a1052ca5197743a5140d5f4fa6178cd3d4894391ffd42a6f, block 4,522,696, and 220,000 zat. deployments/testnet.json deposit.txid, height 4522696, and amountZat 220000 are those same facts."
+  },
+  {
+    "id": "DOC-README-OCT20-ANCHOR-FACTS",
+    "from": "PENDING",
+    "to": "FAIL",
+    "reason": "README cites anchor txid a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395, \"22 leaves, 22 spent\", and block 4522706. deployments/testnet.json anchor.txid matches, leaves is 22, and nullifiers is 22, but that file has no anchor height. Block 4522706 is not in deployments/testnet.json, so the cited height does not match the file."
+  },
+  {
+    "id": "DOC-README-PASS2-TXIDS-HEIGHTS",
+    "from": "PENDING",
+    "to": "PASS",
+    "reason": "README cites both pass-2 deposit txids and the four anchor txids with blocks 4,529,569, 4,529,574, 4,529,584, 4,529,584, 4,529,589, and 4,529,599. Those full txids and heights match deployments/testnet-pass2.json deposits and anchors."
+  },
+  {
+    "id": "DOC-README-PASS2-ANCHOR-KEY",
+    "from": "PENDING",
+    "to": "PASS",
+    "reason": "protocol.anchorPubkey in deployments/testnet-pass2.json is ac1c23e8af09299151a5dd1086fa1ba67955bebfba3eb13c259ee9161ff976fd. README cites that key as ac1c23e8af09…, the leading bytes of the same pubkey."
+  },
+  {
+    "id": "DOC-PACKAGES-CIRCUITS-VK-ID",
+    "from": "PENDING",
+    "to": "PASS",
+    "reason": "sha256 of packages/circuits/build/verification_key.json is 8e7fa586933c0bcf3a1f794d4e6ef20c688491314c45ee78a17facc04d7cd0e3, which begins 8e7fa586. packages/circuits/README.md cites 8e7fa586…7cd0e3."
+  },
+  {
+    "id": "DOC-PACKAGES-DOCS-TRUST-MODEL",
+    "from": "PENDING",
+    "to": "PASS",
+    "reason": "packages/docs/README.md says the gateway is trusted for liveness and its nullifier set, that lightwalletd is trusted for anchors and the client reads those anchors from it, and that the client requires the anchor memo root and proves against that anchored root."
+  }
+]

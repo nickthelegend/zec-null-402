@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "refusing to fetch https://example.com: this client only talks to its gateway http://127.0.0.1:8405"
+    }
+  ],
+  "isError": true
+}

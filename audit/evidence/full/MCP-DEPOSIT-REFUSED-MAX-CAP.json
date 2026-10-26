@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "refused: deposit of 20000 zat is above Z402_MAX_DEPOSIT_ZAT (1000)"
+    }
+  ],
+  "isError": true
+}

@@ -1,0 +1,4 @@
+{
+  "code": "ANCHOR_COMPETING",
+  "message": "refusing to pay: ANCHOR_COMPETING: anchor 3ed5319c06e9… at height 4529606 (6 leaves, root 165039324883…) is not on the leaf history this gateway serves (6 leaves): it has anchored conflicting roots, signed with its own key"
+}

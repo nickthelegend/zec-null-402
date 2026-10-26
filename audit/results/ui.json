@@ -1,0 +1,822 @@
+[
+  {
+    "id": "UI-LAND-LOAD-1280",
+    "status": "PASS",
+    "expected": "HTTP 200, 0 console errors, 0 failed same-origin requests; document title matches /Kippu/; h1 has \"One deposit. A ticket per call.\"; article \"The shielded deposit that bought the tickets\" contains \"22\" and \"220,000 zat bought 22 tickets\"; note \"Run summary\" contains \"22 tickets\".",
+    "actual": "HTTP 200; title: Kippu — one Zcash deposit, a ZK ticket per API call; h1: One deposit. A ticket per call.; article: 220,000 zat bought 22 tickets; summary: 22 tickets",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-LOAD-1280.jpg",
+      "json": "audit/evidence/ui/UI-LAND-LOAD-1280.json"
+    }
+  },
+  {
+    "id": "UI-LAND-LOAD-375",
+    "status": "PASS",
+    "expected": "HTTP 200, 0 console errors; document.documentElement.scrollWidth <= window.innerWidth (no horizontal page scroll); h1 has \"One deposit. A ticket per call.\"; pass article and hero visible.",
+    "actual": "HTTP 200; scrollWidth 375 <= 375; h1: One deposit. A ticket per call.; pass article visible",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-LOAD-375.jpg",
+      "json": "audit/evidence/ui/UI-LAND-LOAD-375.json"
+    }
+  },
+  {
+    "id": "UI-LAND-RAIL-TEAR-1280",
+    "status": "PASS",
+    "expected": "ol.rail initial class matches /armed/; on scrolling into view class matches /torn/; all 22 li.tix have computed opacity 1 and transform none; li.tix:nth-child(4) transitionDelay is 0.135s (staggered 45ms per ticket).",
+    "actual": "rail torn; 22 tickets opacity 1, transform none; tix[3] transitionDelay 0.135s",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-RAIL-TEAR-1280.jpg",
+      "json": "audit/evidence/ui/UI-LAND-RAIL-TEAR-1280.json"
+    }
+  },
+  {
+    "id": "UI-LAND-RAIL-REDUCED-MOTION",
+    "status": "PASS",
+    "expected": "prefers-reduced-motion: reduce; ol.rail does not have class /armed/; first li.tix computed opacity is 1 and transitionDuration is 0s; documentElement scrollBehavior is \"auto\"; rail buttons scroll tickets instantly.",
+    "actual": "prefers-reduced-motion: reduce; rail not armed; tix0 opacity 1, transitionDuration 0s; scrollBehavior auto",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-RAIL-REDUCED-MOTION.jpg",
+      "json": "audit/evidence/ui/UI-LAND-RAIL-REDUCED-MOTION.json"
+    }
+  },
+  {
+    "id": "UI-LAND-RAIL-ITEMS",
+    "status": "PASS",
+    "expected": "ol.rail li.tix count is 22; each ticket code title matches the corresponding nullifier from testnet.json; first 20 tickets contain \"proof <ms> ms\" (range 346–569 ms); last 2 tickets have class \"fixture\"; .rail-foot contains \"346–569 ms\".",
+    "actual": "22 tickets; last 2 fixtures; proof times in range 346-569 ms; rail-foot contains 346–569 ms",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-RAIL-ITEMS.jpg",
+      "json": "audit/evidence/ui/UI-LAND-RAIL-ITEMS.json"
+    }
+  },
+  {
+    "id": "UI-LAND-RAIL-SCROLL-ARROWS",
+    "status": "PASS",
+    "expected": "Clicking button \"Scroll tickets right\" increases rail.scrollLeft to > 100; clicking button \"Scroll tickets left\" returns rail.scrollLeft to 0.",
+    "actual": "button Scroll tickets right increased scrollLeft > 100; button Scroll tickets left returned to 0",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-RAIL-SCROLL-ARROWS.jpg",
+      "json": "audit/evidence/ui/UI-LAND-RAIL-SCROLL-ARROWS.json"
+    }
+  },
+  {
+    "id": "UI-LAND-RAIL-SCROLL-KEYBOARD",
+    "status": "PASS",
+    "expected": "Focusing ol.rail and pressing ArrowRight and End keys increases rail.scrollLeft to > 100.",
+    "actual": "focused ol.rail and keyboard scroll increased rail.scrollLeft > 100",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-RAIL-SCROLL-KEYBOARD.jpg",
+      "json": "audit/evidence/ui/UI-LAND-RAIL-SCROLL-KEYBOARD.json"
+    }
+  },
+  {
+    "id": "UI-LAND-RAIL-EDGE-FADE",
+    "status": "PASS",
+    "expected": "getComputedStyle(rail).maskImage matches /linear-gradient/ when scrollLeft is 0; matches \"none\" when scrolled to maximum right edge so the last ticket is fully visible.",
+    "actual": "getComputedStyle(rail).maskImage is linear-gradient at 0 and none when scrolled to end",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-RAIL-EDGE-FADE.jpg",
+      "json": "audit/evidence/ui/UI-LAND-RAIL-EDGE-FADE.json"
+    }
+  },
+  {
+    "id": "UI-LAND-NAV-SECTIONS-1280",
+    "status": "PASS",
+    "expected": "Header nav links \"The tickets\", \"How it works\", \"Proof\", \"Status\" navigate to #rail, #how, #proof, #status and scroll target sections into viewport; GitHub link href is \"https://github.com/nickthelegend/zec-null-402\".",
+    "actual": "header nav links navigate to #rail, #how, #proof, #status; GitHub link correct",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-NAV-SECTIONS-1280.jpg",
+      "json": "audit/evidence/ui/UI-LAND-NAV-SECTIONS-1280.json"
+    }
+  },
+  {
+    "id": "UI-LAND-NAV-SECTIONS-375",
+    "status": "FAIL",
+    "expected": "Header nav links \"The tickets\", \"How it works\", \"Proof\", \"Status\" are hidden on mobile (display: none); GitHub icon button remains visible.",
+    "actual": "assertion failed: nav links not hidden on mobile: display is flex",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-NAV-SECTIONS-375.jpg",
+      "json": "audit/evidence/ui/UI-LAND-NAV-SECTIONS-375.json"
+    }
+  },
+  {
+    "id": "UI-LAND-CTA-LINKS",
+    "status": "FAIL",
+    "expected": "Clicking \"See the 22 tickets\" navigates to #rail; clicking \"Read the evidence\" navigates to /evidence.html with HTTP 200; clicking \"Kippu, home\" navigates to #main.",
+    "actual": "1280px: assertion failed: See 22 tickets link missing; 375px: assertion failed: See 22 tickets link missing",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-CTA-LINKS.jpg",
+      "json": "audit/evidence/ui/UI-LAND-CTA-LINKS.json"
+    }
+  },
+  {
+    "id": "UI-LAND-SKIP-LINK",
+    "status": "PASS",
+    "expected": "Link \"Skip to content\" is hidden until focused with Tab; boundingClientRect().top >= 0 when focused; pressing Enter navigates to #main.",
+    "actual": "Skip to content link hidden until focused; boundingClientRect().top >= 0 when focused; href #main",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-SKIP-LINK.jpg",
+      "json": "audit/evidence/ui/UI-LAND-SKIP-LINK.json"
+    }
+  },
+  {
+    "id": "UI-LAND-NO-OVERCLAIMS",
+    "status": "PASS",
+    "expected": "#status h2 is \"Recorded testnet evidence.\"; #status p contains \"The hosted gateway answers a 402 but has no wallet: anchoring is Setup required, so no client can pay it yet.\" linking to hosted /api/info; #proof has \"0\" \"Transactions\" and \"0 on-chain transactions per paid call.\"; obsolete overclaims absent.",
+    "actual": "status h2 Recorded testnet evidence; status p mentions Setup required; proof has 0 on-chain transactions per paid call; no overclaims",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-NO-OVERCLAIMS.jpg",
+      "json": "audit/evidence/ui/UI-LAND-NO-OVERCLAIMS.json"
+    }
+  },
+  {
+    "id": "UI-LAND-LINKS-AUDIT",
+    "status": "PASS",
+    "expected": "All internal hrefs starting with # resolve to valid element IDs; explorer links match recorded 64-hex run txids from testnet/pass2/agent; repo links point to tracked files in git; 0 broken links.",
+    "actual": "all internal hrefs starting with # resolve to valid element IDs; 0 broken links",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-LINKS-AUDIT.jpg",
+      "json": "audit/evidence/ui/UI-LAND-LINKS-AUDIT.json"
+    }
+  },
+  {
+    "id": "UI-LAND-LIVE-LOAD-1280",
+    "status": "PASS",
+    "expected": "HTTP 200, 0 console errors, 0 failed network requests; title matches /Kippu/; h1 has \"One deposit. A ticket per call.\"; pass article displays 22 tickets and 220,000 zat. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "HTTP 200, title matches /Kippu/, h1 has One deposit. A ticket per call., pass article has 22 tickets and 220,000 zat",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-LIVE-LOAD-1280.jpg",
+      "json": "audit/evidence/ui/UI-LAND-LIVE-LOAD-1280.json"
+    }
+  },
+  {
+    "id": "UI-LAND-LIVE-LOAD-375",
+    "status": "PASS",
+    "expected": "HTTP 200, 0 console errors; document.documentElement.scrollWidth <= window.innerWidth (no horizontal page scroll); h1 visible. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "HTTP 200, scrollWidth <= innerWidth, h1 visible",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-LIVE-LOAD-375.jpg",
+      "json": "audit/evidence/ui/UI-LAND-LIVE-LOAD-375.json"
+    }
+  },
+  {
+    "id": "UI-LAND-LIVE-RAIL-TEAR",
+    "status": "PASS",
+    "expected": "ol.rail transitions from armed to torn on scroll into view; tickets visible with opacity 1 and transform none. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "ol.rail transitions from armed to torn; tickets visible with opacity 1 and transform none",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-LIVE-RAIL-TEAR.jpg",
+      "json": "audit/evidence/ui/UI-LAND-LIVE-RAIL-TEAR.json"
+    }
+  },
+  {
+    "id": "UI-LAND-LIVE-RAIL-REDUCED-MOTION",
+    "status": "PASS",
+    "expected": "prefers-reduced-motion: reduce; ol.rail not armed, transitionDuration 0s, instant scroll on rail buttons. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "prefers-reduced-motion: reduce; ol.rail not armed, transitionDuration 0s, instant scroll on rail buttons",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-LIVE-RAIL-REDUCED-MOTION.jpg",
+      "json": "audit/evidence/ui/UI-LAND-LIVE-RAIL-REDUCED-MOTION.json"
+    }
+  },
+  {
+    "id": "UI-LAND-LIVE-RAIL-SCROLL",
+    "status": "PASS",
+    "expected": "Right scroll button increases rail.scrollLeft to > 100; left scroll button resets to 0; edge fade mask is linear-gradient while scrolling, none at max scroll. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "right scroll button increases rail.scrollLeft > 100; left scroll button resets to 0",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-LIVE-RAIL-SCROLL.jpg",
+      "json": "audit/evidence/ui/UI-LAND-LIVE-RAIL-SCROLL.json"
+    }
+  },
+  {
+    "id": "UI-LAND-LIVE-NAV-1280",
+    "status": "PASS",
+    "expected": "Header section links navigate to #rail, #how, #proof, #status and scroll target sections into viewport; GitHub links to repo. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "header section links navigate to #rail, #how, #proof, #status and scroll sections into view; GitHub links to repo",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-LIVE-NAV-1280.jpg",
+      "json": "audit/evidence/ui/UI-LAND-LIVE-NAV-1280.json"
+    }
+  },
+  {
+    "id": "UI-LAND-LIVE-NAV-375",
+    "status": "FAIL",
+    "expected": "Header section links hidden on mobile; GitHub link visible. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "assertion failed: nav links not hidden on mobile",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-LIVE-NAV-375.jpg",
+      "json": "audit/evidence/ui/UI-LAND-LIVE-NAV-375.json"
+    }
+  },
+  {
+    "id": "UI-LAND-LIVE-CTA-LINKS",
+    "status": "PASS",
+    "expected": "\"See the 22 tickets\" jumps to #rail; \"Read the evidence\" navigates to /evidence.html with HTTP 200. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "See the 22 tickets jumps to #rail; Read the evidence navigates to evidence.html",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-LIVE-CTA-LINKS.jpg",
+      "json": "audit/evidence/ui/UI-LAND-LIVE-CTA-LINKS.json"
+    }
+  },
+  {
+    "id": "UI-LAND-LIVE-SKIP-LINK",
+    "status": "PASS",
+    "expected": "Hidden until Tab focused, top >= 0, Enter jumps to #main. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "skip link hidden offscreen, focuses on Tab, navigates to #main",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-LIVE-SKIP-LINK.jpg",
+      "json": "audit/evidence/ui/UI-LAND-LIVE-SKIP-LINK.json"
+    }
+  },
+  {
+    "id": "UI-LAND-LIVE-NO-OVERCLAIMS",
+    "status": "PASS",
+    "expected": "#status h2 is \"Recorded testnet evidence.\"; #proof has \"0 on-chain transactions per paid call.\"; obsolete strings absent. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "#status h2 is Recorded testnet evidence.; #proof states 0 on-chain transactions per paid call.; no overclaims",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-LIVE-NO-OVERCLAIMS.jpg",
+      "json": "audit/evidence/ui/UI-LAND-LIVE-NO-OVERCLAIMS.json"
+    }
+  },
+  {
+    "id": "UI-LAND-LIVE-LINKS-AUDIT",
+    "status": "PASS",
+    "expected": "All hash links resolve on page, explorer links match recorded txids, internal links resolve HTTP 200. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "all internal anchors valid; explorer links match recorded txids; 0 broken links",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-LAND-LIVE-LINKS-AUDIT.jpg",
+      "json": "audit/evidence/ui/UI-LAND-LIVE-LINKS-AUDIT.json"
+    }
+  },
+  {
+    "id": "UI-EVID-LOAD-1280",
+    "status": "FAIL",
+    "expected": "HTTP 200, 0 console errors, 0 failed same-origin requests; document title matches /Kippu/; pass article displays deposit block height \"4,522,696\".",
+    "actual": "assertion failed: h1 mismatch",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-LOAD-1280.jpg",
+      "json": "audit/evidence/ui/UI-EVID-LOAD-1280.json"
+    }
+  },
+  {
+    "id": "UI-EVID-LOAD-375",
+    "status": "PASS",
+    "expected": "HTTP 200, 0 console errors; document.documentElement.scrollWidth <= window.innerWidth (no horizontal page scroll); pass article and hero visible.",
+    "actual": "HTTP 200, scrollWidth <= innerWidth, hero and nav rendered",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-LOAD-375.jpg",
+      "json": "audit/evidence/ui/UI-EVID-LOAD-375.json"
+    }
+  },
+  {
+    "id": "UI-EVID-NAV-MOBILE-375",
+    "status": "PASS",
+    "expected": "nav[aria-label=\"Evidence sections\"] is visible on mobile; contains links Deposit (#deposit), Pass 2 (#live), Voided (#void), Conditions (#terms); clicking Conditions navigates to #terms in viewport.",
+    "actual": "mobile section nav links to #deposit, #live, #void, #terms present and navigate without scroll overflow",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-NAV-MOBILE-375.jpg",
+      "json": "audit/evidence/ui/UI-EVID-NAV-MOBILE-375.json"
+    }
+  },
+  {
+    "id": "UI-EVID-PASS2-ROWS",
+    "status": "FAIL",
+    "expected": "h2 is \"Signed anchors, the default window, four paid calls.\"; .agent ol > li has 9 rows; 7 txlinks link in order to pass2 deposit1, anchor0, anchor1, deposit2, anchor2, anchor3, competing txid; row 2 has \"3 × 200\" and proofs \"548, 351 and 361 ms\"; row 5 has \"proof 574 ms\".",
+    "actual": "1280px: assertion failed: Pass 2 row count is 0; 375px: assertion failed: Pass 2 row count is 0",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-PASS2-ROWS.jpg",
+      "json": "audit/evidence/ui/UI-EVID-PASS2-ROWS.json"
+    }
+  },
+  {
+    "id": "UI-EVID-PASS2-PROBE-VOID",
+    "status": "FAIL",
+    "expected": "Row 6 describes probe naming older anchor c69195a9… with client proving against newest 4265af65…; row 8 has tag \"void\" and \"ANCHOR_COMPETING\"; .agent-side mentions hosted gateway has no wallet to anchor roots.",
+    "actual": "1280px: assertion failed: rows count < 10; 375px: assertion failed: rows count < 10",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-PASS2-PROBE-VOID.jpg",
+      "json": "audit/evidence/ui/UI-EVID-PASS2-PROBE-VOID.json"
+    }
+  },
+  {
+    "id": "UI-EVID-VOIDED-CODES",
+    "status": "FAIL",
+    "expected": "8 void items in ul.voids > li each with stamp \"VOID\"; codes match replayWithNewContext, replayOfSecondNote, tamperedAmount, proofForAnotherRequest, tamperedNullifier, \"409 already claimed\", \"MEMO_MISMATCH\", and \"ANCHOR_COMPETING\".",
+    "actual": "1280px: assertion failed: missing refusal code: BAD_PRICE; 375px: assertion failed: missing refusal code: BAD_PRICE",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-VOIDED-CODES.jpg",
+      "json": "audit/evidence/ui/UI-EVID-VOIDED-CODES.json"
+    }
+  },
+  {
+    "id": "UI-EVID-AGENT-SECTION",
+    "status": "PASS",
+    "expected": "Heading #agent-h has \"The per-deposit cap blocked the 50-unit note. The wallet still ran dry.\"; .agent-side has \"9 / 23\" and \"+1 double credit (pre-fix)\"; .agent has \"credited it twice (leaves 25 and 26\"; links match deposit txids from agent log.",
+    "actual": "mentions 23 agent tool calls recorded in agent-run-2026-10-20.jsonl; note explains pre-fix double credit on row 16",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-AGENT-SECTION.jpg",
+      "json": "audit/evidence/ui/UI-EVID-AGENT-SECTION.json"
+    }
+  },
+  {
+    "id": "UI-EVID-CONDITIONS-TERMS",
+    "status": "FAIL",
+    "expected": "Contains \"Anchors count paid calls.\", \"At low traffic that times single calls to within about 10 minutes.\", \"Both testnet runs had one depositor\", and measured latency \"the first call paid 2 min 44 s after the deposit was sent: the deposit was mined in 21 s\".",
+    "actual": "1280px: assertion failed: missing sqlite; 375px: assertion failed: missing sqlite",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-CONDITIONS-TERMS.jpg",
+      "json": "audit/evidence/ui/UI-EVID-CONDITIONS-TERMS.json"
+    }
+  },
+  {
+    "id": "UI-EVID-NO-LOG-BUTTON",
+    "status": "PASS",
+    "expected": "Exactly 0 buttons or links contain the word \"log\" (case-insensitive word boundary); references deployments/agent-run-2026-10-20.jsonl instead.",
+    "actual": "0 buttons with label \"log\" (case-insensitive); evidence is purely read-only",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-NO-LOG-BUTTON.jpg",
+      "json": "audit/evidence/ui/UI-EVID-NO-LOG-BUTTON.json"
+    }
+  },
+  {
+    "id": "UI-EVID-LINKS-AUDIT",
+    "status": "PASS",
+    "expected": "All section anchors (#deposit, #live, #void, #terms) exist on page; all txlinks match run txids; internal navigation resolves HTTP 200.",
+    "actual": "all internal hrefs resolve to IDs; external links open in new tab with noreferrer; explorer links match recorded txids",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-LINKS-AUDIT.jpg",
+      "json": "audit/evidence/ui/UI-EVID-LINKS-AUDIT.json"
+    }
+  },
+  {
+    "id": "UI-EVID-LIVE-LOAD-1280",
+    "status": "FAIL",
+    "expected": "HTTP 200, 0 console errors, pass article shows deposit block height 4,522,696. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "assertion failed: h1 mismatch",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-LIVE-LOAD-1280.jpg",
+      "json": "audit/evidence/ui/UI-EVID-LIVE-LOAD-1280.json"
+    }
+  },
+  {
+    "id": "UI-EVID-LIVE-LOAD-375",
+    "status": "PASS",
+    "expected": "HTTP 200, 0 console errors, document.documentElement.scrollWidth <= window.innerWidth (no horizontal page scroll). A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "HTTP 200, scrollWidth <= innerWidth, hero and nav rendered",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-LIVE-LOAD-375.jpg",
+      "json": "audit/evidence/ui/UI-EVID-LIVE-LOAD-375.json"
+    }
+  },
+  {
+    "id": "UI-EVID-LIVE-NAV-MOBILE-375",
+    "status": "PASS",
+    "expected": "nav[aria-label=\"Evidence sections\"] visible with Deposit, Pass 2, Voided, Conditions links. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "mobile section navigation presents links to #deposit, #live, #void, #terms",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-LIVE-NAV-MOBILE-375.jpg",
+      "json": "audit/evidence/ui/UI-EVID-LIVE-NAV-MOBILE-375.json"
+    }
+  },
+  {
+    "id": "UI-EVID-LIVE-PASS2-ROWS",
+    "status": "FAIL",
+    "expected": "9 rows in .agent ol > li; txlinks in order; row 2 has \"3 × 200\"; row 8 has tag \"void\" and \"ANCHOR_COMPETING\". A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "1280px: assertion failed: Pass 2 row count is 0; 375px: assertion failed: Pass 2 row count is 0",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-LIVE-PASS2-ROWS.jpg",
+      "json": "audit/evidence/ui/UI-EVID-LIVE-PASS2-ROWS.json"
+    }
+  },
+  {
+    "id": "UI-EVID-LIVE-VOIDED-CODES",
+    "status": "FAIL",
+    "expected": "8 void items with stamp \"VOID\" and codes matching recorded refusals. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "1280px: assertion failed: missing code: BAD_PRICE; 375px: assertion failed: missing code: BAD_PRICE",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-LIVE-VOIDED-CODES.jpg",
+      "json": "audit/evidence/ui/UI-EVID-LIVE-VOIDED-CODES.json"
+    }
+  },
+  {
+    "id": "UI-EVID-LIVE-AGENT-SECTION",
+    "status": "PASS",
+    "expected": "Shows \"9 / 23\" refused, \"+1 double credit (pre-fix)\", txlinks to agent deposit transactions. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "mentions 23 agent tool calls; pre-fix double credit explained",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-LIVE-AGENT-SECTION.jpg",
+      "json": "audit/evidence/ui/UI-EVID-LIVE-AGENT-SECTION.json"
+    }
+  },
+  {
+    "id": "UI-EVID-LIVE-CONDITIONS-TERMS",
+    "status": "PASS",
+    "expected": "Shows measured latency \"the first call paid 2 min 44 s after the deposit was sent: the deposit was mined in 21 s\". A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "lists conditions: trusted lightwalletd, single depositor per run caveat, SQLite gateway state",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-LIVE-CONDITIONS-TERMS.jpg",
+      "json": "audit/evidence/ui/UI-EVID-LIVE-CONDITIONS-TERMS.json"
+    }
+  },
+  {
+    "id": "UI-EVID-LIVE-NO-LOG-BUTTON",
+    "status": "PASS",
+    "expected": "0 buttons or links with label \"log\". A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "0 buttons with label \"log\" (case-insensitive); evidence is purely read-only",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-LIVE-NO-LOG-BUTTON.jpg",
+      "json": "audit/evidence/ui/UI-EVID-LIVE-NO-LOG-BUTTON.json"
+    }
+  },
+  {
+    "id": "UI-EVID-LIVE-LINKS-AUDIT",
+    "status": "PASS",
+    "expected": "All fragment links resolve, explorer links point to valid 64-hex run txids, 0 broken links. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "all internal hrefs resolve to IDs; external links open in new tab with noreferrer; explorer links match recorded txids",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-EVID-LIVE-LINKS-AUDIT.jpg",
+      "json": "audit/evidence/ui/UI-EVID-LIVE-LINKS-AUDIT.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LOAD-1280",
+    "status": "PASS",
+    "expected": "HTTP 200, 0 console errors, 0 failed same-origin requests; document title matches /Kippu/; h1 has \"20 paid calls. No transaction per call.\"; pass article shows \"0.0022 TAZ\", height \"4,522,696\", \"Punched 22 of 22\".",
+    "actual": "HTTP 200, title matches /Kippu/, h1 has 20 paid calls. No transaction per call., deposit punch card displays 22 punches",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LOAD-1280.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LOAD-1280.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LOAD-375",
+    "status": "PASS",
+    "expected": "HTTP 200, 0 console errors; document.documentElement.scrollWidth <= window.innerWidth (no horizontal page scroll); h1 visible.",
+    "actual": "HTTP 200, scrollWidth <= innerWidth, header and deposit card visible",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LOAD-375.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LOAD-375.json"
+    }
+  },
+  {
+    "id": "UI-DASH-PUNCHES-LIST",
+    "status": "PASS",
+    "expected": "List has 22 items: 20 with class \".p\" (paid calls) and 2 with class \".f\" (fixture notes); stats show \"346–569ms\".",
+    "actual": "22 punches rendered in ol.punches; first 20 marked spent/paid; last 2 marked attack fixture",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-PUNCHES-LIST.jpg",
+      "json": "audit/evidence/ui/UI-DASH-PUNCHES-LIST.json"
+    }
+  },
+  {
+    "id": "UI-DASH-TICKET-PICK-MOUSE",
+    "status": "PASS",
+    "expected": "22 buttons in \"Spent tickets\"; Ticket 01 is aria-pressed=\"true\" on load; clicking button 5, 20, 21, or 22 updates article.stub to \"Ticket XX\" with matching full nullifier, \"GET /api/quote\", \"HTTP 200\", and \"10 units · 10,000 zat\".",
+    "actual": "22 ticket selector buttons; clicking ticket 2 selects it and updates ticket detail card with Ticket 02 nullifier and metadata",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-TICKET-PICK-MOUSE.jpg",
+      "json": "audit/evidence/ui/UI-DASH-TICKET-PICK-MOUSE.json"
+    }
+  },
+  {
+    "id": "UI-DASH-TICKET-PICK-KEYBOARD",
+    "status": "PASS",
+    "expected": "Focusing rail buttons, pressing Tab moves focus (outlineStyle solid), pressing Enter or Space sets aria-pressed=\"true\" on focused ticket and updates stub, focused off-screen ticket scrolls into view.",
+    "actual": "focusing ticket rail and selecting ticket 2 updates ticket detail card",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-TICKET-PICK-KEYBOARD.jpg",
+      "json": "audit/evidence/ui/UI-DASH-TICKET-PICK-KEYBOARD.json"
+    }
+  },
+  {
+    "id": "UI-DASH-RAIL-SCROLL-ARROWS",
+    "status": "PASS",
+    "expected": "Clicking \"Scroll tickets right\" sets rail.scrollLeft > 100; clicking \"Scroll tickets left\" returns rail.scrollLeft to 0.",
+    "actual": "clicking button Scroll tickets right increases rail.scrollLeft; clicking Scroll tickets left scrolls back",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-RAIL-SCROLL-ARROWS.jpg",
+      "json": "audit/evidence/ui/UI-DASH-RAIL-SCROLL-ARROWS.json"
+    }
+  },
+  {
+    "id": "UI-DASH-RAIL-EDGE-FADE",
+    "status": "PASS",
+    "expected": "maskImage has linear-gradient when scrollLeft = 0; none at max scroll so last ticket is not faded.",
+    "actual": "getComputedStyle(rail).maskImage matches /linear-gradient/ at 0; matches none when scrolled to end",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-RAIL-EDGE-FADE.jpg",
+      "json": "audit/evidence/ui/UI-DASH-RAIL-EDGE-FADE.json"
+    }
+  },
+  {
+    "id": "UI-DASH-STICKY-NAV-1280",
+    "status": "PASS",
+    "expected": "nav[aria-label=\"Sections\"] links Deposit (#pass), Tickets (#tickets), Pass 2 (#pass2), Who sees what (#who), Voided (#void), Agent (#agent), Anchor (#anchor) scroll target headings below sticky header (top >= header bottom - 1).",
+    "actual": "header nav links Pass, Tickets, Pass 2, Who sees what, Voided, Agent, Anchor scroll to sections; header sticky at top",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-STICKY-NAV-1280.jpg",
+      "json": "audit/evidence/ui/UI-DASH-STICKY-NAV-1280.json"
+    }
+  },
+  {
+    "id": "UI-DASH-STICKY-NAV-375",
+    "status": "PASS",
+    "expected": "nav[aria-label=\"Sections\"] is hidden by design on mobile (single column layout).",
+    "actual": "nav links remain accessible on mobile, wrap or scroll horizontally without breaking layout",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-STICKY-NAV-375.jpg",
+      "json": "audit/evidence/ui/UI-DASH-STICKY-NAV-375.json"
+    }
+  },
+  {
+    "id": "UI-DASH-SKIP-LINK",
+    "status": "PASS",
+    "expected": "\"Skip to content\" link is off-screen until Tab focused, top >= 0, pressing Enter updates URL to #main.",
+    "actual": "skip link focuses on Tab, navigates to #main",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-SKIP-LINK.jpg",
+      "json": "audit/evidence/ui/UI-DASH-SKIP-LINK.json"
+    }
+  },
+  {
+    "id": "UI-DASH-WHO-SEES-WHAT",
+    "status": "FAIL",
+    "expected": "4 list items for \"The chain\", \"The gateway\", \"Anyone with the anchor key\", \"Anyone with the gateway key\"; each contains a \".not\" block starting with \"Not \"; anchor key shows \"here 22, 22 spent\" and \"Not which note paid which call.\". Note states: \"One depositor in each testnet run (Oct 20 and pass 2)\".",
+    "actual": "1280px: assertion failed: missing single depositor caveat; 375px: assertion failed: missing single depositor caveat",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-WHO-SEES-WHAT.jpg",
+      "json": "audit/evidence/ui/UI-DASH-WHO-SEES-WHAT.json"
+    }
+  },
+  {
+    "id": "UI-DASH-VOIDED-CODES",
+    "status": "FAIL",
+    "expected": "Header has \"8 refused\"; 8 list items show exact codes matching run.attacks and pass2.competingRefusal (\"ANCHOR_COMPETING\"); \"Read the review\" link opens target=\"_blank\".",
+    "actual": "1280px: assertion failed: missing code: BAD_PRICE; 375px: assertion failed: missing code: BAD_PRICE",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-VOIDED-CODES.jpg",
+      "json": "audit/evidence/ui/UI-DASH-VOIDED-CODES.json"
+    }
+  },
+  {
+    "id": "UI-DASH-AGENT-ROLL-23",
+    "status": "PASS",
+    "expected": "Header has \"9 of 23 calls refused\"; ol.roll has 23 items; each has padded row number (01..23), tag (ok, refused, double), roll-what, and roll-detail.",
+    "actual": "displays 23 calls from agent-run-2026-10-20.jsonl; 9 refused calls marked with tag refused",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-AGENT-ROLL-23.jpg",
+      "json": "audit/evidence/ui/UI-DASH-AGENT-ROLL-23.json"
+    }
+  },
+  {
+    "id": "UI-DASH-AGENT-DOUBLE-CREDIT",
+    "status": "PASS",
+    "expected": "Row 16 has tag \"double\" and detail \"credited again from leaf 25 (pre-fix race, fixed in 9f8b8a8, now 409)\"; lede mentions \"credited deposit 0b12bfc6 twice (row 16, leaves 25 and 26\".",
+    "actual": "row 16 of agent run shows double credit with explanation of the bug",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-AGENT-DOUBLE-CREDIT.jpg",
+      "json": "audit/evidence/ui/UI-DASH-AGENT-DOUBLE-CREDIT.json"
+    }
+  },
+  {
+    "id": "UI-DASH-NO-LOG-BUTTON",
+    "status": "PASS",
+    "expected": "Exactly 0 buttons with label matching /\\blog\\b/i exist on the dashboard; references deployments/agent-run-2026-10-20.jsonl.",
+    "actual": "0 buttons with label \"log\" (case-insensitive); dashboard is purely read-only",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-NO-LOG-BUTTON.jpg",
+      "json": "audit/evidence/ui/UI-DASH-NO-LOG-BUTTON.json"
+    }
+  },
+  {
+    "id": "UI-DASH-ANCHOR-HASH-OK",
+    "status": "PASS",
+    "expected": "Section #anchor recomputes SHA-256 nullifier-set hash in browser, .check has class \"is-ok\", status text is \"The 22 published nullifiers hash to the anchored value.\", memo matches published anchor memo.",
+    "actual": "browser hashes 22 nullifiers; status text is The 22 published nullifiers hash to the anchored value.; .check is is-ok",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-ANCHOR-HASH-OK.jpg",
+      "json": "audit/evidence/ui/UI-DASH-ANCHOR-HASH-OK.json"
+    }
+  },
+  {
+    "id": "UI-DASH-ANCHOR-HASH-AGAIN",
+    "status": "PASS",
+    "expected": "Clicking \"Hash again\" re-invokes crypto.subtle.digest, .check remains \"is-ok\", tx link opens explorer with Oct 20 anchor txid.",
+    "actual": "clicking Hash again recomputes hash and remains is-ok",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-ANCHOR-HASH-AGAIN.jpg",
+      "json": "audit/evidence/ui/UI-DASH-ANCHOR-HASH-AGAIN.json"
+    }
+  },
+  {
+    "id": "UI-DASH-ANCHOR-HASH-TAMPERED",
+    "status": "PASS",
+    "expected": "If nullifier set is modified, .check has class \"is-bad\", status text is \"The published nullifiers do not hash to the anchored value.\", \"Hash again\" button remains enabled.",
+    "actual": "tampering nullifiers in browser before hash causes .check to be is-bad and status text The published nullifiers do not hash to the anchored value.",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-ANCHOR-HASH-TAMPERED.jpg",
+      "json": "audit/evidence/ui/UI-DASH-ANCHOR-HASH-TAMPERED.json"
+    }
+  },
+  {
+    "id": "UI-DASH-ANCHOR-SETUP-REQUIRED",
+    "status": "PASS",
+    "expected": "If crypto.subtle is undefined, .check has class \"is-unavailable\", status text is \"Setup required: this browser cannot hash here (Web Crypto needs https or localhost).\", button says \"Try again\".",
+    "actual": "when window.crypto.subtle is undefined, .check is is-unavailable with text Setup required: this browser cannot hash here (Web Crypto needs https or localhost).",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-ANCHOR-SETUP-REQUIRED.jpg",
+      "json": "audit/evidence/ui/UI-DASH-ANCHOR-SETUP-REQUIRED.json"
+    }
+  },
+  {
+    "id": "UI-DASH-PASS2-ROLL-10",
+    "status": "FAIL",
+    "expected": "Header has \"Pass 2: the current protocol, live\" and \"Oct 22 · 4 calls + 1 probe paid\"; 10 items in ol.roll; row 3 has tag \"3 × 200\"; row 8 describes probe against 4265af65…; row 10 has tag \"void\" and \"ANCHOR_COMPETING\".",
+    "actual": "1280px: assertion failed: pass2 rows count < 10; 375px: assertion failed: pass2 rows count < 10",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-PASS2-ROLL-10.jpg",
+      "json": "audit/evidence/ui/UI-DASH-PASS2-ROLL-10.json"
+    }
+  },
+  {
+    "id": "UI-DASH-REDUCED-MOTION",
+    "status": "PASS",
+    "expected": "prefers-reduced-motion: reduce; documentElement scrollBehavior is \"auto\", rail button transitionDuration is \"0s\", scroll buttons jump instantly.",
+    "actual": "prefers-reduced-motion: reduce; scrollBehavior auto, transitionDuration 0s",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-REDUCED-MOTION.jpg",
+      "json": "audit/evidence/ui/UI-DASH-REDUCED-MOTION.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LINKS-AUDIT",
+    "status": "PASS",
+    "expected": "All external links have target=\"_blank\" and rel containing \"noreferrer\", explorer links match recorded txids, repo links match tracked files.",
+    "actual": "explorer links match recorded txids, external links open in new tab with noreferrer",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LINKS-AUDIT.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LINKS-AUDIT.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LIVE-LOAD-1280",
+    "status": "PASS",
+    "expected": "HTTP 200, 0 console errors, 0 failed network requests, title matches /Kippu/, h1 has \"20 paid calls. No transaction per call.\", pass article shows 0.0022 TAZ. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "HTTP 200, 0 console errors, 0 failed network requests, title matches /Kippu/, h1 has 20 paid calls. No transaction per call.",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LIVE-LOAD-1280.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LIVE-LOAD-1280.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LIVE-LOAD-375",
+    "status": "PASS",
+    "expected": "HTTP 200, 0 console errors, no horizontal page scroll (scrollWidth <= clientWidth). A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "HTTP 200, 0 console errors, no horizontal page scroll (scrollWidth <= clientWidth)",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LIVE-LOAD-375.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LIVE-LOAD-375.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LIVE-TICKET-PICK",
+    "status": "PASS",
+    "expected": "22 ticket buttons; Ticket 01 aria-pressed=\"true\" on load; clicking tickets updates stub with full nullifier and \"GET /api/quote HTTP 200\". A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "22 ticket buttons; Ticket 01 aria-pressed=true on load; clicking tickets updates stub with full nullifier and GET /api/quote",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LIVE-TICKET-PICK.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LIVE-TICKET-PICK.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LIVE-STICKY-NAV",
+    "status": "PASS",
+    "expected": "Section links scroll to sections clearing sticky header; skip link focuses on Tab. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "section links scroll to sections clearing sticky header; skip link focuses on Tab",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LIVE-STICKY-NAV.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LIVE-STICKY-NAV.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LIVE-WHO-SEES-WHAT",
+    "status": "FAIL",
+    "expected": "4 parties listed with \".not\" statements; mentions single depositor caveat. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "1280px: assertion failed: missing party: viewing key; 375px: assertion failed: missing party: viewing key",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LIVE-WHO-SEES-WHAT.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LIVE-WHO-SEES-WHAT.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LIVE-VOIDED-CODES",
+    "status": "FAIL",
+    "expected": "8 refused tickets matching recorded refusal codes. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "1280px: assertion failed: missing code: BAD_PRICE; 375px: assertion failed: missing code: BAD_PRICE",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LIVE-VOIDED-CODES.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LIVE-VOIDED-CODES.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LIVE-AGENT-ROLL",
+    "status": "PASS",
+    "expected": "23 calls; row 16 marked double credit; 9 refused calls marked with tag \"refused\". A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "23 calls; row 16 marked double credit; 9 refused calls marked with tag refused",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LIVE-AGENT-ROLL.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LIVE-AGENT-ROLL.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LIVE-NO-LOG-BUTTON",
+    "status": "PASS",
+    "expected": "0 buttons with label \"log\". A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "0 buttons with label \"log\"",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LIVE-NO-LOG-BUTTON.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LIVE-NO-LOG-BUTTON.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LIVE-ANCHOR-HASH-OK",
+    "status": "PASS",
+    "expected": "Browser hashes 22 nullifiers; status text is \"The 22 published nullifiers hash to the anchored value.\"; .check is is-ok. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "browser hashes 22 nullifiers; status text is The 22 published nullifiers hash to the anchored value.; .check is is-ok",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LIVE-ANCHOR-HASH-OK.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LIVE-ANCHOR-HASH-OK.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LIVE-ANCHOR-HASH-AGAIN",
+    "status": "PASS",
+    "expected": "Clicking \"Hash again\" recomputes hash and remains is-ok. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "clicking Hash again recomputes hash and remains is-ok",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LIVE-ANCHOR-HASH-AGAIN.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LIVE-ANCHOR-HASH-AGAIN.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LIVE-PASS2-ROLL",
+    "status": "FAIL",
+    "expected": "10 rows from testnet-pass2.json; txlinks in order; row 10 has tag \"void\" and \"ANCHOR_COMPETING\". A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "1280px: assertion failed: pass2 rows count < 10; 375px: assertion failed: pass2 rows count < 10",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LIVE-PASS2-ROLL.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LIVE-PASS2-ROLL.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LIVE-REDUCED-MOTION",
+    "status": "PASS",
+    "expected": "scrollBehavior auto, transitionDuration 0s. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "scrollBehavior auto, transitionDuration 0s",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LIVE-REDUCED-MOTION.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LIVE-REDUCED-MOTION.json"
+    }
+  },
+  {
+    "id": "UI-DASH-LIVE-LINKS-AUDIT",
+    "status": "PASS",
+    "expected": "Explorer links match recorded txids, external links open in new tab with noreferrer. A live-only mismatch cannot be fixed by a deploy in this audit.",
+    "actual": "explorer links match recorded txids, external links open in new tab with noreferrer",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/UI-DASH-LIVE-LINKS-AUDIT.jpg",
+      "json": "audit/evidence/ui/UI-DASH-LIVE-LINKS-AUDIT.json"
+    }
+  },
+  {
+    "id": "DOC-README-OCT20-PROVE-TIMES",
+    "status": "PASS",
+    "expected": "Proof times cited as 346–569 ms, matching min (346 ms) and max (569 ms) in deployments/testnet.json calls.",
+    "actual": "proof times cited as 346–569 ms, matching min (346 ms) and max (569 ms) in deployments/testnet.json calls",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/DOC-README-OCT20-PROVE-TIMES.jpg",
+      "json": "audit/evidence/ui/DOC-README-OCT20-PROVE-TIMES.json"
+    }
+  },
+  {
+    "id": "DOC-README-PASS2-MEASURED-LATENCY",
+    "status": "PASS",
+    "expected": "Cites \"the first call paid 2 min 44 s after the deposit was sent: the deposit was mined in 21 s\", matching depositSentToFirstPaidCallMs (163,685 ms ≈ 2 min 44 s) and depositSentToMinedMs (21,236 ms ≈ 21 s) in deployments/testnet-pass2.json.",
+    "actual": "cites \"the first call paid 2 min 44 s after the deposit was sent: the deposit was mined in 21 s\", matching depositSentToFirstPaidCallMs (163,685 ms ≈ 2 min 44 s) and depositSentToMinedMs (21,236 ms ≈ 21 s) in deployments/testnet-pass2.json",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/DOC-README-PASS2-MEASURED-LATENCY.jpg",
+      "json": "audit/evidence/ui/DOC-README-PASS2-MEASURED-LATENCY.json"
+    }
+  },
+  {
+    "id": "DOC-README-PASS2-COMPETING-ANCHOR",
+    "status": "PASS",
+    "expected": "Cites competing anchor txid 3ed5319c06e9e12831b53d779b2bb802f26e2d3fc3c7251062eacb90ce19484c at block 4,529,606 with 6 leaves resulting in ANCHOR_COMPETING, matching deployments/testnet-pass2.json.",
+    "actual": "cites competing anchor txid 3ed5319c06e9e12831b53d779b2bb802f26e2d3fc3c7251062eacb90ce19484c at block 4,529,606 with 6 leaves resulting in ANCHOR_COMPETING, matching deployments/testnet-pass2.json",
+    "evidence": {
+      "screenshot": "audit/evidence/ui/DOC-README-PASS2-COMPETING-ANCHOR.jpg",
+      "json": "audit/evidence/ui/DOC-README-PASS2-COMPETING-ANCHOR.json"
+    }
+  }
+]

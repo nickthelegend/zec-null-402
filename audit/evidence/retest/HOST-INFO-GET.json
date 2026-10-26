@@ -1,0 +1,29 @@
+{
+  "id": "HOST-INFO-GET",
+  "url": "https://kippu-api.201-18-198-162.sslip.io/api/info",
+  "requestHost": "kippu-api.201-18-198-162.sslip.io",
+  "width": 1280,
+  "height": 800,
+  "waitFor": "load",
+  "expectStatus": null,
+  "allowStatuses": [],
+  "ok": true,
+  "failures": [],
+  "actual": "{\"depositUa\":\"utest18v7q2kvdlsty35a3exga9xw2np0wupu5s4n0w8tta3ys8wjtrexkfeg2tr0vkvctd8npj0x5k62hqkr5nna24w99wyuzzka06qdjmu3q\",\"unitZat\":1000,\"payTo\":\"147551880896112913897675743344837910262631220285031220338749446957089074982\",\"prices\":{\"/api/quote\":\"10\",\"/api/report\":\"50\"},\"leaves\":0,\"root\":\"15019797232609675441998260052101280400536945603062888308240081994073687793470\",\"deposits\":0,\"spent\":0,\"anchorCount\":0,\"anchors\":[],\"latestAnchor\":null,\"anchorUa\":\"utest1hzg24eygt8yd0gkzmfxqus6d2h24n24uqkzg5rlpprslqtmggnm5ufjhxjj7l6j0cuhqjfsweg4p3lqsuhl48we6mtgg39cqugwaslps\",\"anchorPubkey\":null}",
+  "navigationStatus": 200,
+  "screenshot": "audit/evidence/retest/HOST-INFO-GET.jpg",
+  "screenshotBytes": 53985,
+  "browserExecutable": "/Users/jaibajrang/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "console": [],
+  "pageErrors": [],
+  "responses": [
+    {
+      "url": "https://kippu-api.201-18-198-162.sslip.io/api/info",
+      "status": 200,
+      "host": "kippu-api.201-18-198-162.sslip.io",
+      "sameOrigin": true,
+      "counted": true
+    }
+  ],
+  "blockedNavigations": []
+}

@@ -1,0 +1,64 @@
+{
+  "id": "UI-DASH-LIVE-TICKET-PICK",
+  "url": "https://kippu-dashboard.vercel.app/",
+  "requestHost": "kippu-dashboard.vercel.app",
+  "width": 1280,
+  "height": 800,
+  "waitFor": "load",
+  "expectStatus": null,
+  "allowStatuses": [],
+  "ok": true,
+  "failures": [],
+  "actual": "22 ticket buttons; Ticket 01 aria-pressed=true on load; clicking tickets updates stub with full nullifier and GET /api/quote",
+  "navigationStatus": 200,
+  "screenshot": "audit/evidence/ui/UI-DASH-LIVE-TICKET-PICK.jpg",
+  "screenshotBytes": 96211,
+  "browserExecutable": "/Users/jaibajrang/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "console": [],
+  "pageErrors": [],
+  "responses": [
+    {
+      "url": "https://kippu-dashboard.vercel.app/",
+      "status": 200,
+      "host": "kippu-dashboard.vercel.app",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "https://kippu-dashboard.vercel.app/assets/index-CMa6pt7M.css",
+      "status": 200,
+      "host": "kippu-dashboard.vercel.app",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "https://kippu-dashboard.vercel.app/assets/index-ejCLkXhL.js",
+      "status": 200,
+      "host": "kippu-dashboard.vercel.app",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&family=Azeret+Mono:wght@400;500&display=swap",
+      "status": 200,
+      "host": "fonts.googleapis.com",
+      "sameOrigin": false,
+      "counted": false
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/azeretmono/v21/3XFuErsiyJsY9O_Gepph-HHhZfn23vRK.woff2",
+      "status": 200,
+      "host": "fonts.gstatic.com",
+      "sameOrigin": false,
+      "counted": false
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yygg_vb.woff2",
+      "status": 200,
+      "host": "fonts.gstatic.com",
+      "sameOrigin": false,
+      "counted": false
+    }
+  ],
+  "blockedNavigations": []
+}

@@ -1,0 +1,6 @@
+{
+  "id": "DOC-PACKAGES-CIRCUITS-VK-ID",
+  "status": "PASS",
+  "actual": "sha256 of packages/circuits/build/verification_key.json is 8e7fa586933c0bcf3a1f794d4e6ef20c688491314c45ee78a17facc04d7cd0e3, which begins 8e7fa586. packages/circuits/README.md cites 8e7fa586…7cd0e3.",
+  "quote": "`8e7fa586…7cd0e3`). Leaf = `Poseidon(Poseidon(noteSecret, nullifierSecret), value)`; public signals"
+}

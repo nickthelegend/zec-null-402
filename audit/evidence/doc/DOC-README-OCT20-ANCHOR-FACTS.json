@@ -1,0 +1,6 @@
+{
+  "id": "DOC-README-OCT20-ANCHOR-FACTS",
+  "status": "FAIL",
+  "actual": "README cites anchor txid a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395, \"22 leaves, 22 spent\", and block 4522706. deployments/testnet.json anchor.txid matches, leaves is 22, and nullifiers is 22, but that file has no anchor height. Block 4522706 is not in deployments/testnet.json, so the cited height does not match the file.",
+  "quote": "| anchor (`z402:anchor:22:<root>:22:<nullifier-set hash>`: 22 leaves, 22 spent) | memo found with the anchor viewing key; equals the gateway's root and nullifier set | [`a0992237…`](https://testnet.zecblock.com/tx/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395) |\nit adopts the Oct 20 anchor a09922378bb7… (block 4522706, 7503 blocks old), read with the published anchor key"
+}

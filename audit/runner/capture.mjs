@@ -175,8 +175,8 @@ function parseItem(raw) {
   if (!Array.isArray(actions)) throw new Error('actions must be an array');
   for (const action of actions) {
     if (!action || typeof action !== 'object') throw new Error('each action must be an object');
-    if (!['click', 'fill', 'press'].includes(action.type)) throw new Error('action type must be click, fill, or press');
-    if (typeof action.selector !== 'string' || action.selector.length === 0) throw new Error('action selector is required');
+    if (!['click', 'fill', 'press', 'scroll', 'focus', 'keyboard', 'wait'].includes(action.type)) throw new Error('action type must be click, fill, press, scroll, focus, keyboard, or wait');
+    if (!['keyboard', 'wait'].includes(action.type) && (typeof action.selector !== 'string' || action.selector.length === 0)) throw new Error('action selector is required');
     if ((action.type === 'fill' || action.type === 'press') && typeof action.text !== 'string') {
       throw new Error(`${action.type} requires text`);
     }
@@ -191,6 +191,10 @@ function parseItem(raw) {
     allowStatuses: item.allowStatuses ?? [],
     actions,
     outDir: checkedOutDir(item),
+    reducedMotion: item.reducedMotion ?? null,
+    initScript: item.initScript ?? null,
+    assert: item.assert ?? null,
+    evaluateActual: item.evaluateActual ?? null,
   };
 }
 
@@ -349,10 +353,20 @@ function clip(value, max) {
 
 async function runActions(page, actions) {
   for (const action of actions) {
+    if (action.type === 'wait') {
+      await new Promise((r) => setTimeout(r, Number(action.ms || action.text || 1000)));
+      continue;
+    }
+    if (action.type === 'keyboard') {
+      await page.keyboard.press(action.key || action.text);
+      continue;
+    }
     const locator = page.locator(action.selector);
     if (action.type === 'click') await locator.click({ timeout: 15000 });
     else if (action.type === 'fill') await locator.fill(action.text, { timeout: 15000 });
-    else await locator.press(action.text, { timeout: 15000 });
+    else if (action.type === 'press') await locator.press(action.text, { timeout: 15000 });
+    else if (action.type === 'focus') await locator.focus({ timeout: 15000 });
+    else if (action.type === 'scroll') await locator.scrollIntoViewIfNeeded({ timeout: 15000 });
   }
 }
 
@@ -449,7 +463,11 @@ async function capture(chromium, executablePath, item) {
 
   const context = await browser.newContext({
     viewport: { width: item.width, height: item.height },
+    ...(item.reducedMotion ? { reducedMotion: item.reducedMotion } : {}),
   });
+  if (item.initScript) {
+    await context.addInitScript(item.initScript);
+  }
   await context.addInitScript((cfg) => {
     const forbidden = (href) => {
       let url;
@@ -552,6 +570,29 @@ async function capture(chromium, executablePath, item) {
   } catch (error) {
     failures.push(`action failed: ${clip(error.message, 500)}`);
   }
+  if (item.assert) {
+    const asserts = Array.isArray(item.assert) ? item.assert : [item.assert];
+    for (const expr of asserts) {
+      try {
+        const res = await page.evaluate(expr);
+        if (typeof res === 'string' && res.length > 0) {
+          failures.push(`assertion failed: ${res}`);
+        } else if (res === false) {
+          failures.push(`assertion returned false: ${expr}`);
+        }
+      } catch (err) {
+        failures.push(`assertion error: ${err.message}`);
+      }
+    }
+  }
+  let actualResult = '';
+  if (item.evaluateActual) {
+    try {
+      actualResult = await page.evaluate(item.evaluateActual);
+    } catch (err) {
+      actualResult = `error evaluating actual: ${err.message}`;
+    }
+  }
 
   let screenshot = '';
   let screenshotBytes = 0;
@@ -594,6 +635,7 @@ async function capture(chromium, executablePath, item) {
     allowStatuses: item.allowStatuses,
     ok: failures.length === 0,
     failures,
+    actual: actualResult,
     navigationStatus,
     screenshot,
     screenshotBytes,

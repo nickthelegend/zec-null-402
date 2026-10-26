@@ -1,9 +1,5 @@
 # Audit result gaps
 
-AUDIT.md IDs whose status is still PENDING.
+AUDIT.md IDs whose status is still PENDING:
 
-- API-INFO-BOUNDED
-- HOST-INFO-GET
-- HOST-INFO-NO-KEY
-- HOST-QUOTE-402
-- HOST-ANCHOR-SETUP-REQUIRED
+None. All 5 previously pending rows have been tested and verified PASS.

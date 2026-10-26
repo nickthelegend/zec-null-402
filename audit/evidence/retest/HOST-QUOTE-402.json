@@ -1,0 +1,43 @@
+{
+  "id": "HOST-QUOTE-402",
+  "url": "https://kippu-api.201-18-198-162.sslip.io/api/quote",
+  "requestHost": "kippu-api.201-18-198-162.sslip.io",
+  "width": 1280,
+  "height": 800,
+  "waitFor": "load",
+  "expectStatus": 402,
+  "allowStatuses": [
+    402
+  ],
+  "ok": true,
+  "failures": [],
+  "actual": "{\"error\":\"payment required\",\"accepts\":[{\"x402Version\":1,\"scheme\":\"zec-null-402\",\"network\":\"zcash-testnet\",\"payTo\":\"147551880896112913897675743344837910262631220285031220338749446957089074982\",\"requiredAmount\":\"10\",\"resource\":\"/api/quote\",\"nonce\":\"v1.f4dc35d9f1c76f6ccbb3da3d3973e576.1793002312392.514bf714c83901bca2b194bcadd1e801\",\"contextHash\":\"62444541589337964723417818258839741828288504295749035399002635978049374884\",\"root\":\"15019797232609675441998260052101280400536945603062888308240081994073687793470\",\"anchor\":null,\"expiresAt\":1793002312392}]}",
+  "navigationStatus": 402,
+  "screenshot": "audit/evidence/retest/HOST-QUOTE-402.jpg",
+  "screenshotBytes": 51478,
+  "browserExecutable": "/Users/jaibajrang/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 402 ()",
+      "location": {
+        "url": "https://kippu-api.201-18-198-162.sslip.io/api/quote",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    }
+  ],
+  "pageErrors": [],
+  "responses": [
+    {
+      "url": "https://kippu-api.201-18-198-162.sslip.io/api/quote",
+      "status": 402,
+      "host": "kippu-api.201-18-198-162.sslip.io",
+      "sameOrigin": true,
+      "counted": true
+    }
+  ],
+  "blockedNavigations": []
+}

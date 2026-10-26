@@ -1,0 +1,104 @@
+{
+  "id": "API-PAYMENT-402-BAD-PROOF",
+  "url": "http://127.0.0.1:50322/api/info",
+  "requestHost": "127.0.0.1:50322",
+  "width": 1280,
+  "height": 800,
+  "waitFor": "load",
+  "expectStatus": null,
+  "allowStatuses": [
+    402
+  ],
+  "ok": true,
+  "failures": [],
+  "actual": "{\"status\":402,\"body\":{\"error\":\"payment refused: BAD_PROOF\",\"reason\":\"BAD_PROOF\",\"accepts\":[{\"x402Version\":1,\"scheme\":\"zec-null-402\",\"network\":\"zcash-testnet\",\"payTo\":\"147551880896112913897675743344837910262631220285031220338749446957089074982\",\"requiredAmount\":\"10\",\"resource\":\"/api/quote\",\"nonce\":\"v1.e2037cce645b2086c46fa3a47490ecf0.1793002644185.d90916ff3bba12576b70f441bce4e085\",\"contextHash\":\"415710833214395109925732902564008490087379985297753324847023194289356158247\",\"root\":\"4498787375493044641629502448109918628546215513903653918575713697752952913389\",\"anchor\":null,\"expiresAt\":1793002644185}]}}",
+  "navigationStatus": 200,
+  "screenshot": "audit/evidence/retest/API-PAYMENT-402-BAD-PROOF.jpg",
+  "screenshotBytes": 44962,
+  "browserExecutable": "/Users/jaibajrang/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 402 (Payment Required)",
+      "location": {
+        "url": "http://127.0.0.1:50322/api/quote",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 402 (Payment Required)",
+      "location": {
+        "url": "http://127.0.0.1:50322/api/quote",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 402 (Payment Required)",
+      "location": {
+        "url": "http://127.0.0.1:50322/api/quote",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 402 (Payment Required)",
+      "location": {
+        "url": "http://127.0.0.1:50322/api/quote",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    }
+  ],
+  "pageErrors": [],
+  "responses": [
+    {
+      "url": "http://127.0.0.1:50322/api/info",
+      "status": 200,
+      "host": "127.0.0.1:50322",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:50322/api/quote",
+      "status": 402,
+      "host": "127.0.0.1:50322",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:50322/api/quote",
+      "status": 402,
+      "host": "127.0.0.1:50322",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:50322/api/quote",
+      "status": 402,
+      "host": "127.0.0.1:50322",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:50322/api/quote",
+      "status": 402,
+      "host": "127.0.0.1:50322",
+      "sameOrigin": true,
+      "counted": true
+    }
+  ],
+  "blockedNavigations": []
+}

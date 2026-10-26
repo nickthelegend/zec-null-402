@@ -1,0 +1,4 @@
+{
+  "code": "ANCHOR_TOO_OLD",
+  "message": "refusing to pay: ANCHOR_TOO_OLD: anchor a09922378bb7… was mined 20559 blocks ago; this client accepts at most 2880"
+}

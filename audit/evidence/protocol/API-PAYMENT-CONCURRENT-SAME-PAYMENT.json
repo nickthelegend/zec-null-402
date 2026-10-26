@@ -1,0 +1,135 @@
+{
+  "id": "API-PAYMENT-CONCURRENT-SAME-PAYMENT",
+  "url": "http://127.0.0.1:8405/api/info",
+  "requestHost": "127.0.0.1:8405",
+  "width": 1280,
+  "height": 800,
+  "waitFor": "load",
+  "expectStatus": null,
+  "allowStatuses": [
+    402
+  ],
+  "ok": false,
+  "failures": [
+    "console error: Failed to load resource: the server responded with a status of 402 (Payment Required)",
+    "console error: Failed to load resource: the server responded with a status of 402 (Payment Required)",
+    "console error: Failed to load resource: the server responded with a status of 402 (Payment Required)",
+    "console error: Failed to load resource: the server responded with a status of 402 (Payment Required)",
+    "console error: Failed to load resource: the server responded with a status of 402 (Payment Required)"
+  ],
+  "actual": "[402,402,402]",
+  "navigationStatus": 200,
+  "screenshot": "audit/evidence/protocol/API-PAYMENT-CONCURRENT-SAME-PAYMENT.jpg",
+  "screenshotBytes": 53964,
+  "browserExecutable": "/Users/jaibajrang/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 402 (Payment Required)",
+      "location": {
+        "url": "http://127.0.0.1:8405/api/quote",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 402 (Payment Required)",
+      "location": {
+        "url": "http://127.0.0.1:8405/api/quote",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 402 (Payment Required)",
+      "location": {
+        "url": "http://127.0.0.1:8405/api/quote",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 402 (Payment Required)",
+      "location": {
+        "url": "http://127.0.0.1:8405/api/quote",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 402 (Payment Required)",
+      "location": {
+        "url": "http://127.0.0.1:8405/api/quote",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    }
+  ],
+  "pageErrors": [],
+  "responses": [
+    {
+      "url": "http://127.0.0.1:8405/api/info",
+      "status": 200,
+      "host": "127.0.0.1:8405",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:8405/api/quote",
+      "status": 402,
+      "host": "127.0.0.1:8405",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:8405/api/quote",
+      "status": 402,
+      "host": "127.0.0.1:8405",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:8405/api/quote",
+      "status": 200,
+      "host": "127.0.0.1:8405",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:8405/api/quote",
+      "status": 402,
+      "host": "127.0.0.1:8405",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:8405/api/quote",
+      "status": 402,
+      "host": "127.0.0.1:8405",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:8405/api/quote",
+      "status": 402,
+      "host": "127.0.0.1:8405",
+      "sameOrigin": true,
+      "counted": true
+    }
+  ],
+  "blockedNavigations": []
+}

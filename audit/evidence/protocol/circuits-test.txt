@@ -1,0 +1,27 @@
+
+> @z402/circuits@0.1.0 test /Volumes/Extreme SSD/Projects/grokbot/projects/.loom-worktrees/zec-null-402-72b9284ab826/omvouf239/t11/packages/circuits
+> vitest run
+
+
+ RUN  v3.2.7 /Volumes/Extreme SSD/Projects/grokbot/projects/.loom-worktrees/zec-null-402-72b9284ab826/omvouf239/t11/packages/circuits
+
+ ✓ test/payment.test.ts (6 tests) 2130ms
+   ✓ Payment(20) > a note in the tree pays: the proof verifies and exposes only nullifier, root, payTo, amount, context  957ms
+   ✓ Payment(20) > a tampered payTo, amount or context does not verify  503ms
+   ✓ Payment(20) > the verification key is read once per process, and stays usable for every later check  610ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  13:03:42
+   Duration  2.58s (transform 29ms, setup 0ms, collect 178ms, tests 2.13s, environment 0ms, prepare 67ms)
+
+
+stderr | test/payment.test.ts > Payment(20) > no proof exists above the note value or for a note outside the tree
+ERROR:  4 Error in template Payment_146 line: 113
+
+
+stderr | test/payment.test.ts > Payment(20) > no proof exists above the note value or for a note outside the tree
+ERROR:  4 Error in template MerkleTreeChecker_142 line: 66
+Error in template Payment_146 line: 106
+
+

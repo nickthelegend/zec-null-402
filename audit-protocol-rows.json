@@ -1,0 +1,690 @@
+[
+  {
+    "id": "API-INFO-FRESH",
+    "description": "local gateway GET /api/info (fresh database)",
+    "expected": "HTTP 200, JSON matching { leaves: 0, deposits: 0, spent: 0, anchors: [], latestAnchor: null, unitZat: 1000, prices: { \"/api/quote\": \"10\", \"/api/report\": \"50\" } }, depositUa and anchorUa set.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-INFO-CLAIMED",
+    "description": "local gateway GET /api/info (after claiming deposit)",
+    "expected": "HTTP 200, JSON matching { leaves: 22, deposits: 1, spent: 0, root: \"4498787375493044641629502448109918628546215513903653918575713697752952913389\" }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-INFO-NO-VIEWING-KEY",
+    "description": "local gateway GET /api/info (privacy check)",
+    "expected": "Response JSON string does not contain the deposit incoming viewing key (depositUivk / uivk).",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-INFO-BOUNDED",
+    "description": "local gateway GET /api/info (bounded latency/size with many anchors)",
+    "expected": "HTTP 200 with 50,000 anchor rows returns recentAnchors (last 16 anchors) and integer anchorCount; latency and payload remain bounded.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-LEAVES-EMPTY",
+    "description": "local gateway GET /api/leaves (empty state)",
+    "expected": "HTTP 200 with JSON { leaves: [], root: \"0\" } (empty Poseidon tree root).",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-LEAVES-CLAIMED",
+    "description": "local gateway GET /api/leaves (claimed 22 notes)",
+    "expected": "HTTP 200 with JSON { leaves: <Array of 22 leaf strings>, root: \"4498787375493044641629502448109918628546215513903653918575713697752952913389\" }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-QUOTE-402-SHAPE",
+    "description": "local gateway GET /api/quote (unpaid request)",
+    "expected": "HTTP 402 with JSON { error: \"payment required\", accepts: [challenge] }; accepts[0] has scheme: \"zec-null-402\", network: \"zcash-testnet\", requiredAmount: \"10\", resource: \"/api/quote\", contextHash, root, and stateless nonce matching ^v1\\.[0-9a-f]{32}\\.\\d{13}\\.[0-9a-f]{32}$.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-REPORT-402-SHAPE",
+    "description": "local gateway GET /api/report (unpaid request, 5x price)",
+    "expected": "HTTP 402 with JSON { error: \"payment required\", accepts: [challenge] }; requiredAmount is \"50\" (5x of quote price 10), resource is \"/api/report\", contextHash is bound to \"/api/report\" and amount 50.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-UNKNOWN-404",
+    "description": "local gateway GET /api/unknown (unpriced path)",
+    "expected": "HTTP 404 with JSON { error: \"not found\" }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-PAYMENT-400-INVALID-BASE64",
+    "description": "local gateway GET /api/quote with non-base64 X-PAYMENT",
+    "expected": "HTTP 400 with JSON { error: \"X-PAYMENT is not base64 JSON\" }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-PAYMENT-400-INVALID-JSON",
+    "description": "local gateway GET /api/quote with base64 X-PAYMENT not valid JSON",
+    "expected": "HTTP 400 with JSON { error: \"X-PAYMENT is not base64 JSON\" }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-PAYMENT-402-UNKNOWN-CHALLENGE-FORGED",
+    "description": "local gateway GET /api/quote with forged nonce in payment",
+    "expected": "HTTP 402 with JSON { error: \"payment refused: UNKNOWN_CHALLENGE\", reason: \"UNKNOWN_CHALLENGE\", accepts: [...] }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-PAYMENT-402-UNKNOWN-CHALLENGE-MOVED",
+    "description": "local gateway GET /api/report with payment nonce issued for /api/quote",
+    "expected": "HTTP 402 with reason: \"UNKNOWN_CHALLENGE\" due to HMAC path and price mismatch.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-PAYMENT-402-MALFORMED-SIGNALS",
+    "description": "local gateway GET /api/quote with non-canonical payment signals",
+    "expected": "HTTP 402 with JSON { error: \"payment refused: MALFORMED_SIGNALS\", reason: \"MALFORMED_SIGNALS\", accepts: [...] }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-PAYMENT-402-NOT-BOUND-TO-CHALLENGE",
+    "description": "local gateway GET /api/quote with signals differing from challenge",
+    "expected": "HTTP 402 with reason: \"NOT_BOUND_TO_CHALLENGE\" when pay_to, required_amount, or context_hash differs.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-PAYMENT-402-UNKNOWN-ROOT",
+    "description": "local gateway GET /api/quote with signals containing unknown root",
+    "expected": "HTTP 402 with reason: \"UNKNOWN_ROOT\".",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-PAYMENT-402-BAD-PROOF",
+    "description": "local gateway GET /api/quote with invalid Groth16 proof data",
+    "expected": "HTTP 402 with reason: \"BAD_PROOF\".",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-PAYMENT-200-SUCCESS",
+    "description": "local gateway GET /api/quote with valid Groth16 proof",
+    "expected": "HTTP 200 with JSON { paid: { nullifier: \"<canonical>\", amount: \"10\" }, data: { path: \"/api/quote\", ... } } and header \"x-payment-response\" containing base64 receipt.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-PAYMENT-402-NULLIFIER-SPENT",
+    "description": "local gateway GET /api/quote replaying spent nullifier",
+    "expected": "HTTP 402 with reason: \"NULLIFIER_SPENT\".",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-PAYMENT-CONCURRENT-SAME-PAYMENT",
+    "description": "local gateway one valid payment sent 3 times concurrently",
+    "expected": "Exactly one request returns HTTP 200, the other two return HTTP 402 (NULLIFIER_SPENT); nullifier table records exactly 1 spend.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-PAYMENT-CONCURRENT-TWO-PROOFS-SAME-NOTE",
+    "description": "local gateway two distinct proofs of the same note sent concurrently",
+    "expected": "Exactly one returns HTTP 200, the other returns HTTP 402 (NULLIFIER_SPENT).",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-DEPOSITS-200-CLAIM",
+    "description": "local gateway POST /api/deposits (valid on-chain deposit)",
+    "expected": "HTTP 200 with JSON { first: 0, count: 22, root: \"4498787375493044641629502448109918628546215513903653918575713697752952913389\" }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-DEPOSITS-409-ALREADY-CLAIMED",
+    "description": "local gateway POST /api/deposits (second claim of same deposit)",
+    "expected": "HTTP 409 with JSON error matching /deposit .* was already claimed/.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-DEPOSITS-415-UNSUPPORTED-MEDIA",
+    "description": "local gateway POST /api/deposits with text/plain content-type",
+    "expected": "HTTP 415 with JSON { error: \"a claim must be sent as content-type: application/json\" }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-DEPOSITS-400-INVALID-TXID",
+    "description": "local gateway POST /api/deposits with malformed txid",
+    "expected": "HTTP 400 with JSON { error: \"txid must be 64 hex\" }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-DEPOSITS-400-INVALID-ITEMS",
+    "description": "local gateway POST /api/deposits with empty or malformed items",
+    "expected": "HTTP 400 with JSON error matching /items: 1 to 64 notes|each item needs a decimal secretHash and a positive whole value/.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-DEPOSITS-413-PAYLOAD-TOO-LARGE",
+    "description": "local gateway POST /api/deposits with body over 64 KB",
+    "expected": "HTTP 413 with JSON error matching /request body over 65536 bytes/.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-DEPOSITS-402-MEMO-MISMATCH",
+    "description": "local gateway POST /api/deposits with altered note value",
+    "expected": "HTTP 402 with JSON error matching /deposit not credited: .*MEMO_MISMATCH/.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-DEPOSITS-402-AMOUNT-TOO-LOW",
+    "description": "local gateway POST /api/deposits with items total exceeding on-chain zat",
+    "expected": "HTTP 402 with JSON error matching /deposit not credited: .*AMOUNT_TOO_LOW/.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-DEPOSITS-503-MAX-SCANS",
+    "description": "local gateway POST /api/deposits during 4 concurrent scans",
+    "expected": "HTTP 503 with JSON error matching /busy: .* deposit checks are running/ and header \"retry-after: 5\".",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-ANCHOR-503-SETUP-REQUIRED-NO-TOKEN",
+    "description": "local gateway POST /api/anchor without Z402_ADMIN_TOKEN",
+    "expected": "HTTP 503 with JSON { error: \"Setup required: Z402_ADMIN_TOKEN (anchoring over HTTP is off without it)\" }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-ANCHOR-401-UNAUTHORIZED-NO-BEARER",
+    "description": "local gateway POST /api/anchor without Authorization header",
+    "expected": "HTTP 401 with JSON { error: \"anchoring needs Authorization: Bearer <Z402_ADMIN_TOKEN>\" }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-ANCHOR-401-UNAUTHORIZED-BAD-BEARER",
+    "description": "local gateway POST /api/anchor with invalid bearer token",
+    "expected": "HTTP 401 with JSON { error: \"anchoring needs Authorization: Bearer <Z402_ADMIN_TOKEN>\" }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-ANCHOR-503-SETUP-REQUIRED-NO-WALLET",
+    "description": "local gateway POST /api/anchor with valid token but no gateway wallet",
+    "expected": "HTTP 503 with JSON { error: \"Setup required: anchoring needs the gateway wallet\" }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-ANCHOR-415-UNSUPPORTED-MEDIA",
+    "description": "local gateway POST /api/anchor with non-JSON content-type",
+    "expected": "HTTP 415 with JSON { error: \"an anchor request must be sent as content-type: application/json\" }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-CLIENT-REFUSAL-UNANCHORED-ROOT",
+    "description": "local gateway client payment against unanchored root",
+    "expected": "Z402Client.pay rejects with AnchorRefusedError having code \"UNANCHORED_ROOT\" before making a proof; no nullifier burned.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-CLIENT-REFUSAL-ANCHOR-TOO-OLD",
+    "description": "local gateway client payment against anchor older than window",
+    "expected": "Z402Client.pay rejects with AnchorRefusedError having code \"ANCHOR_TOO_OLD\" before making a proof; no nullifier burned.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-CLIENT-REFUSAL-ANCHOR-COMPETING",
+    "description": "local gateway client payment when competing signed root is scanned",
+    "expected": "Z402Client.pay rejects with AnchorRefusedError having code \"ANCHOR_COMPETING\" before making a proof; no nullifier burned.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-SETUP-REQUIRED-EXIT-CODE-2",
+    "description": "local gateway serve.ts startup without required env",
+    "expected": "serve.ts exits with process exit code 2 and prints \"Setup required: Z402_DEPOSIT_UA\" to stderr.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "API-SETUP-REQUIRED-INVALID-INT-ENV",
+    "description": "local gateway serve.ts startup with invalid integer env",
+    "expected": "serve.ts exits with process exit code 2 and prints Setup required error to stderr when Z402_UNIT_ZAT is 0 or non-integer.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "HOST-INFO-GET",
+    "description": "https://kippu-api.201-18-198-162.sslip.io/api/info GET",
+    "expected": "HTTP 200, JSON matching { unitZat: 1000, prices: { \"/api/quote\": \"10\", \"/api/report\": \"50\" }, anchors: [], latestAnchor: null }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "HOST-INFO-NO-KEY",
+    "description": "https://kippu-api.201-18-198-162.sslip.io/api/info privacy audit",
+    "expected": "Response body does not contain deposit incoming viewing key (depositUivk).",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "HOST-QUOTE-402",
+    "description": "https://kippu-api.201-18-198-162.sslip.io/api/quote GET",
+    "expected": "HTTP 402 with JSON { error: \"payment required\", accepts: [challenge] } where accepts[0].anchor is null, requiredAmount is \"10\", resource is \"/api/quote\".",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "HOST-ANCHOR-SETUP-REQUIRED",
+    "description": "https://kippu-api.201-18-198-162.sslip.io payment attempt",
+    "expected": "Hosted gateway has no wallet; latestAnchor is null; anchoring is Setup required; client payment is refused with UNANCHORED_ROOT; no client can pay it.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "MCP-TOOLS-LIST",
+    "description": "packages/mcp/src/tools.ts listTools()",
+    "expected": "listTools returns exactly 4 tools: [\"claim\", \"deposit\", \"pay\", \"status\"].",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "MCP-STATUS-NO-SECRETS",
+    "description": "packages/mcp status tool invocation",
+    "expected": "status returns JSON with wallet summary { credited, unspent, unspent_units } and gateway status { leaves, spent }; stringified result never contains noteSecret, nullifierSecret, or uivk.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "MCP-DEPOSIT-UNTESTED-FUNDED",
+    "description": "packages/mcp deposit tool with real funded wallet",
+    "expected": "Later audit marks UNTESTED because a funded testnet send is forbidden.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "MCP-DEPOSIT-SETUP-REQUIRED-WALLET",
+    "description": "packages/mcp deposit tool without Z402_WALLET env",
+    "expected": "isError: true with text \"Setup required: Z402_WALLET\".",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "MCP-DEPOSIT-REFUSED-MAX-CAP",
+    "description": "packages/mcp deposit tool exceeding Z402_MAX_DEPOSIT_ZAT",
+    "expected": "isError: true with text matching /refused: deposit of .* zat is above Z402_MAX_DEPOSIT_ZAT/.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "MCP-DEPOSIT-REFUSED-TOTAL-BUDGET",
+    "description": "packages/mcp deposit tool exceeding Z402_MAX_TOTAL_DEPOSIT_ZAT",
+    "expected": "isError: true with text matching /refused: total deposit.* would exceed Z402_MAX_TOTAL_DEPOSIT_ZAT/.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "MCP-CLAIM-SUCCESS",
+    "description": "packages/mcp claim tool with valid mined deposit",
+    "expected": "isError: false with JSON { first: 0, count: 22, root: \"4498787375493044641629502448109918628546215513903653918575713697752952913389\" }.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "MCP-CLAIM-409-ALREADY-CLAIMED",
+    "description": "packages/mcp claim tool second claim of same deposit",
+    "expected": "isError: true with text matching /already claimed/.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "MCP-CLAIM-WAIT-UNTESTED-FUNDED",
+    "description": "packages/mcp claim tool wait for unmined deposit",
+    "expected": "Later audit marks UNTESTED because a funded testnet send is forbidden.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "MCP-PAY-EXECUTABLE-REPLAY",
+    "description": "packages/mcp pay tool against replayed local gateway",
+    "expected": "isError: false with JSON { status: 200, nullifier, prove_ms, anchor, data } without sending on-chain transactions.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "MCP-PAY-REFUSED-UNANCHORED-ROOT",
+    "description": "packages/mcp pay tool against unanchored gateway",
+    "expected": "isError: true with text matching /^refusing to pay: UNANCHORED_ROOT/.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "MCP-PAY-REFUSED-FOREIGN-URL",
+    "description": "packages/mcp pay tool with foreign origin URL",
+    "expected": "Payment refused before fetching; 0 requests sent to foreign origin.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "MCP-LOG-FILE-PERMISSIONS-0600",
+    "description": "packages/mcp Z402_MCP_LOG file logging",
+    "expected": "Log file created with 0600 permissions, each line has keys [\"at\", \"tool\", \"args\", \"isError\", \"result\"], never logging secrets.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-DEMO-STEP1-CLAIM-OCT20",
+    "description": "pnpm --filter @z402/examples demo (Step 1)",
+    "expected": "stdout contains \"1. a fresh gateway claims the Oct 20 deposit 05c57a3b074c… (22 notes, 220,000 zat)\", \"22 notes credited, root 44987873754930…\", and adopts anchor matching pattern /it adopts the Oct 20 anchor a09922378bb7… \\(block 4522706, \\d+ blocks old\\)/.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-DEMO-STEP2-ANCHOR-TOO-OLD",
+    "description": "pnpm --filter @z402/examples demo (Step 2)",
+    "expected": "stdout contains \"2. a live client with the default window (2880 blocks) pays /api/quote\" and pattern /refusing to pay: ANCHOR_TOO_OLD: anchor a09922378bb7… was mined \\d+ blocks ago; this client accepts at most 2880/.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-DEMO-STEP3-UNANCHORED-ROOT",
+    "description": "pnpm --filter @z402/examples demo (Step 3)",
+    "expected": "stdout contains \"3. a dishonest gateway in front of it serves this client its own leaf list and root, with no anchor\" and pattern /refusing to pay: UNANCHORED_ROOT: the gateway offers root \\d+… with no on-chain anchor  \\(no proof was made, nothing sent\\)/.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-DEMO-STEP4-REPLAY-OCT20",
+    "description": "pnpm --filter @z402/examples demo (Step 4)",
+    "expected": "stdout contains \"4. a replay of the Oct 20 run as of block 4522716\", two HTTP 200 payments with proof times, \"the gateway burned 2 nullifiers; no transaction was sent for either call\", and \"a third call: no unspent note of exactly 10 units\".",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-DEMO-STEP5-PASS2-LIVE-COMPETING",
+    "description": "pnpm --filter @z402/examples demo (Step 5 live)",
+    "expected": "stdout contains \"5. the Oct 22 pass-2 run\", \"root matches the record\", and pattern /refusing to pay: ANCHOR_COMPETING: anchor 3ed5319c06e9… at height 4529606 \\(6 leaves, root 165039324883…\\) is not on the leaf history this gateway serves \\(6 leaves\\)/.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-DEMO-STEP5-PASS2-REPLAY-HONEST",
+    "description": "pnpm --filter @z402/examples demo (Step 5 replay 4529604)",
+    "expected": "stdout contains pattern /replayed as of block 4529604.*:\\s+GET \\/api\\/quote → 402 → proof \\d+ ms → HTTP 200, nullifier 948329307016…, against signed anchor 4265af65ce01… \\(6 leaves, block 4529599\\)/.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-DEMO-STEP5-PASS2-REPLAY-COMPETING",
+    "description": "pnpm --filter @z402/examples demo (Step 5 replay 4529619)",
+    "expected": "stdout contains pattern /replayed as of block 4529619.*:\\s+refusing to pay: ANCHOR_COMPETING: anchor 3ed5319c06e9… at height 4529606/.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-DEMO-EXIT-STATUS",
+    "description": "pnpm --filter @z402/examples demo (process exit)",
+    "expected": "stdout ends with pattern /done in \\d+(\\.\\d+)? s/ and process exits with status code 0.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-SCAN-DERIVE-SETUP-REQUIRED",
+    "description": "packages/scan zpay-verify derive (no ZPV_UFVK)",
+    "expected": "Process exits with exit code 2 and prints \"error: Setup required: ZPV_UFVK\" to stderr.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-SCAN-DERIVE-SUCCESS",
+    "description": "packages/scan zpay-verify derive (valid ZPV_UFVK)",
+    "expected": "Process exits 0 and prints derived UIVK string to stdout.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-SCAN-TIP",
+    "description": "packages/scan zpay-verify tip",
+    "expected": "Process exits 0 and prints positive integer block height (current chain tip) to stdout.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-SCAN-VERIFY-OCT20-DEPOSIT",
+    "description": "packages/scan zpay-verify verify (Oct 20 deposit)",
+    "expected": "Exit code 0, stdout JSON has verdict.ok: true, amount_zat: 220000, memo: \"z402:7291ac19dfd30373e611f10f2ee4a24a0574d43ca6fc3664c6a5f5da0c2ceee3\".",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-SCAN-VERIFY-MISMATCH-EXIT1",
+    "description": "packages/scan zpay-verify verify (altered expected amount)",
+    "expected": "Exit code 1, stdout JSON has verdict.ok: false and reasons containing \"AMOUNT_TOO_LOW\".",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-SCAN-INSPECT-OCT20-ANCHOR",
+    "description": "packages/scan zpay-verify inspect (Oct 20 anchor)",
+    "expected": "Exit code 0, stdout JSON report contains memo starting with \"z402:anchor:22:44987873754930...:22:34a52ddc...\".",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-SCAN-INSPECT-PASS2-ANCHORS",
+    "description": "packages/scan zpay-verify inspect (Pass 2 anchors)",
+    "expected": "Exit code 0, stdout JSON reports for c69195a9, f75213bb, c1b4b478, 4265af65 decrypt signed anchor memos matching deployments/testnet-pass2.json.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-SCAN-RANGE-OCT20-ANCHOR",
+    "description": "packages/scan zpay-verify scan-range (Oct 20 block range)",
+    "expected": "Exit code 0, JSON output txs array contains anchor txid a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395 at height 4522706.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-SCAN-RANGE-PASS2-ANCHORS",
+    "description": "packages/scan zpay-verify scan-range (Pass 2 block range)",
+    "expected": "Exit code 0, JSON output txs array contains all 4 honest Pass 2 anchor transactions.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-AGENT-LOG-TOTAL-CALLS",
+    "description": "deployments/agent-run-2026-10-20.jsonl total calls",
+    "expected": "deployments/agent-run-2026-10-20.jsonl contains exactly 23 JSON lines matching the 23 MCP calls displayed on dashboard and evidence page.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-AGENT-LOG-REFUSALS-COUNT",
+    "description": "deployments/agent-run-2026-10-20.jsonl refusal count",
+    "expected": "Exactly 9 lines have isError: true, matching the \"9 of 23 calls refused\" count on dashboard and \"9 / 23\" on evidence page.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-AGENT-LOG-DOUBLE-CREDIT",
+    "description": "deployments/agent-run-2026-10-20.jsonl row 16 double credit",
+    "expected": "Line 16 records second claim of deposit 0b12bfc6 resulting in double crediting (leaves 25 and 26), marked with tag \"double\" on dashboard and \"+1 double credit\" on evidence page.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-AGENT-LOG-NO-SECRETS",
+    "description": "deployments/agent-run-2026-10-20.jsonl privacy check",
+    "expected": "deployments/agent-run-2026-10-20.jsonl does not contain noteSecret, nullifierSecret, or viewing keys.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CLI-AGENT-RUN-LIVE-UNTESTED",
+    "description": "packages/agent/run.sh live run execution",
+    "expected": "Later audit marks UNTESTED: needs opencode plus a funded send.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CIR-VK-ID-8E7FA586",
+    "description": "packages/circuits verification key SHA-256",
+    "expected": "SHA-256 of packages/circuits/build/verification_key.json begins with \"8e7fa586\" (full hash: 8e7fa586933c0bcf3a1f794d4e6ef20c688491314c45ee78a17facc04d7cd0e3).",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CIR-PROOF-VERIFY-SUCCESS",
+    "description": "packages/circuits Payment(20) valid proof verification",
+    "expected": "verifyOffChain returns true; publicSignals contains only [nullifier, merkle_root, pay_to, required_amount, context_hash] and no secret values.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CIR-TAMPERED-PAYTO-FAIL",
+    "description": "packages/circuits proof with tampered pay_to signal",
+    "expected": "verifyOffChain returns false.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CIR-TAMPERED-AMOUNT-FAIL",
+    "description": "packages/circuits proof with tampered required_amount signal",
+    "expected": "verifyOffChain returns false.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CIR-TAMPERED-CONTEXT-FAIL",
+    "description": "packages/circuits proof with tampered context_hash signal",
+    "expected": "verifyOffChain returns false.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CIR-OVERVALUE-WITNESS-FAIL",
+    "description": "packages/circuits proof for amount exceeding note value",
+    "expected": "provePayment throws an error during witness generation; no valid proof can be generated.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  },
+  {
+    "id": "CIR-DEPOSIT-COMMITMENT-BINDING",
+    "description": "packages/circuits depositCommitment() calculation",
+    "expected": "depositCommitment produces a 64-hex SHA-256 commitment binding every note secret and value; altering any note or value produces a different commitment.",
+    "status": "PENDING",
+    "actual": "",
+    "evidence": ""
+  }
+]

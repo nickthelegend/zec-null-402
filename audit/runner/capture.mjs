@@ -8,7 +8,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const e2eDir = path.join(root, 'e2e');
-const evidenceDir = path.join(root, 'audit/evidence/runner-smoke');
+const DEFAULT_OUT_DIR = 'runner-smoke';
+const OUT_DIR_RE = /^[a-z0-9][a-z0-9-]{0,40}$/;
+// Assigned only after parseItem accepts the item. Screenshot and JSON both use it.
+let evidenceDir = '';
 const HEAVY_SLOT = '/Volumes/Extreme SSD/Projects/grokbot/tools/heavy-slot.sh';
 const SLOT_NAME = 'audit-kippu';
 const MAX_SCREENSHOT_BYTES = 200 * 1024;
@@ -187,7 +190,30 @@ function parseItem(raw) {
     expectStatus: item.expectStatus ?? null,
     allowStatuses: item.allowStatuses ?? [],
     actions,
+    outDir: checkedOutDir(item),
   };
+}
+
+// outDir is optional. When present it is one directory name under audit/evidence.
+function checkedOutDir(item) {
+  if (item.outDir === undefined) return DEFAULT_OUT_DIR;
+  const outDir = item.outDir;
+  if (typeof outDir !== 'string') throw new Error('outDir must match ^[a-z0-9][a-z0-9-]{0,40}$');
+  if (path.isAbsolute(outDir) || /[/\\.]/.test(outDir) || outDir.includes('..')) {
+    throw new Error('outDir rejects absolute paths, slashes, dots, and ..');
+  }
+  if (!OUT_DIR_RE.test(outDir)) throw new Error('outDir must match ^[a-z0-9][a-z0-9-]{0,40}$');
+  return outDir;
+}
+
+function evidenceDirectory(outDir) {
+  const base = path.resolve(root, 'audit/evidence');
+  const dir = path.resolve(base, outDir);
+  const rel = path.relative(base, dir);
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel) || rel.split(path.sep).includes('..')) {
+    throw new Error('outDir must stay under audit/evidence');
+  }
+  return dir;
 }
 
 function ensurePlaywrightInstalled() {
@@ -601,6 +627,7 @@ async function shutdownBrowser() {
 
 async function main() {
   const item = parseItem(process.argv[2]);
+  evidenceDir = evidenceDirectory(item.outDir);
   if (isForbiddenHost(hostnameOf(item.url))) {
     throw new Error('refusing to navigate to a third-party explorer or GitHub URL');
   }

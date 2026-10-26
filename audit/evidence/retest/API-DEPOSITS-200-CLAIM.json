@@ -1,0 +1,43 @@
+{
+  "id": "API-DEPOSITS-200-CLAIM",
+  "url": "http://127.0.0.1:50295/api/info",
+  "requestHost": "127.0.0.1:50295",
+  "width": 1280,
+  "height": 800,
+  "waitFor": "load",
+  "expectStatus": null,
+  "allowStatuses": [],
+  "ok": true,
+  "failures": [],
+  "actual": "{\"count\":22,\"root\":\"4498787375493044641629502448109918628546215513903653918575713697752952913389\"}",
+  "navigationStatus": 200,
+  "screenshot": "audit/evidence/retest/API-DEPOSITS-200-CLAIM.jpg",
+  "screenshotBytes": 45021,
+  "browserExecutable": "/Users/jaibajrang/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "console": [],
+  "pageErrors": [],
+  "responses": [
+    {
+      "url": "http://127.0.0.1:50295/api/info",
+      "status": 200,
+      "host": "127.0.0.1:50295",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:50295/api/deposits",
+      "status": 200,
+      "host": "127.0.0.1:50295",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:50295/api/leaves",
+      "status": 200,
+      "host": "127.0.0.1:50295",
+      "sameOrigin": true,
+      "counted": true
+    }
+  ],
+  "blockedNavigations": []
+}

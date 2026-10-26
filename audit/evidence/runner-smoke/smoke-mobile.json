@@ -1,0 +1,35 @@
+{
+  "id": "smoke-mobile",
+  "url": "https://example.com",
+  "requestHost": "example.com",
+  "width": 375,
+  "height": 812,
+  "waitFor": "load",
+  "expectStatus": 200,
+  "allowStatuses": [],
+  "ok": true,
+  "failures": [],
+  "navigationStatus": 200,
+  "screenshot": "audit/evidence/runner-smoke/smoke-mobile.jpg",
+  "screenshotBytes": 50491,
+  "browserExecutable": "/Users/jaibajrang/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "console": [],
+  "pageErrors": [],
+  "responses": [
+    {
+      "url": "https://example.com/",
+      "status": 200,
+      "host": "example.com",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "https://example.com/s.js",
+      "status": 200,
+      "host": "example.com",
+      "sameOrigin": true,
+      "counted": true
+    }
+  ],
+  "blockedNavigations": []
+}

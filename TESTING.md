@@ -5,7 +5,7 @@ Proofs are real Groth16 proofs with this repo's setup. Where a test needs the ga
 `sendAnchor` is a callback that records the memo it is asked to send (no transaction leaves the test);
 everything else in that gateway is real. `anchor-window.test.ts` is local (anchors built and signed in the test) and
 `tip.test.ts` runs small shell scripts in place of the scan binary. Counts are from a fresh, complete
-`pnpm test` on Oct 25, 2026, after the unit fixes, landing cut and dashboard polish (Node 26.5.0,
+`pnpm test` on Oct 26, 2026, after the unit fixes, landing cut and dashboard polish (Node 26.5.0,
 pnpm 10.29.2, pinned Rust 1.89.0). The build and every suite passed: 106 tests plus 1 doc test,
 0 failed, 0 skipped.
 CI (`.github/workflows/ci.yml`) runs the same `pnpm test` on every push.
@@ -64,12 +64,10 @@ published demo viewing keys, a second gateway with a throwaway admin token and n
 the landing) and writes its PIDs; `e2e/stack.sh stop` kills them. Then `pnpm test:e2e`. Video, trace
 and screenshots for every test; desktop 1280×800 and mobile 375×812.
 
-Fresh full `pnpm test:e2e` on Oct 25, 2026 (Playwright 1.63.0, Google Chrome, one worker,
-0 retries): **60 passed, 0 failed, 0 skipped** — desktop 35/35, mobile 25/25. The first full
-run found one failure (59 passed): the evidence page hid its Conditions link on mobile. A compact
-mobile section menu fixes it; the landing spec then passed 20/20 before the final full run.
-Both stack runs used one heavy slot with an exit trap to stop the stack and release the slot,
-including on failure. No transaction was sent and the recorded live-testnet evidence is unchanged.
+Fresh full `pnpm test:e2e` on Oct 26, 2026 (Playwright 1.63.0, Google Chrome, one worker,
+0 retries): **60 passed, 0 failed, 0 skipped** — desktop 35/35, mobile 25/25. The stack run
+used one heavy slot with an exit trap to stop the stack and release the slot, including on failure.
+No transaction was sent and the recorded live-testnet evidence is unchanged.
 
 | Spec | Desktop passed | Mobile passed | What |
 |---|---|---|---|

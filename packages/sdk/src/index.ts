@@ -362,11 +362,11 @@ export class Z402Client {
    * anchor's leaves only: leaves the gateway added after it (perhaps for this client alone) never enter the proof.
    */
   async checkAnchor(c: WireChallenge, f: NotesFile): Promise<{ anchor: AcceptedAnchor; tree: Tree; leaves: string[] }> {
-    if (!this.anchorUivk) throw new SetupRequiredError('Z402_ANCHOR_UIVK', "the anchor address's published viewing key; the client proves only against roots it has read on-chain");
     const a = c.anchor;
     if (!a || typeof a.txid !== 'string' || !Number.isSafeInteger(a.leaves) || a.leaves < 1 || typeof a.root !== 'string')
       throw new AnchorRefusedError('UNANCHORED_ROOT', `the gateway offers root ${short(String(c.root))} with no on-chain anchor`);
     if (c.root !== undefined && c.root !== a.root) throw new AnchorRefusedError('UNANCHORED_ROOT', `the challenge root ${short(String(c.root))} is not the root of the anchor it names (${short(a.root)})`);
+    if (!this.anchorUivk) throw new SetupRequiredError('Z402_ANCHOR_UIVK', "the anchor address's published viewing key; the client proves only against roots it has read on-chain");
     const win = await this.windowAnchors();
     // The named anchor from the window scan; one outside the window (unmined, or too old) is read on its own.
     const inWindow = win.anchors.filter((m) => m.txid === a.txid);

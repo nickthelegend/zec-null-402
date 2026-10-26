@@ -1,0 +1,2 @@
+
+Setup required: Z402_UNIT_ZAT (a whole number of at least 1, got "0")

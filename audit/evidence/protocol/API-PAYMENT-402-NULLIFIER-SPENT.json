@@ -1,0 +1,71 @@
+{
+  "id": "API-PAYMENT-402-NULLIFIER-SPENT",
+  "url": "http://127.0.0.1:8405/api/info",
+  "requestHost": "127.0.0.1:8405",
+  "width": 1280,
+  "height": 800,
+  "waitFor": "load",
+  "expectStatus": null,
+  "allowStatuses": [
+    402
+  ],
+  "ok": false,
+  "failures": [
+    "console error: Failed to load resource: the server responded with a status of 402 (Payment Required)",
+    "console error: Failed to load resource: the server responded with a status of 402 (Payment Required)"
+  ],
+  "actual": "{\"error\":\"payment refused: NULLIFIER_SPENT\",\"reason\":\"NULLIFIER_SPENT\",\"accepts\":[{\"x402Version\":1,\"scheme\":\"zec-null-402\",\"network\":\"zcash-testnet\",\"payTo\":\"147551880896112913897675743344837910262631220285031220338749446957089074982\",\"requiredAmount\":\"10\",\"resource\":\"/api/quote\",\"nonce\":\"v1.10dbf60c6a6ac3c35caffc21dafe58c9.1793000371445.f34a747d281b6b1985a7e2b1d029b84d\",\"contextHash\":\"207204414672394964824470130937644625541525904803044617341409106560176193288\",\"root\":\"4498787375493044641629502448109918628546215513903653918575713697752952913389\",\"anchor\":null,\"expiresAt\":1793000371445}]}",
+  "navigationStatus": 200,
+  "screenshot": "audit/evidence/protocol/API-PAYMENT-402-NULLIFIER-SPENT.jpg",
+  "screenshotBytes": 53964,
+  "browserExecutable": "/Users/jaibajrang/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 402 (Payment Required)",
+      "location": {
+        "url": "http://127.0.0.1:8405/api/quote",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 402 (Payment Required)",
+      "location": {
+        "url": "http://127.0.0.1:8405/api/quote",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    }
+  ],
+  "pageErrors": [],
+  "responses": [
+    {
+      "url": "http://127.0.0.1:8405/api/info",
+      "status": 200,
+      "host": "127.0.0.1:8405",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:8405/api/quote",
+      "status": 402,
+      "host": "127.0.0.1:8405",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:8405/api/quote",
+      "status": 402,
+      "host": "127.0.0.1:8405",
+      "sameOrigin": true,
+      "counted": true
+    }
+  ],
+  "blockedNavigations": []
+}

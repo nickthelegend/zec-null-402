@@ -1,0 +1,71 @@
+{
+  "id": "API-ANCHOR-401-UNAUTHORIZED-NO-BEARER",
+  "url": "http://127.0.0.1:8406/api/info",
+  "requestHost": "127.0.0.1:8406",
+  "width": 1280,
+  "height": 800,
+  "waitFor": "load",
+  "expectStatus": null,
+  "allowStatuses": [
+    401
+  ],
+  "ok": false,
+  "failures": [
+    "console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ],
+  "actual": "{\"error\":\"anchoring needs Authorization: Bearer <Z402_ADMIN_TOKEN>\"}",
+  "navigationStatus": 200,
+  "screenshot": "audit/evidence/protocol/API-ANCHOR-401-UNAUTHORIZED-NO-BEARER.jpg",
+  "screenshotBytes": 53985,
+  "browserExecutable": "/Users/jaibajrang/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "location": {
+        "url": "http://127.0.0.1:8406/api/anchor",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "location": {
+        "url": "http://127.0.0.1:8406/api/anchor",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    }
+  ],
+  "pageErrors": [],
+  "responses": [
+    {
+      "url": "http://127.0.0.1:8406/api/info",
+      "status": 200,
+      "host": "127.0.0.1:8406",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:8406/api/anchor",
+      "status": 401,
+      "host": "127.0.0.1:8406",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:8406/api/anchor",
+      "status": 401,
+      "host": "127.0.0.1:8406",
+      "sameOrigin": true,
+      "counted": true
+    }
+  ],
+  "blockedNavigations": []
+}

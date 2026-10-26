@@ -1,0 +1,96 @@
+{
+  "tools": [
+    {
+      "name": "status",
+      "title": "Prepaid notes",
+      "description": "How many notes the agent holds, credited and unspent, and the gateway’s tree size, spent count and anchors. Never returns note secrets. Read-only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "deposit",
+      "title": "Prepay notes with one shielded deposit",
+      "description": "Creates `count` notes of `units` each, sends ONE shielded deposit to the gateway with memo z402:<commitment> from the agent wallet, and returns the plan id and txid. Call `claim` once it is mined. Spends real testnet funds. Refused above Z402_MAX_DEPOSIT_ZAT for one deposit, or above Z402_MAX_TOTAL_DEPOSIT_ZAT for all of them together.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 64
+          },
+          "units": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "count",
+          "units"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "claim",
+      "title": "Claim a deposit",
+      "description": "Asks the gateway to credit the notes of a deposit (it checks the deposit with its viewing key). If the deposit is not mined yet, waits for it (up to Z402_CLAIM_WAIT_SEC, default 900 s) instead of failing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "txid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "plan",
+          "txid"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "pay",
+      "title": "Fetch a paid URL",
+      "description": "GETs `url`; on a zec-null-402 402 it pays with a zero-knowledge proof of one unspent note of the price. No transaction per call. Talks only to Z402_GATEWAY_URL: a URL on any other origin is never fetched (no request is sent there and no redirect is followed), and only a challenge for the path requested is paid. Proves only against a root it has read itself in a recent on-chain anchor; if every note of the price was credited after the latest anchor, or the anchor is too old or not yet confirmed, waits for the gateway’s next one (up to Z402_ANCHOR_WAIT_SEC, default 900 s).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    }
+  ]
+}

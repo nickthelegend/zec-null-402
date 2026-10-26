@@ -1,0 +1,3 @@
+{
+  "message": "Setup required: Z402_ANCHOR_UIVK (the anchor address's published viewing key; the client proves only against roots it has read on-chain)"
+}

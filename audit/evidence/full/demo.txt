@@ -1,0 +1,32 @@
+
+> @z402/examples@0.1.0 demo /Volumes/Extreme SSD/Projects/grokbot/projects/.loom-worktrees/zec-null-402-72b9284ab826/omvouf239/t18/packages/examples
+> tsx src/demo.ts
+
+1. a fresh gateway claims the Oct 20 deposit 05c57a3b074c… (22 notes, 220,000 zat)
+   its viewing key saw the deposit on testnet: 22 notes credited, root 44987873754930…
+   it adopts the Oct 20 anchor a09922378bb7… (block 4522706, 20822 blocks old), read with the published anchor key
+
+2. a live client with the default window (2880 blocks) pays /api/quote
+   refusing to pay: ANCHOR_TOO_OLD: anchor a09922378bb7… was mined 20822 blocks ago; this client accepts at most 2880
+
+3. a dishonest gateway in front of it serves this client its own leaf list and root, with no anchor
+   refusing to pay: UNANCHORED_ROOT: the gateway offers root 811732075488… with no on-chain anchor  (no proof was made, nothing sent)
+
+4. a replay of the Oct 20 run as of block 4522716 (10 blocks after its anchor), default window: the scan range is fixed, so this does not slow down as the chain grows. Its anchor is unsigned (that run predates signed anchors)
+   GET /api/quote → 402 → proof 535 ms → HTTP 200, nullifier 347714795794…, against anchor a09922378bb7… (22 leaves)
+   GET /api/quote → 402 → proof 354 ms → HTTP 200, nullifier 980511180841…, against anchor a09922378bb7… (22 leaves)
+   the gateway burned 2 nullifiers; no transaction was sent for either call
+   a third call: no unspent note of exactly 10 units (a note pays one call of its full value)
+
+5. the Oct 22 pass-2 run (current protocol, signed anchors, key ac1c23e8af09… pinned from the record): a fresh gateway credits its two deposits and adopts its four anchors
+   root matches the record; newest anchor 4265af65ce01… at block 4529599
+   a live client (current tip, default window):
+   refusing to pay: ANCHOR_TOO_OLD: anchor 4265af65ce01… was mined 13930 blocks ago; this client accepts at most 2880
+   replayed as of block 4529604 (after the newest honest anchor, before the competing one), default window:
+   GET /api/quote → 402 → proof 369 ms → HTTP 200, nullifier 948329307016…, against signed anchor 4265af65ce01… (6 leaves, block 4529599)
+   replayed as of block 4529619 (the record's end, after the competing anchor at 4529606):
+   refusing to pay: ANCHOR_COMPETING: anchor 3ed5319c06e9… at height 4529606 (6 leaves, root 165039324883…) is not on the leaf history this gateway serves (6 leaves): it has anchored conflicting roots, signed with its own key
+   no gateway of the current protocol is anchoring live for a clone to pay; the live signed-anchor payments are the ones recorded in deployments/testnet-pass2.json
+
+done in 19.1 s
+

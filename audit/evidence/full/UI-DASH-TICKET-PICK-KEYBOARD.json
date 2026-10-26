@@ -1,0 +1,182 @@
+{
+  "id": "UI-DASH-TICKET-PICK-KEYBOARD",
+  "url": "http://127.0.0.1:5183/",
+  "requestHost": "127.0.0.1:5183",
+  "width": 1280,
+  "height": 800,
+  "waitFor": "load",
+  "expectStatus": null,
+  "allowStatuses": [],
+  "ok": true,
+  "failures": [],
+  "actual": "focusing ticket rail and selecting ticket 2 updates ticket detail card",
+  "navigationStatus": 200,
+  "screenshot": "audit/evidence/full/UI-DASH-TICKET-PICK-KEYBOARD.jpg",
+  "screenshotBytes": 81243,
+  "browserExecutable": "/Users/jaibajrang/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "console": [
+    {
+      "type": "debug",
+      "text": "[vite] connecting...",
+      "location": {
+        "url": "http://127.0.0.1:5183/@vite/client",
+        "line": 732,
+        "column": 8,
+        "lineNumber": 732,
+        "columnNumber": 8
+      }
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "location": {
+        "url": "http://127.0.0.1:5183/node_modules/.vite/deps/react-dom_client.js?v=f55051e7",
+        "line": 22162,
+        "column": 53,
+        "lineNumber": 22162,
+        "columnNumber": 53
+      }
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected.",
+      "location": {
+        "url": "http://127.0.0.1:5183/@vite/client",
+        "line": 826,
+        "column": 11,
+        "lineNumber": 826,
+        "columnNumber": 11
+      }
+    }
+  ],
+  "pageErrors": [],
+  "responses": [
+    {
+      "url": "http://127.0.0.1:5183/",
+      "status": 200,
+      "host": "127.0.0.1:5183",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:5183/src/main.tsx",
+      "status": 200,
+      "host": "127.0.0.1:5183",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:5183/@vite/client",
+      "status": 200,
+      "host": "127.0.0.1:5183",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:5183/@react-refresh",
+      "status": 200,
+      "host": "127.0.0.1:5183",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:5183/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=f55051e7",
+      "status": 200,
+      "host": "127.0.0.1:5183",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:5183/node_modules/.vite/deps/react.js?v=f55051e7",
+      "status": 200,
+      "host": "127.0.0.1:5183",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:5183/src/App.tsx",
+      "status": 200,
+      "host": "127.0.0.1:5183",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:5183/src/styles.css",
+      "status": 200,
+      "host": "127.0.0.1:5183",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:5183/node_modules/.vite/deps/chunk-LW2HNOAL.js?v=f55051e7",
+      "status": 200,
+      "host": "127.0.0.1:5183",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:5183/@fs/Volumes/Extreme%20SSD/Projects/grokbot/projects/.loom-worktrees/zec-null-402-72b9284ab826/omvouf239/t18/node_modules/.pnpm/vite@7.3.7_@types+node@22.20.5_tsx@4.23.15/node_modules/vite/dist/client/env.mjs",
+      "status": 200,
+      "host": "127.0.0.1:5183",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:5183/node_modules/.vite/deps/react-dom_client.js?v=f55051e7",
+      "status": 200,
+      "host": "127.0.0.1:5183",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:5183/@fs/Volumes/Extreme%20SSD/Projects/grokbot/projects/.loom-worktrees/zec-null-402-72b9284ab826/omvouf239/t18/deployments/testnet.json?import",
+      "status": 200,
+      "host": "127.0.0.1:5183",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:5183/@fs/Volumes/Extreme%20SSD/Projects/grokbot/projects/.loom-worktrees/zec-null-402-72b9284ab826/omvouf239/t18/deployments/testnet-pass2.json?import",
+      "status": 200,
+      "host": "127.0.0.1:5183",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:5183/@fs/Volumes/Extreme%20SSD/Projects/grokbot/projects/.loom-worktrees/zec-null-402-72b9284ab826/omvouf239/t18/deployments/agent-run-2026-10-20.jsonl?import&raw",
+      "status": 200,
+      "host": "127.0.0.1:5183",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "http://127.0.0.1:5183/node_modules/.vite/deps/chunk-BYN5MN7D.js?v=f55051e7",
+      "status": 200,
+      "host": "127.0.0.1:5183",
+      "sameOrigin": true,
+      "counted": true
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&family=Azeret+Mono:wght@400;500&display=swap",
+      "status": 200,
+      "host": "fonts.googleapis.com",
+      "sameOrigin": false,
+      "counted": false
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yygg_vb.woff2",
+      "status": 200,
+      "host": "fonts.gstatic.com",
+      "sameOrigin": false,
+      "counted": false
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/azeretmono/v21/3XFuErsiyJsY9O_Gepph-HHhZfn23vRK.woff2",
+      "status": 200,
+      "host": "fonts.gstatic.com",
+      "sameOrigin": false,
+      "counted": false
+    }
+  ],
+  "blockedNavigations": []
+}

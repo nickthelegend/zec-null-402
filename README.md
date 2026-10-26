@@ -46,7 +46,7 @@ pre-anchored-root protocol). 1 unit = 1,000 zat; a call costs 10 units.
 | replay of a paid proof | `NULLIFIER_SPENT` | — |
 | changed amount; a proof made for another request | both `NOT_BOUND_TO_CHALLENGE` | — |
 | changed nullifier | `BAD_PROOF` | — |
-| anchor (`z402:anchor:22:<root>:22:<nullifier-set hash>`: 22 leaves, 22 spent) | memo found with the anchor viewing key; equals the gateway's root and nullifier set | [`a0992237…`](https://testnet.zecblock.com/tx/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395) |
+| anchor (`z402:anchor:22:<root>:22:<nullifier-set hash>`: 22 leaves, 22 spent) | at block 4,522,706; memo found with the anchor viewing key; equals the gateway's root and nullifier set | [`a0992237…`](https://testnet.zecblock.com/tx/a09922378bb7d404c31ac9226fee2de5664a920483d714b1b811647717501395) |
 
 Fixture notes: two of the 22 notes were spent in the run and their secrets published, so tests in a
 fresh clone can claim the real deposit on a fresh gateway and pay with real proofs.

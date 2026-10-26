@@ -1,1 +1,0 @@
-UNTESTED: needs a funded Zcash testnet send

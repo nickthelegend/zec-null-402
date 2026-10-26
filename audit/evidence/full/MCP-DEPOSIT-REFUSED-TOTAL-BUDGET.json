@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "refused: deposits from this notes file would total 240000 zat, above Z402_MAX_TOTAL_DEPOSIT_ZAT (230000); 220000 zat already deposited or being sent"
+    }
+  ],
+  "isError": true
+}

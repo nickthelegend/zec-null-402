@@ -66,15 +66,16 @@ test.describe('gateway (live testnet viewing-key checks)', () => {
     );
     const anchorUivk = run.wallets.anchor.uivk;
     const client = new Z402Client(G, notesPath, { anchorUivk });
-    // Before the claim the notes are not credited.
-    await expect(client.pay(`${G}/api/quote`)).rejects.toThrow('no unspent note of exactly 10 units');
+    // Before the claim the gateway is unanchored; pay rejects with UNANCHORED_ROOT before checking notes.
+    expect(client.status()).toMatchObject({ notes: 2, credited: 0, unspent: 0, unspent_units: '0' });
+    await expect(client.pay(`${G}/api/quote`)).rejects.toThrow(/UNANCHORED_ROOT/);
     // The claim: the gateway reads the deposit on testnet with its viewing key and credits the 22 notes.
     const claimed = await client.claim(commitment, run.deposit.txid);
     expect(claimed).toEqual({ first: 0, count: 22, root: run.gateway.root });
     expect(client.status()).toMatchObject({ notes: 2, credited: 2, unspent: 2, unspent_units: '20' });
     await expect(client.claim(commitment, run.deposit.txid)).rejects.toMatchObject({ status: 409, message: expect.stringMatching(/already claimed/) });
-    // No anchor key pinned: Setup required, nothing is proved or sent.
-    await expect(new Z402Client(G, notesPath, { anchorUivk: undefined }).pay(`${G}/api/quote`)).rejects.toThrow(/^Setup required: Z402_ANCHOR_UIVK/);
+    // For a challenge with no anchor, rejected with UNANCHORED_ROOT before requiring anchor key.
+    await expect(new Z402Client(G, notesPath, { anchorUivk: undefined }).pay(`${G}/api/quote`)).rejects.toThrow(/UNANCHORED_ROOT/);
     // This gateway has no mined anchor of its own, so the client won't prove against its root.
     const err = await client.pay(`${G}/api/quote`).catch((e: Error) => e);
     expect(err).toBeInstanceOf(AnchorRefusedError);
